@@ -1,7 +1,10 @@
+// File: Assets/Necromancer/01.Scripts/System/GameManager.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+namespace Necromancer
+{
 /// <summary>
 /// 게임의 전체 라이프사이클 및 하위 매니저 중앙 통제
 /// </summary>
@@ -12,10 +15,21 @@ public class GameManager : MonoBehaviour
     [Header("Managers")]
     public PoolManager poolManager;
     public EnemySpawner enemySpawner;
+    public UIManager uiManager;
+    public float baseReviveChance = 30f;
+    public string minionTag = "Minion";
 
-    [Header("Player")]
+    [Header("Player Tracking & Stats")]
     [Tooltip("Hierarchy의 Player 오브젝트를 드래그해서 연결해주세요.")]
     public Transform playerTransform;
+    
+    [Tooltip("보석이 플레이어에게 끌려오는 자석 반경")]
+    public float magnetRadius = 3f;
+
+    [Header("Level System")]
+    public int currentLevel = 1;
+    public float currentExp = 0f;
+    public float maxExp = 100f; // 레벨업 필요 경험치
 
     private void Awake()
     {
@@ -39,43 +53,70 @@ public class GameManager : MonoBehaviour
     private void InitManagers()
     {
         // 1. 창고(객체 풀)부터 활성화해야 스폰이 에러나지 않음
-        if (poolManager != null)
-        {
-            poolManager.Init();
-        }
-        else
-        {
-            Debug.LogError("[GameManager] PoolManager reference is missing.");
-        }
+        if (poolManager != null) poolManager.Init();
+        else Debug.LogError("[GameManager] PoolManager reference is missing.");
 
         // 2. 적 생성기 활성화
-        if (enemySpawner != null)
+        if (enemySpawner != null) enemySpawner.Init();
+        else Debug.LogWarning("[GameManager] EnemySpawner 가 연결되지 않아 적이 스폰되지 않습니다.");
+        
+        // 3. UI 매니저 활성화 및 초기화
+        if (uiManager != null) uiManager.Init();
+        else Debug.LogWarning("[GameManager] UIManager 가 연결되지 않아 레벨업 창이 뜨지 않습니다.");
+    }
+
+    /// <summary>
+    /// 몹이 죽었을 때 해골로 부활시킬지 판정하는 주사위 롤
+    /// </summary>
+    public void TryReviveAsMinion(Vector3 deathPosition)
+    {
+        float roll = Random.Range(0f, 100f);
+        if (roll <= baseReviveChance)
         {
-            enemySpawner.Init();
-        }
-        else
-        {
-            Debug.LogWarning("[GameManager] EnemySpawner 가 연결되지 않아 적이 스폰되지 않습니다.");
+            if (poolManager != null)
+            {
+                GameObject minion = poolManager.Get(minionTag, deathPosition, Quaternion.identity);
+                if (minion != null)
+                {
+                    // Debug.Log($"[GameManager] 운명적 부활! {deathPosition} 위치에 미니언 소환 완료.");
+                }
+            }
         }
     }
 
     /// <summary>
-    /// 적 사망 시 부활 확률 계산 및 미니언 스폰 처리
+    /// 경험치 획득 및 레벨업 판정
     /// </summary>
-    /// <param name="deathPosition">적 사망 좌표</param>
-    public void TryReviveAsMinion(Vector3 deathPosition)
+    public void AddExp(float amount)
     {
-        // TODO: 확률값은 추후 데이터 테이블이나 플레이어 스탯 기반으로 동적 처리 필요
-        float reviveChance = 0.3f;
-        
-        if (Random.value <= reviveChance)
+        currentExp += amount;
+        Debug.Log($"[GameManager] 경험치 획득: {currentExp} / {maxExp}");
+
+        if (uiManager != null)
         {
-            GameObject minion = poolManager.Get("Minion", deathPosition, Quaternion.identity);
-            if (minion != null)
-            {
-                // TODO: 스폰 이펙트/사운드 시스템 연동
-                // Debug.Log("[GameManager] Minion revived successfully.");
-            }
+            uiManager.UpdateExpBar(currentExp, maxExp);
+        }
+
+        if (currentExp >= maxExp)
+        {
+            LevelUp();
         }
     }
+
+    private void LevelUp()
+    {
+        currentExp -= maxExp; // 초과분 유지
+        currentLevel++;
+        maxExp *= 1.5f; // 다음 레벨업 요구량 1.5배 증가 (임시 기획)
+        
+        // UI 숫자 갱신 및 팝업창 열기 (시간 정지 발동)
+        if (uiManager != null)
+        {
+            uiManager.UpdateExpBar(currentExp, maxExp); // 초과분 반영 갱신
+            uiManager.ShowLevelUpPanel();
+        }
+        
+        Debug.Log($"🎉 [GameManager] 레벨 업! 현재 레벨: {currentLevel}");
+    }
+}
 }

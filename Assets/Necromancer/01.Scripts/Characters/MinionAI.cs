@@ -1,9 +1,12 @@
+// File: Assets/Necromancer/01.Scripts/Characters/MinionAI.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 
+namespace Necromancer
+{
 /// <summary>
 /// 적의 시체에서 부활한 아군 해골 미니언 AI
 /// 살아남은 적(Enemy)들 중 가장 가까운 대상을 찾아내어 공격하며, 수명이 다하면 소멸합니다.
@@ -61,8 +64,9 @@ public class MinionAI : UnitBase
         scanCts = null;
     }
 
-    private void Update()
+    protected override void Update()
     {
+        base.Update();
         if (isDead) return;
 
         // 수명 체크 로직
@@ -170,4 +174,5 @@ public class MinionAI : UnitBase
             Destroy(gameObject);
         }
     }
+}
 }

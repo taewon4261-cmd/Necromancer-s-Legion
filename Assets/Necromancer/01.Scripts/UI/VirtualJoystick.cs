@@ -1,7 +1,11 @@
+// File: Assets/Necromancer/01.Scripts/UI/VirtualJoystick.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+
+namespace Necromancer
+{
 
 /// <summary>
 /// 모바일 및 PC 테스트 겸용 가상 조이스틱 (Virtual Joystick)
@@ -67,4 +71,5 @@ public class VirtualJoystick : MonoBehaviour, IPointerDownHandler, IPointerUpHan
         InputVector = Vector2.zero;
         handle.anchoredPosition = Vector2.zero;
     }
+}
 }

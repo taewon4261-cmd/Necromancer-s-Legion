@@ -1,8 +1,12 @@
+// File: Assets/Necromancer/01.Scripts/System/EnemySpawner.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
+
+namespace Necromancer
+{
 
 /// <summary>
 /// 시간에 따라 맵 외곽에서 무작위로 적을 쏟아내는 웨이브 생성기
@@ -99,4 +103,5 @@ public class EnemySpawner : MonoBehaviour
             // Debug.Log("[EnemySpawner] 적 군단 스폰 완료.");
         }
     }
+}
 }

@@ -1,7 +1,10 @@
+// File: Assets/Necromancer/01.Scripts/System/PoolManager.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+namespace Necromancer
+{
 /// <summary>
 /// 프리팹 재사용을 위한 범용 오브젝트 풀
 /// GameManager에 의해 초기화(Init) 권한이 통제됨
@@ -100,4 +103,5 @@ public class PoolManager : MonoBehaviour
         obj.transform.SetParent(this.transform);
         poolDictionary[tag].Enqueue(obj);
     }
+}
 }

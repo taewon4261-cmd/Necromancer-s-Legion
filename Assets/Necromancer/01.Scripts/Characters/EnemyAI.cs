@@ -1,7 +1,10 @@
+// File: Assets/Necromancer/01.Scripts/Characters/EnemyAI.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+namespace Necromancer
+{
 /// <summary>
 /// 적(인간 기사/농부) 유닛의 공통 AI
 /// 플레이어를 무조건 쫓아가며, 사망 시 조상 클래스(UnitBase)의 Die()를 오버라이드하여 부활 로직 호출
@@ -84,7 +87,7 @@ public class EnemyAI : UnitBase
     }
 
     /// <summary>
-    /// 적 사망 시 부활 시스템 호출 (가장 핵심적인 오버라이드)
+    /// 적 사망 시 보석 드랍 및 부활 시스템 호출
     /// </summary>
     protected override void Die()
     {
@@ -92,13 +95,19 @@ public class EnemyAI : UnitBase
         
         rb.velocity = Vector2.zero;
         
-        // 🔮 1. 뼈대 목표: 내가 여기서 죽었으니 부활(해골 생성) 주사위를 굴려달라고 중앙 통제실(GameManager)에 요청
         if (GameManager.Instance != null)
         {
+            // 💎 1. 죽은 자리에 경험치 보석(ExpGem) 확정 드랍
+            if (GameManager.Instance.poolManager != null)
+            {
+                GameManager.Instance.poolManager.Get("ExpGem", transform.position, Quaternion.identity);
+            }
+
+            // 🔮 2. 부활 주사위 굴려달라고 중앙 통제실(GameManager)에 요청
             GameManager.Instance.TryReviveAsMinion(transform.position);
         }
 
-        // 2. 사망 연출 (TODO: 폭발 파티클, 피 흘림 등)
+        // 3. 사망 연출 (TODO: 폭발 파티클, 피 흘림 등)
         
         // 3. 내 시체 치우기 (Destroy 대신 풀매니저 반납)
         if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
@@ -113,4 +122,5 @@ public class EnemyAI : UnitBase
             Destroy(gameObject);
         }
     }
+}
 }

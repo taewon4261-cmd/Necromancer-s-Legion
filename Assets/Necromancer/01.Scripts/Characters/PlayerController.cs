@@ -1,7 +1,10 @@
+// File: Assets/Necromancer/01.Scripts/Characters/PlayerController.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+namespace Necromancer
+{
 /// <summary>
 /// 플레이어 입력 처리 및 이동 제어 클래스
 /// UnitBase 상속을 통해 공통 스탯 및 피격 로직 공유
@@ -29,8 +32,9 @@ public class PlayerController : UnitBase
         rb = GetComponent<Rigidbody2D>();
     }
 
-    private void Update()
+    protected override void Update()
     {
+        base.Update();
         if (isDead) return;
         
         HandleInput();
@@ -104,4 +108,5 @@ public class PlayerController : UnitBase
         // TODO: GameManager에 게임 오버 이벤트 발송 (Result UI 팝업 연동)
         Debug.Log("[PlayerController] Player is dead. Triggering GameOver sequence.");
     }
+}
 }

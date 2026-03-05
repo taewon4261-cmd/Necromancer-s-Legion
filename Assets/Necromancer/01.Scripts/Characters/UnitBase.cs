@@ -1,7 +1,10 @@
+// File: Assets/Necromancer/01.Scripts/Characters/UnitBase.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+namespace Necromancer
+{
 /// <summary>
 /// 게임 내 모든 유닛(플레이어, 적, 미니언)의 공통 기반 속성 및 행위 정의
 /// 추후 Entity 패턴 등의 확장성을 고려하여 추상 클래스로 설계
@@ -63,4 +66,5 @@ public abstract class UnitBase : MonoBehaviour
         isDead = true;
         // TODO: Base 사망 이펙트, 피격 사운드 호출 등 추가
     }
+}
 }
