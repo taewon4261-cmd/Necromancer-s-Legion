@@ -29,6 +29,14 @@ public class PoolManager : MonoBehaviour
         {
             Queue<GameObject> objectPool = new Queue<GameObject>();
 
+            // 🚨 버그 수정 (널 레퍼런스 에러 방어)
+            // 에디터 인스펙터에서 사용자가 프리팹을 실수로 집어넣지 않았을 때 에러로 터지는 것을 막습니다.
+            if (pool.prefab == null)
+            {
+                Debug.LogError($"[PoolManager] 🔥 '{pool.tag}' 이름의 프리팹 칸이 비어있습니다! 00.Scenes의 [System] 오브젝트를 클릭해서 프리팹을 쏙 채워주세요!");
+                continue; // 생성을 건너뛰어서 크러시(튕김)를 미연에 방지합니다.
+            }
+
             for (int i = 0; i < pool.size; i++)
             {
                 GameObject obj = Instantiate(pool.prefab, this.transform); 
