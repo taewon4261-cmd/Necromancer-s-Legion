@@ -16,6 +16,7 @@ public class GameManager : MonoBehaviour
     public PoolManager poolManager;
     public EnemySpawner enemySpawner;
     public UIManager uiManager;
+    public SkillManager skillManager;
     public float baseReviveChance = 30f;
     public string minionTag = "Minion";
 
@@ -63,6 +64,10 @@ public class GameManager : MonoBehaviour
         // 3. UI 매니저 활성화 및 초기화
         if (uiManager != null) uiManager.Init();
         else Debug.LogWarning("[GameManager] UIManager 가 연결되지 않아 레벨업 창이 뜨지 않습니다.");
+
+        // 4. 스킬 매니저 활성화
+        if (skillManager != null) skillManager.Init();
+        else Debug.LogWarning("[GameManager] SkillManager 가 연결되지 않아 스킬이 나오지 않습니다.");
     }
 
     /// <summary>
@@ -110,10 +115,13 @@ public class GameManager : MonoBehaviour
         maxExp *= 1.5f; // 다음 레벨업 요구량 1.5배 증가 (임시 기획)
         
         // UI 숫자 갱신 및 팝업창 열기 (시간 정지 발동)
-        if (uiManager != null)
+        if (uiManager != null && skillManager != null)
         {
             uiManager.UpdateExpBar(currentExp, maxExp); // 초과분 반영 갱신
             uiManager.ShowLevelUpPanel();
+            
+            // SkillManager를 통해 랜덤 3개 스킬 뽑기 요청
+            uiManager.RefreshSkillCards(skillManager.GetRandomSkillsForLevelUp(3));
         }
         
         Debug.Log($"🎉 [GameManager] 레벨 업! 현재 레벨: {currentLevel}");
