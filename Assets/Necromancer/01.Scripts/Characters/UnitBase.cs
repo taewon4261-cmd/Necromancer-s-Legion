@@ -9,9 +9,9 @@ using UnityEngine;
 public abstract class UnitBase : MonoBehaviour
 {
     [Header("Base Stats")]
-    public float maxHp;
+    public float maxHp = 50f;
     public float currentHp;
-    public float moveSpeed;
+    public float moveSpeed = 3f;
     
     protected bool isDead = false;
 
@@ -25,6 +25,16 @@ public abstract class UnitBase : MonoBehaviour
         // 풀매니저에 의해 재활용(SetActive)될 때마다 상태 초기화
         isDead = false;
         currentHp = maxHp;
+    }
+
+    protected virtual void Update()
+    {
+        // 최적화를 위해 살아있을 때만 검사
+        // 인스펙터에서 강제로 체력을 0으로 깎았을 때 즉각 사망 처리되도록 감지
+        if (!isDead && currentHp <= 0)
+        {
+            Die();
+        }
     }
 
     /// <summary>

@@ -11,7 +11,11 @@ public class GameManager : MonoBehaviour
 
     [Header("Managers")]
     public PoolManager poolManager;
-    // public EnemySpawner enemySpawner;
+    public EnemySpawner enemySpawner;
+
+    [Header("Player")]
+    [Tooltip("Hierarchy의 Player 오브젝트를 드래그해서 연결해주세요.")]
+    public Transform playerTransform;
 
     private void Awake()
     {
@@ -34,6 +38,7 @@ public class GameManager : MonoBehaviour
     /// </summary>
     private void InitManagers()
     {
+        // 1. 창고(객체 풀)부터 활성화해야 스폰이 에러나지 않음
         if (poolManager != null)
         {
             poolManager.Init();
@@ -41,6 +46,16 @@ public class GameManager : MonoBehaviour
         else
         {
             Debug.LogError("[GameManager] PoolManager reference is missing.");
+        }
+
+        // 2. 적 생성기 활성화
+        if (enemySpawner != null)
+        {
+            enemySpawner.Init();
+        }
+        else
+        {
+            Debug.LogWarning("[GameManager] EnemySpawner 가 연결되지 않아 적이 스폰되지 않습니다.");
         }
     }
 

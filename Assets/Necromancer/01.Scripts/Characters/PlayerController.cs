@@ -16,6 +16,13 @@ public class PlayerController : UnitBase
     [Tooltip("모바일 UI 가상 조이스틱 (연결 시 조이스틱 우선, 없을 시 WASD 키보드)")]
     public VirtualJoystick virtualJoystick;
 
+    [Header("Test Attack (임시)")]
+    [Tooltip("몸통 박치기 데미지")]
+    public float bodySlamDamage = 50f;
+    [Tooltip("박치기 쿨타임")]
+    public float slamCooldown = 0.5f;
+    private float lastSlamTime;
+
     protected override void Awake()
     {
         base.Awake();
@@ -57,11 +64,30 @@ public class PlayerController : UnitBase
     }
 
     /// <summary>
-    /// 물리 기반(Kinematic) 위치 업데이트
+    /// 물리 기반(Kinematic/Dynamic) 위치 업데이트
     /// </summary>
     private void Move()
     {
         rb.velocity = movement * moveSpeed;
+    }
+
+    /// <summary>
+    /// 무기가 없는 1주차 테스트용 플레이어 몸통 박치기 판정
+    /// </summary>
+    private void OnCollisionStay2D(Collision2D collision)
+    {
+        if (isDead || Time.time < lastSlamTime + slamCooldown) return;
+
+        // 상대방이 적인지 태그로 확인
+        if (collision.gameObject.CompareTag("Enemy"))
+        {
+            UnitBase enemyObj = collision.gameObject.GetComponent<UnitBase>();
+            if (enemyObj != null)
+            {
+                enemyObj.TakeDamage(bodySlamDamage); // 적 피 깎기
+                lastSlamTime = Time.time;
+            }
+        }
     }
 
     /// <summary>
@@ -71,8 +97,9 @@ public class PlayerController : UnitBase
     {
         base.Die();
         
-        // 이동 중지 처리
+        // 이동 중지 처리 및 샌드백처럼 밀리는 현상 방지
         rb.velocity = Vector2.zero;
+        rb.bodyType = RigidbodyType2D.Static; // 죽으면 시체가 안 밀리게 고정
         
         // TODO: GameManager에 게임 오버 이벤트 발송 (Result UI 팝업 연동)
         Debug.Log("[PlayerController] Player is dead. Triggering GameOver sequence.");
