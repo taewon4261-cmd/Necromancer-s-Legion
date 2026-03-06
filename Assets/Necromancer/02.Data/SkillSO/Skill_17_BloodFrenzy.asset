@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd085fc1feb1f9f4bba23dcaa54514f1, type: 3}
+  m_Name: Skill_17_BloodFrenzy
+  m_EditorClassIdentifier: 
+  skillName: "\uD53C\uC758 \uAD11\uB780"
+  skillIcon: {fileID: 0}
+  skillDescription: "\uBBF8\uB2C8\uC5B8 \uCCB4\uB825\uC774 50% \uC774\uD558\uAC00 \uB418\uBA74 \uACF5\uACA9 \uC18D\uB3C4 30% \uD38C\uD551"
+  type: 16
+  skillID: 16
+  value1: 0

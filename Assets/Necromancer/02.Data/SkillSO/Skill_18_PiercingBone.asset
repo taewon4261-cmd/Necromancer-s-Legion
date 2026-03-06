@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd085fc1feb1f9f4bba23dcaa54514f1, type: 3}
+  m_Name: Skill_18_PiercingBone
+  m_EditorClassIdentifier: 
+  skillName: "\uAD00\uD1B5 \uBF08\uB300"
+  skillIcon: {fileID: 0}
+  skillDescription: "(\uAD81\uC218 \uBBF8\uB2C8\uC5B8 \uD55C\uC815) \uBC1C\uC0AC\uD558\uB294 \uD654\uC0B4 \uD22C\uC0AC\uCCB4\uAC00 \uC801 1\uBA85 \uCD94\uAC00\uB85C \uAD00\uD1B5"
+  type: 17
+  skillID: 17
+  value1: 0

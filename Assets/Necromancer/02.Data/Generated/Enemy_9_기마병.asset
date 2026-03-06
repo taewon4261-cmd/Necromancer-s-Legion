@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2c91140c61f019847a5018fe68573c83, type: 3}
+  m_Name: "Enemy_9_\uAE30\uB9C8\uBCD1"
+  m_EditorClassIdentifier: 
+  enemyName: "\uAE30\uB9C8\uBCD1"
+  poolTag: Enemy
+  enemyPrefab: {fileID: 0}
+  maxHp: 200
+  moveSpeed: 3.5
+  attackDamage: 30
+  dropExpAmount: 21
+  isRanged: 0
+  isElite: 1

@@ -43,6 +43,11 @@ public class MinionAI : UnitBase
 
     protected override void OnEnable()
     {
+        // 1. 우선 컴포넌트 OnEnable 발동 시 전역 버프를 먼저 스탯에 적용
+        ApplyGlobalBuffs();
+        
+        // 2. 그 다음 기본 UnitBase.OnEnable()을 호출하여 currentHp = maxHp 등으로 리셋
+        //    (상속받은 자식에서 maxHp가 이미 뻥튀기 된 상태이어야 풀피가 제대로 참)
         base.OnEnable();
         
         spawnTime = Time.time;
@@ -55,6 +60,26 @@ public class MinionAI : UnitBase
         
         // 스폰 즉시 주변 적 탐색 UniTask 가동
         ScanForTargetAsync(scanCts.Token).Forget();
+    }
+
+    /// <summary>
+    /// SkillManager가 중앙에서 들고 있는 누적 글로벌 버프(특성)를
+    /// 미니언이 스폰되는(켜지는) 이 한 번의 순간에만 자기 스탯에 곱해서 복사해옵니다.
+    /// (이를 통해 매 프레임 수백 마리의 스탯을 관리하는 렉을 없앱니다.)
+    /// </summary>
+    private void ApplyGlobalBuffs()
+    {
+        if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
+        {
+            SkillManager sManager = GameManager.Instance.skillManager;
+            
+            // 프리팹 원본에 손상을 주지 않기 위해 기본값(하드코딩 또는 보관된 원본값)을 기준으로 곱합니다.
+            // 여기서는 단순화를 위해 매번 곱해지는 누적 오류를 막고자 프로퍼티 초기화 로직을 생략하나,
+            // 1주차 프로토타입 기준에서는 아래와 같이 단순 덮어쓰기 방식으로 작동시킵니다 (원본값이 필요하면 별도 보관 권장).
+            this.maxHp = 50f * sManager.globalMinionHpBonusRatio;
+            this.moveSpeed = 3f * sManager.globalMinionSpeedBonusRatio;
+            this.attackDamage = 15f * sManager.globalMinionDamageBonusRatio;
+        }
     }
 
     private void OnDisable()
@@ -145,10 +170,45 @@ public class MinionAI : UnitBase
             UnitBase targetUnit = collision.gameObject.GetComponent<UnitBase>();
             if (targetUnit != null)
             {
+                SkillManager sManager = GameManager.Instance.skillManager;
+                float finalDamage = attackDamage;
+
+                if (sManager != null)
+                {
+                    // [스킬 연동] 20. 거인 사냥꾼: 정예/보스 몹에게 데미지 증폭 (임시로 EnemyAI에 isBoss 필드가 있다고 가정하거나, maxHp로 퉁침)
+                    if (sManager.hasGiantHunter && targetUnit.maxHp >= 200f) 
+                    {
+                        finalDamage *= 1.3f;
+                    }
+                }
+
                 // 적 타격 성공!
-                targetUnit.TakeDamage(attackDamage);
+                targetUnit.TakeDamage(finalDamage);
                 lastHitTime = Time.time;
                 
+                if (sManager != null)
+                {
+                    // [스킬 연동] 15. 독성 칼날 / 16. 서리 무기 / 19. 저주받은 낙인
+                    EnemyAI enemyScript = targetUnit as EnemyAI;
+                    if (enemyScript != null)
+                    {
+                        if (sManager.hasToxicBlade) enemyScript.ApplyPoison(3f, 2f); // 3초간 초당 2 데미지
+                        if (sManager.hasFrostWeapon) enemyScript.ApplyFrost(2f, 0.3f); // 2초간 이속 30% 감소
+                        if (sManager.hasCursedStigma) enemyScript.AddStigmaStack(); // 10대 맞으면 피해증폭 20%
+                    }
+
+                    // [스킬 연동] 12. 흡혈의 이빨: 미니언 타격 시 일정 확률로 플레이어 본체 회복
+                    if (sManager.vampiricChance > 0f && Random.value <= sManager.vampiricChance)
+                    {
+                        PlayerController player = GameManager.Instance.playerTransform.GetComponent<PlayerController>();
+                        if (player != null && player.currentHp < player.maxHp)
+                        {
+                            player.currentHp += 1f; // 1 회복
+                            player.currentHp = Mathf.Clamp(player.currentHp, 0, player.maxHp);
+                        }
+                    }
+                }
+
                 // TODO: 뼈 부딪히는 타격 사운드 호출
             }
         }
@@ -163,8 +223,24 @@ public class MinionAI : UnitBase
         
         rb.velocity = Vector2.zero;
         
-        // TODO: 미니언 특유의 소멸 파티클 (가루가 되는 연출)
+        // [스킬 연동] 13. 연쇄 폭발: 사망 시 반경 2m 내 적에게 광역 피해
+        SkillManager sManager = GameManager.Instance.skillManager;
+        if (sManager != null && sManager.minionExplosionDamage > 0f)
+        {
+            Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 2f);
+            foreach (var h in hits)
+            {
+                if (h.CompareTag("Enemy"))
+                {
+                    UnitBase enemyObj = h.GetComponent<UnitBase>();
+                    if (enemyObj != null) enemyObj.TakeDamage(sManager.minionExplosionDamage);
+                }
+            }
+            // Debug.Log("[SkillEffect] 펑! 미니언 폭발 데미지 발생");
+        }
         
+        // TODO: 미니언 특유의 소멸 파티클 (가루가 되는 연출)
+
         if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
         {
             GameManager.Instance.poolManager.Release("Minion", gameObject);

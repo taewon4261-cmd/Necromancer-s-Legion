@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd085fc1feb1f9f4bba23dcaa54514f1, type: 3}
+  m_Name: Skill_10_SwiftMarch
+  m_EditorClassIdentifier: 
+  skillName: "\uC2E0\uC18D\uD55C \uC9C4\uAD70"
+  skillIcon: {fileID: 0}
+  skillDescription: "\uB0B4 \uBBF8\uB2C8\uC5B8\uC758 \uC774\uB3D9 \uBC0F \uB3CC\uC9C4 \uC18D\uB3C4 15% \uC99D\uAC00"
+  type: 9
+  skillID: 9
+  value1: 0

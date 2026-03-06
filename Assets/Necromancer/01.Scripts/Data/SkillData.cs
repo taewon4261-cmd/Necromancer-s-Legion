@@ -9,10 +9,31 @@ namespace Necromancer
     /// </summary>
     public enum SkillType
     {
-        WeaponPowerUp, // 본체 기본 무기 강화 (데미지, 크기 등)
-        MinionAura,    // 미니언 전체 스탯 펌핑 버프
-        OrbitalShield, // 본체 주위를 공전하는 보호막 마법 추가
-        // 추후 기획서 내 20종 스킬에 맞춰 타입을 더 세분화합니다.
+        // --- [본체 생존 및 유틸 계열] ---
+        ScytheUpgrade,      // 1. 사신의 낫 (기본 무기)
+        SoulMagnet,         // 2. 영혼 자석
+        LightStep,          // 3. 가벼운 발걸음
+        SturdySkeleton,     // 4. 강인한 골격
+        RegeneratingBone,   // 5. 재생하는 뼈
+        AuraOfDeath,        // 6. 죽음의 오라
+        PhantomEvasion,     // 7. 환영 회피
+
+        // --- [군단 유틸 및 방어 계열] ---
+        Leadership,         // 8. 통솔력
+        ToughHide,          // 9. 질긴 가죽
+        SwiftMarch,         // 10. 신속한 진군
+        EchoOfResurrection, // 11. 부활의 메아리
+        VampiricTeeth,      // 12. 흡혈의 이빨
+        ChainExplosion,     // 13. 연쇄 폭발 (폭탄병화)
+
+        // --- [군단 공격 및 상태이상 계열] ---
+        BoneGrindingStrike, // 14. 뼈 깎는 일격
+        ToxicBlade,         // 15. 독성 칼날
+        FrostDippedWeapon,  // 16. 서리 맺힌 무기
+        BloodFrenzy,        // 17. 피의 광란
+        PiercingBone,       // 18. 관통 뼈대 (궁수 전용)
+        CursedStigma,       // 19. 저주받은 낙인
+        GiantHunter         // 20. 거인 사냥꾼
     }
 
     [CreateAssetMenu(fileName = "New Skill Data", menuName = "Necromancer/Skill Data")]

@@ -16,6 +16,12 @@ namespace Necromancer
         [Header("In-Game HUD")]
         [Tooltip("화면 상단 경험치 바 이미지 (Image Type: Filled)")]
         public Image expFillBar;
+        
+        [Tooltip("상단 좌측: 게임 생존 시간 (00:00)")]
+        public TextMeshProUGUI textTimer;
+        
+        [Tooltip("상단 중앙: 현재 진행 중인 웨이브 단계 (예: Wave 1)")]
+        public TextMeshProUGUI textWave;
 
         [Header("Level Up Panel")]
         [Tooltip("레벨업 시 팝업되는 전체 부모 패널")]
@@ -33,6 +39,10 @@ namespace Necromancer
         [Header("Ads Strategy")]
         [Tooltip("광고 보고 스킬 새로고침(리프레시) 버튼")]
         public Button adRefreshButton;
+        
+        [Header("Fast Forward")]
+        [Tooltip("배속 토글 버튼 내부의 텍스트 컴포넌트. (주의: 버튼 객체 자체가 아니라, 버튼 하위의 Text (TMP) 오브젝트를 드래그해야 합니다)")]
+        public TextMeshProUGUI textSpeedToggle;
 
         // 현재 창에 뽑힌 임시 3개의 스킬 목록 기억 장치
         private List<SkillData> currentOptions;
@@ -48,6 +58,20 @@ namespace Necromancer
             }
             
             UpdateExpBar(0, 100); // 초기화
+            UpdateSpeedToggleText(1f); // 기본 1배속 텍스트 
+        }
+
+        /// <summary>
+        /// 배속 토글 시 텍스트 변경
+        /// </summary>
+        public void UpdateSpeedToggleText(float speed)
+        {
+            if (textSpeedToggle != null)
+            {
+                // 최적화된 SetText 포맷 중 가장 안정적인 방식으로 변경
+                // x{0:F1} 스타일이 TMP 버전에 따라 0으로 나올 수 있어 명시적 변환 사용
+                textSpeedToggle.SetText("x" + speed.ToString("F1"));
+            }
         }
 
         /// <summary>
@@ -58,6 +82,24 @@ namespace Necromancer
             if (expFillBar != null && maxExp > 0)
             {
                 expFillBar.fillAmount = currentExp / maxExp;
+            }
+        }
+
+        /// <summary>
+        /// 상단 HUD 정보 (시간, 웨이브) 일괄 갱신
+        /// </summary>
+        public void UpdateHUD(float time, string waveName)
+        {
+            if (textTimer != null)
+            {
+                int minutes = Mathf.FloorToInt(time / 60f);
+                int seconds = Mathf.FloorToInt(time % 60f);
+                textTimer.SetText("{0:00}:{1:00}", minutes, seconds);
+            }
+
+            if (textWave != null && !string.IsNullOrEmpty(waveName))
+            {
+                textWave.SetText(waveName);
             }
         }
 
@@ -89,8 +131,8 @@ namespace Necromancer
                     skillCardButtons[i].gameObject.SetActive(true);
                     
                     if(skillCardIcons[i] != null) skillCardIcons[i].sprite = data.skillIcon;
-                    if(skillCardNames[i] != null) skillCardNames[i].text = data.skillName;
-                    if(skillCardDescriptions[i] != null) skillCardDescriptions[i].text = data.skillDescription;
+                    if(skillCardNames[i] != null) skillCardNames[i].SetText(data.skillName);
+                    if(skillCardDescriptions[i] != null) skillCardDescriptions[i].SetText(data.skillDescription);
                 }
                 else
                 {
@@ -117,9 +159,16 @@ namespace Necromancer
                 gm.skillManager.ApplySkill(selectedData);
             }
 
-            // 2. 창 닫고 게임 재개
+            // 2. 창 닫고 게임 재개 (기존의 1배속 고정 대신 현재 기억해둔 배속으로 복구)
             if (levelUpPanel != null) levelUpPanel.SetActive(false);
-            Time.timeScale = 1f; 
+            if (gm != null)
+            {
+                gm.ResumeGameSpeed();
+            }
+            else
+            {
+                Time.timeScale = 1f; 
+            }
         }
 
         /// <summary>

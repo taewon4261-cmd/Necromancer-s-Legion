@@ -12,7 +12,11 @@ namespace Necromancer
 [RequireComponent(typeof(Rigidbody2D))]
 public class EnemyAI : UnitBase
 {
-    [Header("Enemy Settings")]
+    [Header("Enemy Data (SO)")]
+    [Tooltip("에디터에서 미리 설정해둔 적의 스탯 데이터를 할당합니다.")]
+    public EnemyData data;
+
+    [Header("Enemy Settings (Legacy)")]
     [Tooltip("플레이어에게 닿았을 때 입히는 데미지")]
     public float attackDamage = 10f;
     
@@ -23,15 +27,33 @@ public class EnemyAI : UnitBase
     private Rigidbody2D rb;
     private float lastHitTime;
 
+    // --- [스킬 연동: 상태이상 디버프 변수들] ---
+    private float originalMoveSpeed;
+    private Coroutine poisonCoroutine;
+    private Coroutine frostCoroutine;
+    private int stigmaStacks = 0;
+
     protected override void Awake()
     {
-        base.Awake();
+        // 1. 가져온 데이터 기반으로 내 스탯 즉각 덮어쓰기
+        if (data != null)
+        {
+            this.maxHp = data.maxHp;
+            this.moveSpeed = data.moveSpeed;
+            this.attackDamage = data.attackDamage;
+        }
+
+        base.Awake(); // 이 시점에 UnitBase 내부에서 currentHp = maxHp 실행됨
         rb = GetComponent<Rigidbody2D>();
+        originalMoveSpeed = moveSpeed;
     }
 
     protected override void OnEnable()
     {
         base.OnEnable();
+        
+        moveSpeed = originalMoveSpeed;
+        stigmaStacks = 0;
         
         // 🚨 최적화: 무거운 GameObject.Find 연산을 제거하고, GameManager를 통해 플레이어 위치를 직접 참조합니다.
         if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
@@ -43,6 +65,50 @@ public class EnemyAI : UnitBase
             Debug.LogWarning("[EnemyAI] GameManager.Instance.playerTransform이 할당되지 않았습니다!");
         }
     }
+
+    // --- [스킬 연동 로직 시작] ---
+    public void ApplyPoison(float duration, float tickDamage)
+    {
+        if (poisonCoroutine != null) StopCoroutine(poisonCoroutine);
+        poisonCoroutine = StartCoroutine(PoisonRoutine(duration, tickDamage));
+    }
+
+    private IEnumerator PoisonRoutine(float duration, float tickDamage)
+    {
+        float timer = 0f;
+        while (timer < duration && !isDead)
+        {
+            TakeDamage(tickDamage);
+            timer += 1f;
+            yield return new WaitForSeconds(1f);
+        }
+    }
+
+    public void ApplyFrost(float duration, float slowdownRatio)
+    {
+        if (frostCoroutine != null) StopCoroutine(frostCoroutine);
+        frostCoroutine = StartCoroutine(FrostRoutine(duration, slowdownRatio));
+    }
+
+    private IEnumerator FrostRoutine(float duration, float slowdownRatio)
+    {
+        moveSpeed = originalMoveSpeed * (1f - slowdownRatio);
+        yield return new WaitForSeconds(duration);
+        if(!isDead) moveSpeed = originalMoveSpeed;
+    }
+
+    public void AddStigmaStack()
+    {
+        stigmaStacks++;
+        if (stigmaStacks >= 10)
+        {
+            stigmaStacks = 0; // 초기화
+            // [스킬 효과] 저주받은 낙인: 10스택 시 잃은 체력 비례 또는 고정 피해
+            TakeDamage(maxHp * 0.2f); 
+            // Debug.Log("[SkillEffect] 저주받은 낙인 10스택 폭발!");
+        }
+    }
+    // --- [스킬 연동 로직 끝] ---
 
     private void FixedUpdate()
     {
@@ -86,12 +152,30 @@ public class EnemyAI : UnitBase
         }
     }
 
+    public override void TakeDamage(float damage)
+    {
+        if (isDead) return;
+
+        base.TakeDamage(damage);
+
+        // [Polishing] 타격 연출 실행 (텍스트 출력 중단)
+        if (FeedbackManager.Instance != null)
+        {
+            // 엘리트 적일 경우만 카메라 흔들림 유지
+            if (data != null && data.isElite)
+                FeedbackManager.Instance.ShakeCamera(0.12f, 0.15f);
+        }
+    }
+
     /// <summary>
     /// 적 사망 시 보석 드랍 및 부활 시스템 호출
     /// </summary>
     protected override void Die()
     {
         base.Die();
+        
+        if (poisonCoroutine != null) StopCoroutine(poisonCoroutine);
+        if (frostCoroutine != null) StopCoroutine(frostCoroutine);
         
         rb.velocity = Vector2.zero;
         

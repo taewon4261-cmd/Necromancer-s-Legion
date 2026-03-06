@@ -18,6 +18,8 @@ public abstract class UnitBase : MonoBehaviour
     
     protected bool isDead = false;
 
+    public event System.Action<float, float> OnHealthChanged; // (current, max)
+
     protected virtual void Awake()
     {
         currentHp = maxHp;
@@ -28,6 +30,7 @@ public abstract class UnitBase : MonoBehaviour
         // 풀매니저에 의해 재활용(SetActive)될 때마다 상태 초기화
         isDead = false;
         currentHp = maxHp;
+        OnHealthChanged?.Invoke(currentHp, maxHp);
     }
 
     protected virtual void Update()
@@ -50,6 +53,8 @@ public abstract class UnitBase : MonoBehaviour
 
         currentHp -= damage;
         currentHp = Mathf.Clamp(currentHp, 0, maxHp);
+        
+        OnHealthChanged?.Invoke(currentHp, maxHp);
 
         if (currentHp <= 0)
         {

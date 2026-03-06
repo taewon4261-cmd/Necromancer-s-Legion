@@ -9,12 +9,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fd085fc1feb1f9f4bba23dcaa54514f1, type: 3}
-  m_Name: Skill_Orbital
+  m_Script: {fileID: 11500000, guid: 2c91140c61f019847a5018fe68573c83, type: 3}
+  m_Name: "Enemy_10_\uC131\uB2E8\uC7A5"
   m_EditorClassIdentifier: 
-  skillName: "\uBD80\uC720\uD558\uB294 \uBF08 \uBC14\uAC00\uC9C0"
-  skillIcon: {fileID: 0}
-  skillDescription: 
-  type: 2
-  skillID: 0
-  value1: 0
+  enemyName: "\uC131\uB2E8\uC7A5"
+  poolTag: Enemy
+  enemyPrefab: {fileID: 0}
+  maxHp: 1000
+  moveSpeed: 2
+  attackDamage: 50
+  dropExpAmount: 23
+  isRanged: 0
+  isElite: 1

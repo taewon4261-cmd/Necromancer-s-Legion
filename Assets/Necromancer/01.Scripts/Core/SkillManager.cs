@@ -14,6 +14,32 @@ namespace Necromancer
         [Tooltip("모든 스킬 목록이 담긴 단 하나의 통합 DB 에셋을 여기에 연결합니다.")]
         public SkillDatabase skillDB;
 
+        [Header("Global Minion Buffs")]
+        [Tooltip("현재 살아있거나 앞으로 태어날 모든 미니언에게 합산될 추가 체력 %")]
+        public float globalMinionHpBonusRatio = 1f; // 1.0 = 100% (기본값)
+        
+        [Tooltip("미니언 추가 이동 속도 %")]
+        public float globalMinionSpeedBonusRatio = 1f;
+        
+        [Tooltip("미니언 추가 공격력 %")]
+        public float globalMinionDamageBonusRatio = 1f;
+
+        [Tooltip("통솔력 (동시 유지 가능 미니언 최대 수)")]
+        public int currentMaxMinions = 50; // 임시 기본값
+        
+        [Tooltip("미니언 흡혈 확률 (0~1)")]
+        public float vampiricChance = 0f;
+        
+        [Tooltip("미니언 사망 시 광역 폭발 데미지 (0이면 폭발 안함)")]
+        public float minionExplosionDamage = 0f;
+
+        // 추가 상태이상 등은 임시로 boolean이나 enum 리스트로 관리 (1주차 스펙용)
+        public bool hasToxicBlade = false;
+        public bool hasFrostWeapon = false;
+        public bool hasBloodFrenzy = false;
+        public bool hasCursedStigma = false;
+        public bool hasGiantHunter = false;
+
         /// <summary>
         /// 안전하게 초기화용으로 비워둡니다.
         /// </summary>
@@ -62,23 +88,89 @@ namespace Necromancer
         {
             if (selectedSkill == null) return;
 
-            Debug.Log($"[SkillManager] 선택된 스킬: <color=yellow>{selectedSkill.skillName}</color> 적용 중...");
+            Debug.Log($"[SkillManager] 선택된 스킬: <color=yellow>{selectedSkill.skillName}</color> 적용 완료!");
 
-            // TODO: 타입별로 분기하여 PlayerController 또는 MinionAI에 영구 능력치 브로드캐스트
+            PlayerController player = GameManager.Instance.playerTransform.GetComponent<PlayerController>();
+
             switch (selectedSkill.type)
             {
-                case SkillType.WeaponPowerUp:
-                    // 사신의 낫: 뼈 투사체 데미지 일괄 적용
-                    Debug.Log("-> 본체 사신의 낫 공격력 및 사거리 적용 완료!");
+                // --- [본체 생존 및 유틸 계열] ---
+                case SkillType.ScytheUpgrade:
+                    var weapon = FindObjectOfType<PlayerWeapon_BoneWand>();
+                    if (weapon != null)
+                    {
+                        weapon.baseDamage *= 1.1f;
+                        weapon.detectionRadius *= 1.1f;
+                    }
                     break;
-                    
-                case SkillType.OrbitalShield:
-                    // 부유하는 뼈 바가지: 본체 주변 오라 활성화
-                    Debug.Log("-> 본체 주변 부유 뼈다구(가디언) 방어막 마법 활성화 완료!");
+                case SkillType.SoulMagnet:
+                    GameManager.Instance.magnetRadius *= 1.2f;
+                    break;
+                case SkillType.LightStep:
+                    if (player != null) player.moveSpeed *= 1.1f;
+                    break;
+                case SkillType.SturdySkeleton:
+                    if (player != null)
+                    {
+                        player.maxHp += 20;
+                        player.currentHp += 20;
+                    }
+                    break;
+                case SkillType.RegeneratingBone:
+                    // TODO: 정기적 힐링 코루틴 혹은 InvokeRepeating 추가 (추후 구현)
+                    break;
+                case SkillType.AuraOfDeath:
+                    // TODO: 본체 자식 오브젝트로 오라 장판 Enable
+                    break;
+                case SkillType.PhantomEvasion:
+                    // TODO: PlayerController 피격 로직에서 확률 회피 추가
+                    break;
+
+                // --- [군단 유틸 및 방어 계열] ---
+                case SkillType.Leadership:
+                    currentMaxMinions += 5;
+                    break;
+                case SkillType.ToughHide:
+                    globalMinionHpBonusRatio += 0.2f;
+                    break;
+                case SkillType.SwiftMarch:
+                    globalMinionSpeedBonusRatio += 0.15f;
+                    break;
+                case SkillType.EchoOfResurrection:
+                    GameManager.Instance.baseReviveChance += 10f;
+                    break;
+                case SkillType.VampiricTeeth:
+                    vampiricChance += 0.01f;
+                    break;
+                case SkillType.ChainExplosion:
+                    minionExplosionDamage += 10f;
+                    break;
+
+                // --- [군단 공격 및 상태이상 계열] ---
+                case SkillType.BoneGrindingStrike:
+                    globalMinionDamageBonusRatio += 0.15f;
+                    break;
+                case SkillType.ToxicBlade:
+                    hasToxicBlade = true;
+                    break;
+                case SkillType.FrostDippedWeapon:
+                    hasFrostWeapon = true;
+                    break;
+                case SkillType.BloodFrenzy:
+                    hasBloodFrenzy = true;
+                    break;
+                case SkillType.PiercingBone:
+                    // TODO: 해골 궁수 발사체 관통 횟수 1 증가 (궁수 구현 시 연동)
+                    break;
+                case SkillType.CursedStigma:
+                    hasCursedStigma = true;
+                    break;
+                case SkillType.GiantHunter:
+                    hasGiantHunter = true;
                     break;
                     
                 default:
-                    Debug.Log($"-> 등록되지 않은 스킬 동작입니다: {selectedSkill.type}");
+                    Debug.LogWarning($"-> 아직 누락된 스킬 연동입니다: {selectedSkill.type}");
                     break;
             }
         }
