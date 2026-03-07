@@ -11,7 +11,7 @@ namespace Necromancer
 /// </summary>
 public class PoolManager : MonoBehaviour
 {
-    [System.Serializable]
+    [global::System.Serializable]
     public class Pool
     {
         public string tag;           

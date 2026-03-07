@@ -18,7 +18,7 @@ public abstract class UnitBase : MonoBehaviour
     
     protected bool isDead = false;
 
-    public event System.Action<float, float> OnHealthChanged; // (current, max)
+    public event global::System.Action<float, float> OnHealthChanged; // (current, max)
 
     protected virtual void Awake()
     {
