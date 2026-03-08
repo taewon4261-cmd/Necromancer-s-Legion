@@ -52,12 +52,26 @@ namespace Necromancer.Editor
 
             int columns, rows;
 
-            // 레이아웃 판정
-            if (aspectRatio > 0.5f && aspectRatio < 2.0f) { columns = 2; rows = 2; }
-            else if (aspectRatio > 3.5f) { columns = 4; rows = 1; }
-            else if (aspectRatio > 2.5f) { columns = 3; rows = 1; }
-            else if (aspectRatio > 1.4f) { columns = 2; rows = 1; }
-            else { columns = 4; rows = 1; }
+            // [개선] 레이아웃 판정 로직
+            if (assetPath.Contains("Icons"))
+            {
+                // 스킬 아이콘은 프롬프트 특성상 5개(1x5) 또는 10개(5x2) 격자가 많습니다.
+                if (aspectRatio > 4.0f) { columns = 5; rows = 1; }
+                else if (aspectRatio > 1.8f) { columns = 5; rows = 2; }
+                else if (aspectRatio >= 0.9f && aspectRatio <= 1.1f) { columns = 5; rows = 2; } // 정사각형 AI 생성물 대응 (5x2 가정)
+                else { columns = 2; rows = 2; }
+            }
+            else
+            {
+                // 일반 캐릭터 애니메이션 (1x4, 2x2 등)
+                if (aspectRatio > 3.5f) { columns = 4; rows = 1; }
+                else if (aspectRatio > 2.5f) { columns = 3; rows = 1; }
+                else if (aspectRatio > 1.4f) { columns = 2; rows = 1; }
+                else if (aspectRatio > 0.5f && aspectRatio < 2.0f) { columns = 2; rows = 2; }
+                else { columns = 4; rows = 1; }
+            }
+
+            Debug.Log($"[SpriteAutoProcessor] {texture.name} 분석 - Ratio: {aspectRatio:F2}, Size: {width}x{height} -> 감지된 레이아웃: {columns}x{rows}");
 
             int sliceHeight = height / rows;
 
