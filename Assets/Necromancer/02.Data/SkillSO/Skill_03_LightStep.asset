@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Skill_03_LightStep
   m_EditorClassIdentifier: 
   skillName: "\uAC00\uBCBC\uC6B4 \uBC1C\uAC78\uC74C"
-  skillIcon: {fileID: 0}
+  skillIcon: {fileID: 21300000, guid: d2ca83e7d6b1359468c54ceacac8deb5, type: 3}
   skillDescription: "\uBCF8\uCCB4 \uC774\uB3D9 \uC18D\uB3C4 10% \uC99D\uAC00"
   type: 2
   skillID: 2

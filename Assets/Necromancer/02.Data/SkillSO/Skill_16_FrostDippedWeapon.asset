@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Skill_16_FrostDippedWeapon
   m_EditorClassIdentifier: 
   skillName: "\uC11C\uB9AC \uB9FA\uD78C \uBB34\uAE30"
-  skillIcon: {fileID: 0}
-  skillDescription: "\uBBF8\uB2C8\uC5B8 \uD0C0\uACA9 \uC2DC 2\uCD08\uAC04 \uC0C1\uB300 \uC801\uC758 \uC774\uB3D9\uC18D\uB3C4 30% \uAC10\uC18C"
+  skillIcon: {fileID: 21300000, guid: aff2497a5968c784f89bd1f0ebd55218, type: 3}
+  skillDescription: "\uBBF8\uB2C8\uC5B8 \uD0C0\uACA9 \uC2DC 2\uCD08\uAC04 \uC0C1\uB300
+    \uC801\uC758 \uC774\uB3D9\uC18D\uB3C4 30% \uAC10\uC18C"
   type: 15
   skillID: 15
   value1: 0

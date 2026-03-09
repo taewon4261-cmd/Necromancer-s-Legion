@@ -94,11 +94,24 @@ public class MinionAI : UnitBase
         base.Update();
         if (isDead) return;
 
+        UpdateAnimation();
+
         // 수명 체크 로직
         if (Time.time > spawnTime + lifeTime)
         {
             Die(); // 수명이 다하면 스스로 소멸
         }
+    }
+
+    private void UpdateAnimation()
+    {
+        if (animator == null) return;
+        
+        bool isMoving = rb.velocity.sqrMagnitude > 0.01f;
+        animator.SetBool(Necromancer.Systems.UIConstants.AnimParam_IsMoving, isMoving);
+
+        if (rb.velocity.x > 0.01f) spriteRenderer.flipX = false;
+        else if (rb.velocity.x < -0.01f) spriteRenderer.flipX = true;
     }
 
     private void FixedUpdate()
@@ -182,7 +195,9 @@ public class MinionAI : UnitBase
                     }
                 }
 
-                // 적 타격 성공!
+                // 적 타격 성공 및 애니메이션 재생!
+                if (animator != null) animator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
+
                 targetUnit.TakeDamage(finalDamage);
                 lastHitTime = Time.time;
                 

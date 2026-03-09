@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Skill_12_VampiricTeeth
   m_EditorClassIdentifier: 
   skillName: "\uD761\uD608\uC758 \uC774\uBE68"
-  skillIcon: {fileID: 0}
-  skillDescription: "\uBBF8\uB2C8\uC5B8\uC774 \uC801\uC744 \uD0C0\uACA9\uD560 \uB54C 1% \uD655\uB960\uB85C \uD50C\uB808\uC774\uC5B4(\uBCF8\uCCB4) \uCCB4\uB825 1 \uD68C\uBCF5"
+  skillIcon: {fileID: 21300000, guid: 4fa70e2a1d0239a47a1a3705a74a0d30, type: 3}
+  skillDescription: "\uBBF8\uB2C8\uC5B8\uC774 \uC801\uC744 \uD0C0\uACA9\uD560 \uB54C
+    1% \uD655\uB960\uB85C \uD50C\uB808\uC774\uC5B4(\uBCF8\uCCB4) \uCCB4\uB825 1 \uD68C\uBCF5"
   type: 11
   skillID: 11
   value1: 0

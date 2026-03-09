@@ -116,6 +116,14 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     /// </summary>
     private void FireAtTarget(Transform target)
     {
+        // [추가] 애니메이션 트리거 (공격 동작 재생)
+        // 무기는 보통 플레이어의 자식으로 있으므로 부모의 애니메이터를 찾아 쏩니다.
+        Animator playerAnim = GetComponentInParent<Animator>();
+        if (playerAnim != null)
+        {
+            playerAnim.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
+        }
+
         // 방향 계산 (타겟 - 내 위치)
         Vector2 direction = (target.position - transform.position).normalized;
 

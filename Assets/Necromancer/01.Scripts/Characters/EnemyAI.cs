@@ -110,6 +110,24 @@ public class EnemyAI : UnitBase
     }
     // --- [스킬 연동 로직 끝] ---
 
+    protected override void Update()
+    {
+        base.Update();
+        if (isDead) return;
+        UpdateAnimation();
+    }
+
+    private void UpdateAnimation()
+    {
+        if (animator == null) return;
+        
+        bool isMoving = rb.velocity.sqrMagnitude > 0.01f;
+        animator.SetBool(Necromancer.Systems.UIConstants.AnimParam_IsMoving, isMoving);
+
+        if (rb.velocity.x > 0.01f) spriteRenderer.flipX = false;
+        else if (rb.velocity.x < -0.01f) spriteRenderer.flipX = true;
+    }
+
     private void FixedUpdate()
     {
         if (isDead || targetPlayer == null) return;
@@ -143,7 +161,9 @@ public class EnemyAI : UnitBase
             UnitBase targetUnit = collision.gameObject.GetComponent<UnitBase>();
             if (targetUnit != null)
             {
-                // 타격 성공
+                // 타격 성공 및 애니메이션 재생
+                if (animator != null) animator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
+                
                 targetUnit.TakeDamage(attackDamage);
                 lastHitTime = Time.time; // 쿨타임 초기화
                 

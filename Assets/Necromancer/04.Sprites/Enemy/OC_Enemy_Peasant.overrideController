@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: OC_Enemy_Peasant
+  m_Controller: {fileID: 9100000, guid: fbc2ecf825a57ca44a67b72968b51b2a, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 2497d72878d935542ae6ff8cfdda6e3a, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: dff804eac10b759469bebef1c58273d0, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 9d7e402909c460e458fd3b1947a71678, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 3b2ebb8fc5d4e224ba61ce69dd9a0661, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 77dc685a76aa50a41b78ce9d8a21a039, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 218eecd82c512764bb0de1c60c43e8e3, type: 2}

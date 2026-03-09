@@ -38,13 +38,31 @@ public class PlayerController : UnitBase
         if (isDead) return;
         
         HandleInput();
+        UpdateAnimation();
     }
 
     private void FixedUpdate()
     {
         if (isDead) return;
-        
         Move();
+    }
+
+    private void Move()
+    {
+        rb.velocity = movement * moveSpeed;
+    }
+
+    private void UpdateAnimation()
+    {
+        if (animator == null) return;
+
+        // 1. 이동 애니메이션 제어 (속도가 있으면 재생)
+        bool isMoving = rb.velocity.sqrMagnitude > 0.01f;
+        animator.SetBool(Necromancer.Systems.UIConstants.AnimParam_IsMoving, isMoving);
+
+        // 2. 좌우 반전 (속도의 X값을 기준으로 반전)
+        if (rb.velocity.x > 0.01f) spriteRenderer.flipX = false;
+        else if (rb.velocity.x < -0.01f) spriteRenderer.flipX = true;
     }
 
     /// <summary>
@@ -67,13 +85,7 @@ public class PlayerController : UnitBase
         movement.Normalize(); 
     }
 
-    /// <summary>
-    /// 물리 기반(Kinematic/Dynamic) 위치 업데이트
-    /// </summary>
-    private void Move()
-    {
-        rb.velocity = movement * moveSpeed;
-    }
+
 
     /// <summary>
     /// 무기가 없는 1주차 테스트용 플레이어 몸통 박치기 판정

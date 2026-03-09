@@ -57,9 +57,10 @@ public class BoneProjectile : MonoBehaviour
         damage = currentDamage; // 레벨업 시 공격력 증가 반영
         rb.velocity = direction.normalized * speed;
         
-        // 투사체가 날아가는 방향으로 쳐다보게 각도 회전 (옵션)
+        // 투사체가 날아가는 방향으로 쳐다보게 각도 회전 (매직 미사일 형태에 최적화)
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        transform.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
+        // [수정] 이미지가 기본적으로 왼쪽(←)을 보고 있으므로, 180도를 더해 진행 방향을 바라보게 합니다.
+        transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
     }
 
     /// <summary>

@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 5022943668355311835}
   - component: {fileID: 4933562704745481721}
   - component: {fileID: 7063953439979360031}
+  - component: {fileID: -4724947027001510696}
   m_Layer: 0
   m_Name: 'Enemy '
   m_TagString: Enemy
@@ -131,6 +132,10 @@ MonoBehaviour:
   maxHp: 50
   currentHp: 0
   moveSpeed: 2
+  animator: {fileID: 0}
+  spriteRenderer: {fileID: 0}
+  hitColor: {r: 1, g: 0, b: 0, a: 1}
+  hitDuration: 0.1
   data: {fileID: 0}
   attackDamage: 10
   hitCooldown: 0.5
@@ -169,6 +174,27 @@ CircleCollider2D:
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
   m_Radius: 0.5
+--- !u!95 &-4724947027001510696
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8518950666829332875}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 22100000, guid: 92916ce0cbcdec94eb0db4ff9a5d8d9f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1001 &8521775450000476197
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -215,7 +241,7 @@ PrefabInstance:
     - target: {fileID: 3292525649727084255, guid: 5fe0bdb0768f29948bf1d5630402d206,
         type: 3}
       propertyPath: m_SizeDelta.y
-      value: 20
+      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 3292525649727084255, guid: 5fe0bdb0768f29948bf1d5630402d206,
         type: 3}
@@ -260,7 +286,7 @@ PrefabInstance:
     - target: {fileID: 3292525649727084255, guid: 5fe0bdb0768f29948bf1d5630402d206,
         type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0.8
+      value: 2.5
       objectReference: {fileID: 0}
     - target: {fileID: 3292525649727084255, guid: 5fe0bdb0768f29948bf1d5630402d206,
         type: 3}

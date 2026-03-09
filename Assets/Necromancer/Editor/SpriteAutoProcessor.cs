@@ -22,12 +22,25 @@ namespace Necromancer.Editor
             TextureImporter textureImporter = (TextureImporter)assetImporter;
             textureImporter.textureType = TextureImporterType.Sprite;
             
-            if (assetPath.Contains("Move") || assetPath.Contains("Attack") || assetPath.Contains("Die"))
+            // [수정] 특정 키워드가 포함된 경우만 자동으로 Multiple로 설정
+            bool shouldAutoMultiple = assetPath.Contains("Move") || 
+                                     assetPath.Contains("Attack") || 
+                                     assetPath.Contains("Die") || 
+                                     assetPath.Contains("Icons") || 
+                                     assetPath.Contains("Sheet");
+
+            if (shouldAutoMultiple)
             {
                 textureImporter.spriteImportMode = SpriteImportMode.Multiple;
             }
+            // 그 외의 경우, 이미 Multiple로 설정되어 있다면 건드리지 않습니다. (사용자 수동 설정 존중)
+            else if (textureImporter.spriteImportMode == SpriteImportMode.Multiple)
+            {
+                // 유지
+            }
             else
             {
+                // 기본값은 Single로 두되, 사용자가 바꾸면 위 else if에서 걸러짐
                 textureImporter.spriteImportMode = SpriteImportMode.Single;
             }
 
@@ -39,11 +52,25 @@ namespace Necromancer.Editor
         private void OnPostprocessTexture(Texture2D texture)
         {
             if (!assetPath.Contains("04.Sprites")) return;
-            if (!assetPath.Contains("Move") && !assetPath.Contains("Attack") && !assetPath.Contains("Die")) return;
+            
+            // 자동 슬라이싱은 애니메이션이나 아이콘 격자 파일일 때만 실행
+            bool isAutoSliceTarget = assetPath.Contains("Move") || 
+                                     assetPath.Contains("Attack") || 
+                                     assetPath.Contains("Die") || 
+                                     assetPath.Contains("Icons");
+                                     
+            if (!isAutoSliceTarget) return;
 
+            ProcessAutoSlicing(texture);
+        }
+
+        private void ProcessAutoSlicing(Texture2D texture)
+        {
             var factory = new SpriteDataProviderFactories();
             factory.Init();
             var dataProvider = factory.GetSpriteEditorDataProviderFromObject(assetImporter);
+            if (dataProvider == null) return;
+            
             dataProvider.InitSpriteEditorDataProvider();
 
             int width = texture.width;
@@ -51,19 +78,15 @@ namespace Necromancer.Editor
             float aspectRatio = (float)width / height;
 
             int columns, rows;
-
-            // [개선] 레이아웃 판정 로직
             if (assetPath.Contains("Icons"))
             {
-                // 스킬 아이콘은 프롬프트 특성상 5개(1x5) 또는 10개(5x2) 격자가 많습니다.
                 if (aspectRatio > 4.0f) { columns = 5; rows = 1; }
                 else if (aspectRatio > 1.8f) { columns = 5; rows = 2; }
-                else if (aspectRatio >= 0.9f && aspectRatio <= 1.1f) { columns = 5; rows = 2; } // 정사각형 AI 생성물 대응 (5x2 가정)
+                else if (aspectRatio >= 0.9f && aspectRatio <= 1.1f) { columns = 5; rows = 2; }
                 else { columns = 2; rows = 2; }
             }
             else
             {
-                // 일반 캐릭터 애니메이션 (1x4, 2x2 등)
                 if (aspectRatio > 3.5f) { columns = 4; rows = 1; }
                 else if (aspectRatio > 2.5f) { columns = 3; rows = 1; }
                 else if (aspectRatio > 1.4f) { columns = 2; rows = 1; }
@@ -71,31 +94,17 @@ namespace Necromancer.Editor
                 else { columns = 4; rows = 1; }
             }
 
-            Debug.Log($"[SpriteAutoProcessor] {texture.name} 분석 - Ratio: {aspectRatio:F2}, Size: {width}x{height} -> 감지된 레이아웃: {columns}x{rows}");
-
-            int sliceHeight = height / rows;
-
-            /*
-             * [수정 이유: 2번 방법 구현]
-             * 2x2(607px)와 1x4(1728px)는 세로 픽셀 수(sliceHeight)가 다릅니다.
-             * 이를 해결하기 위해 'PPU = 이미지 세로 픽셀 / 목표 월드 크기' 공식을 사용합니다.
-             * 이렇게 하면 300px 짜리든 400px 짜리든 인게임에선 똑같이 2.5 Unit 크기로 보입니다.
-             */
             TextureImporter textureImporter = (TextureImporter)assetImporter;
+            int sliceHeight = height / rows;
             float calculatedPPU = (float)sliceHeight / TARGET_UNIT_HEIGHT;
-            
-            // 너무 낮은 PPU는 방지 (최소 50 이상)
             textureImporter.spritePixelsPerUnit = Mathf.Max(50f, calculatedPPU);
 
             var spriteRects = dataProvider.GetSpriteRects();
             if (spriteRects != null && spriteRects.Length == (columns * rows))
             {
-                // PPU만 바뀌었을 수도 있으므로 Apply 후 종료
                 dataProvider.Apply();
                 return; 
             }
-
-            Debug.Log($"[SpriteAutoProcessor] {texture.name} 규격화 적용: {columns}x{rows}, PPU: {textureImporter.spritePixelsPerUnit:F1}");
 
             int sliceWidth = width / columns;
             var newRects = new List<SpriteRect>();
@@ -118,8 +127,9 @@ namespace Necromancer.Editor
 
             EditorApplication.delayCall += () =>
             {
-                AssetDatabase.ForceReserializeAssets(new[] { assetPath });
+                if (assetImporter != null) AssetDatabase.ForceReserializeAssets(new[] { assetPath });
             };
         }
     }
 }
+

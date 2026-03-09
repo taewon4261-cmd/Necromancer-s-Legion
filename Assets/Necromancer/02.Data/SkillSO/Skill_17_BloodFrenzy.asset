@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Skill_17_BloodFrenzy
   m_EditorClassIdentifier: 
   skillName: "\uD53C\uC758 \uAD11\uB780"
-  skillIcon: {fileID: 0}
-  skillDescription: "\uBBF8\uB2C8\uC5B8 \uCCB4\uB825\uC774 50% \uC774\uD558\uAC00 \uB418\uBA74 \uACF5\uACA9 \uC18D\uB3C4 30% \uD38C\uD551"
+  skillIcon: {fileID: 21300000, guid: 75d963c3118fd6c4f8c11a47158fb495, type: 3}
+  skillDescription: "\uBBF8\uB2C8\uC5B8 \uCCB4\uB825\uC774 50% \uC774\uD558\uAC00
+    \uB418\uBA74 \uACF5\uACA9 \uC18D\uB3C4 30% \uD38C\uD551"
   type: 16
   skillID: 16
   value1: 0
