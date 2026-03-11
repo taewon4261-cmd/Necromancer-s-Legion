@@ -1,32 +1,73 @@
 using UnityEngine;
 using DG.Tweening;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using System.Collections.Generic;
 
 namespace Necromancer.UI
 {
     /// <summary>
-    /// 타이틀 화면의 전체적인 비주얼 연출과 버튼 상호작용을 담당합니다.
-    /// DOTween을 활용하여 로고 부유, 버튼 슬라이딩 등의 효과를 구현합니다.
+    /// 타이틀 화면의 비주얼 연출과 각 기능 패널(스테이지, 업그레이드, 세팅) 전환을 담당합니다.
     /// </summary>
     public class TitleUIController : MonoBehaviour
     {
         [Header("Main Visuals")]
         public RectTransform logoTransform;
         public CanvasGroup mainButtonPanel;
+        public RectTransform backgroundImage;
         
+        [Header("Sub Panels")]
+        public CanvasGroup stageSelectPanel;
+        public CanvasGroup upgradePanel;
+        public CanvasGroup settingPanel;
+
         [Header("Animation Settings")]
-        public float fadeDuration = 1f;
-        public float floatingAmount = 20f;
-        public float floatingDuration = 2f;
+        public float fadeDuration = 0.6f;
+        public float floatingAmount = 15f;
+        public float floatingDuration = 2.5f;
+        public float staggerDelay = 0.12f;
+        public float parallaxStrength = 25f;
+
+        private VerticalLayoutGroup layoutGroup;
+        private List<CanvasGroup> allPanels = new List<CanvasGroup>();
+
+        private void Awake()
+        {
+            layoutGroup = mainButtonPanel?.GetComponent<VerticalLayoutGroup>();
+            
+            // 모든 패널 리스트업 (일괄 OFF 처리용)
+            if (stageSelectPanel != null) allPanels.Add(stageSelectPanel);
+            if (upgradePanel != null) allPanels.Add(upgradePanel);
+            if (settingPanel != null) allPanels.Add(settingPanel);
+            
+            InitPanels();
+        }
 
         private void Start()
         {
             InitTitleAnimations();
+            SetupButtonEvents();
+        }
+
+        private void Update()
+        {
+            HandleParallaxEffect();
+        }
+
+        private void InitPanels()
+        {
+            foreach (var panel in allPanels)
+            {
+                panel.alpha = 0;
+                panel.blocksRaycasts = false;
+                panel.interactable = false;
+                panel.gameObject.SetActive(false);
+            }
         }
 
         private void InitTitleAnimations()
         {
-            // 1. 로고 부유 효과: 위아래로 계속 반복 (Yoyo)
+            // 1. 로고 부유 효과 (위아래로 둥실둥실)
             if (logoTransform != null)
             {
                 logoTransform.DOAnchorPosY(logoTransform.anchoredPosition.y + floatingAmount, floatingDuration)
@@ -34,41 +75,92 @@ namespace Necromancer.UI
                     .SetLoops(-1, LoopType.Yoyo);
             }
 
-            // 2. 메인 버튼 패널 페이드 인 및 슬라이드 업
+            // 2. 메인 버튼 패널 애니메이션 (이동 없이 제자리에서 페이드)
             if (mainButtonPanel != null)
             {
                 mainButtonPanel.alpha = 0;
-                mainButtonPanel.DOFade(1, fadeDuration).SetDelay(0.5f);
+                mainButtonPanel.DOFade(1, fadeDuration).SetDelay(0.3f);
                 
-                RectTransform panelRT = mainButtonPanel.GetComponent<RectTransform>();
-                float originalY = panelRT.anchoredPosition.y;
-                panelRT.anchoredPosition = new Vector2(panelRT.anchoredPosition.x, originalY - 100f);
-                panelRT.DOAnchorPosY(originalY, fadeDuration).SetEase(Ease.OutBack).SetDelay(0.5f);
+                // 자식 버튼들 제자리에서 차례대로 페이드 인 (이동 로직 완전 제거)
+                for (int i = 0; i < mainButtonPanel.transform.childCount; i++)
+                {
+                    RectTransform childRT = mainButtonPanel.transform.GetChild(i) as RectTransform;
+                    if (childRT == null) continue;
+
+                    childRT.localScale = Vector3.one * 0.95f; // 아주 살짝 작은 크기에서 시작
+                    childRT.DOScale(1f, fadeDuration)
+                        .SetEase(Ease.OutCubic)
+                        .SetDelay(0.4f + (i * staggerDelay));
+                }
             }
         }
 
         /// <summary>
-        /// 버튼에 Mouse Enter 시 점진적으로 커지는 효과 (버튼 컴포넌트의 EventTrigger 등에서 호출 가능)
+        /// 모션 제거: 모바일 환경이므로 마우스 트래킹 배경 효과 삭제
         /// </summary>
-        public void OnHoverButton(RectTransform buttonRT)
+        private void HandleParallaxEffect()
         {
-            buttonRT.DOScale(1.1f, 0.2f).SetEase(Ease.OutQuad);
+            // 기능 삭제
         }
 
-        /// <summary>
-        /// 버튼에서 Mouse Exit 시 원래 크기로 복구
-        /// </summary>
-        public void OnExitButton(RectTransform buttonRT)
+        private void SetupButtonEvents()
         {
-            buttonRT.DOScale(1f, 0.2f).SetEase(Ease.OutQuad);
+            if (mainButtonPanel == null) return;
+            Button[] buttons = mainButtonPanel.GetComponentsInChildren<Button>();
+            
+            // 버튼 이름이나 순서에 따라 기능을 매칭 (여기서는 이름 기반 예시)
+            foreach (var btn in buttons)
+            {
+                RectTransform rt = btn.GetComponent<RectTransform>();
+                string btnName = btn.name.ToLower();
+
+                // 1. 공통 비주얼 이벤트 바인딩
+                EventTrigger trigger = btn.gameObject.GetComponent<EventTrigger>() ?? btn.gameObject.AddComponent<EventTrigger>();
+                AddEvent(trigger, EventTriggerType.PointerEnter, (d) => rt.DOScale(1.05f, 0.2f));
+                AddEvent(trigger, EventTriggerType.PointerExit, (d) => rt.DOScale(1f, 0.2f));
+                AddEvent(trigger, EventTriggerType.PointerClick, (d) => rt.DOPunchScale(new Vector3(-0.05f, -0.05f, 0), 0.1f));
+
+                // 2. 버튼별 기능 바인딩
+                if (btnName.Contains("start")) btn.onClick.AddListener(() => ShowPanel(stageSelectPanel));
+                else if (btnName.Contains("upgrade")) btn.onClick.AddListener(() => ShowPanel(upgradePanel));
+                else if (btnName.Contains("setting")) btn.onClick.AddListener(() => ShowPanel(settingPanel));
+            }
         }
 
-        /// <summary>
-        /// 버튼 클릭 시 살짝 눌리는 느낌의 애니메이션 후 로직 실행
-        /// </summary>
-        public void OnClickButton(RectTransform buttonRT, global::System.Action callback)
+        private void AddEvent(EventTrigger trigger, EventTriggerType type, UnityEngine.Events.UnityAction<BaseEventData> action)
         {
-            buttonRT.DOPunchScale(new Vector3(-0.1f, -0.1f, 0), 0.2f).OnComplete(() => callback?.Invoke());
+            EventTrigger.Entry entry = new EventTrigger.Entry { eventID = type };
+            entry.callback.AddListener(action);
+            trigger.triggers.Add(entry);
+        }
+
+        public void ShowPanel(CanvasGroup targetPanel)
+        {
+            if (targetPanel == null) return;
+            
+            // 메인 메뉴 숨기기
+            mainButtonPanel.DOFade(0, 0.3f).OnComplete(() => mainButtonPanel.gameObject.SetActive(false));
+            
+            targetPanel.gameObject.SetActive(true);
+            targetPanel.DOFade(1, 0.4f);
+            targetPanel.interactable = true;
+            targetPanel.blocksRaycasts = true;
+        }
+
+        public void BackToMainMenu()
+        {
+            foreach (var panel in allPanels)
+            {
+                if (panel.gameObject.activeSelf)
+                {
+                    panel.DOFade(0, 0.3f).OnComplete(() => panel.gameObject.SetActive(false));
+                    panel.interactable = false;
+                    panel.blocksRaycasts = false;
+                }
+            }
+
+            mainButtonPanel.gameObject.SetActive(true);
+            mainButtonPanel.DOFade(1, 0.3f);
         }
     }
 }
