@@ -140,8 +140,8 @@ namespace Necromancer
                 EnemyAI ai = enemyObj.GetComponent<EnemyAI>();
                 if (ai != null)
                 {
-                    // 꺼낸 적에게 데이터 강제 주입
-                    ai.data = selectedEnemyData;
+                    // 꺼낸 적에게 데이터 주입 및 난이도 배율 적용 (CombatManager 연동)
+                    ai.Setup(selectedEnemyData);
                 }
             }
         }

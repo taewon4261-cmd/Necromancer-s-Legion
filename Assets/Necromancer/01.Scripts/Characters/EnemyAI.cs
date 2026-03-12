@@ -35,35 +35,54 @@ public class EnemyAI : UnitBase
 
     protected override void Awake()
     {
-        // 1. 가져온 데이터 기반으로 내 스탯 즉각 덮어쓰기
-        if (data != null)
-        {
-            this.maxHp = data.maxHp;
-            this.moveSpeed = data.moveSpeed;
-            this.attackDamage = data.attackDamage;
-        }
-
-        base.Awake(); // 이 시점에 UnitBase 내부에서 currentHp = maxHp 실행됨
+        base.Awake();
         rb = GetComponent<Rigidbody2D>();
-        originalMoveSpeed = moveSpeed;
     }
 
     protected override void OnEnable()
     {
+        // base.OnEnable()은 Setup()에서 수동으로 호출하거나, 
+        // 데이터 주입 직후에 실행되도록 WaveManager에서 제어하는 것이 안전하지만,
+        // 여기서는 기본 UnitBase의 초기화(isDead, currentHp)를 수행합니다.
         base.OnEnable();
         
-        moveSpeed = originalMoveSpeed;
         stigmaStacks = 0;
         
-        // 🚨 최적화: 무거운 GameObject.Find 연산을 제거하고, GameManager를 통해 플레이어 위치를 직접 참조합니다.
         if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
         {
             targetPlayer = GameManager.Instance.playerTransform;
         }
-        else
+    }
+
+    /// <summary>
+    /// Pool에서 꺼낸 직후, 현재 스테이지 난이도 배율을 반영하여 적의 스탯을 설정합니다.
+    /// </summary>
+    public void Setup(EnemyData enemyData)
+    {
+        this.data = enemyData;
+        if (data == null) return;
+
+        // 중앙 CombatManager에서 배율 가져오기
+        float hpMult = 1f;
+        float dmgMult = 1f;
+
+        if (GameManager.Instance != null && GameManager.Instance.Combat != null)
         {
-            Debug.LogWarning("[EnemyAI] GameManager.Instance.playerTransform이 할당되지 않았습니다!");
+            hpMult = GameManager.Instance.Combat.enemyHpMultiplier;
+            dmgMult = GameManager.Instance.Combat.enemyDamageMultiplier;
         }
+
+        // 스탯 결정 (배율 적용)
+        this.maxHp = data.maxHp * hpMult;
+        this.attackDamage = data.attackDamage * dmgMult;
+        this.moveSpeed = data.moveSpeed;
+        this.originalMoveSpeed = moveSpeed;
+
+        // 스탯이 바뀌었으므로 체력 리셋
+        this.currentHp = maxHp;
+        this.isDead = false;
+
+        if (spriteRenderer != null) spriteRenderer.color = Color.white;
     }
 
     // --- [스킬 연동 로직 시작] ---

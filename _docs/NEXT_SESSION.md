@@ -6,41 +6,32 @@
 
 ## ✅ 현재 완료된 작업 (Today's Progress)
 
-### 1. 타이틀 화면 프리미엄 자동화 시스템
-*   **스크립트:** `TitleUIController.cs`
-*   **핵심 기능:** 
-    *   **모바일 최적화 애니메이션:** 버튼이 밑에서 올라오는 등의 어색한 이동을 제거하고, 제자리에서 **Scale-up(0.95->1.0) & Fade-in** 되는 깔끔한 연출 적용.
-    *   **패널 관리 시스템:** 스테이지 선택, 로비 업그레이드, 세팅 패널을 열고 닫는 `ShowPanel`, `BackToMainMenu` 로직 및 버튼 자동 바인딩 완료.
-    *   **프리미엄 로고:** AI로 생성한 `NecromancerLegion_Logo.png`를 적용하여 비주얼 퀄리티 확보.
+### 1. 스테이지 시스템 고도화 및 대량 생성
+*   **스테이지 50개 생성:** `StageDataGenerator.cs` 에디터 툴을 구현하여 50개의 스테이지 데이터(`StageDataSO`)를 난이도 보정치와 함께 자동 생성 완료.
+*   **리소스 자동 로드:** 데이터 위치를 `Resources/Stages`로 이동하여 인게임 로딩 시 `Resources.LoadAll`로 50개 리스트를 자동 확보하도록 구현.
+*   **네비게이션 UI:** 단일 스크롤 방식에서 **[이전]/[다음] 버튼**으로 스테이지를 하나씩 넘겨보는 직관적인 내비게이션 구조로 `StageSelectUI.cs` 전면 개편.
+*   **잠금(Lock) 시스템:** `ResourceManager.cs`와 연동하여 이전 스테이지를 클리어해야 다음 스테이지가 열리는 진입 제한 로직 기초 구현 완료.
 
-### 2. 데이터 구조 및 자동화 (`01.Scripts/Data/`)
-*   **Skill Data 자동화:** `SkillDataGenerator.cs`를 통해 `04.Sprites/SkillIcons/`의 이미지를 SO에 자동 바인딩하는 기능 완료.
-*   **스테이지 데이터 (`StageDataSO.cs`):** 난이도 배율(HP, Damage, Gold)을 SO화하여 로그라이크식 난이도 조절 기반 마련.
-*   **로비 업그레이드 (`LobbyUpgradeSO.cs`):** 영구 능력치 상승(HP, Atk, Magnet 등) 및 레벨별 비용 계산 로직 구현.
-
-### 3. FSM 및 애니메이션 연동
-*   플레이어, 미니언, 몬스터의 **이동/공격/죽음** 상태에 따른 이미지 변환 로직 및 FSM이 모두 연결됨.
+### 2. 비주얼 에셋 강화
+*   **스테이지 썸네일:** 12가지 서로 다른 환경 테마(성, 숲, 지옥, 늪지 등)를 담은 프리미엄 썸네일 그리드 제작 및 프로젝트 배치 완료 (`StageThumbnails_V2.png`).
+*   **UI 버튼 자동화:** `Btn_Back` 이라는 이름만 붙이면 코드가 알아서 "뒤로가기" 기능을 연결하도록 `TitleUIController.cs` 시스템 고도화.
 
 ---
 
 ## 🚀 다음 세션 작업 로드맵 (Immediate Action)
 
-### 1단계: 타이틀 서브 패널 UI 구현 (디자인 및 연결)
-*   **작업:** `StageSelectPanel`, `UpgradePanel` 내부의 실제 UI 요소(슬롯, 스탯 텍스트, 업그레이드 버튼)를 만들고 스크립트 연결.
-*   **데이터 연동:** 생성된 `StageDataSO`와 `LobbyUpgradeSO`를 실제 UI에 바인딩하여 레벨업 및 스테이지 선택 기능 활성화.
+### 1단계: 유니티 에디터 UI 조립 (필수)
+*   **작업:** `unity_setup_guide.md`의 4번 단계를 보며 `Panel_StageSelect` 내부에 **Prev/Next 버튼**과 **Lock_Overlay** 오브젝트를 배치하고 `StageSelectUI` 인스펙터에 할당.
+*   **썸네일 슬라이싱:** `StageThumbnails_V2.png`를 12개로 슬라이싱하여 각 스테이지 SO의 `Stage Thumbnail` 슬롯에 5개 스테이지 단위로 테마별 배치.
 
-### 2단계: 스테이지 해금 및 미니언 스폰 로직
-*   **작업:** 스테이지 클리어 시 다음 스테이지와 새로운 미니언이 해금되는 `UnlockManager` 구현.
-*   **기믹:** 적 처치 시 해금된 미니언 풀(Pool)에서 확률적으로 부활하게 하는 로직 고도화.
+### 2단계: 인게임 스테이지 해금 연동
+*   **작업:** 실제 전투 승리 시 `GameManager.Instance.Resources.UnlockLevel(nextId)`를 호출하여 다음 스테이지가 타이틀 화면에서 실시간으로 열리도록 결과창 스크립트 연결.
 
-### 3단계: 캐릭터 1x4 에셋 애니메이터 최종 설정
-*   FSM 로직은 준비되었으나, 실제 `Animator Controller` 에셋 내에서의 상태 전환 및 파라미터 체크가 필요한 유닛들이 있는지 확인 및 마무리.
-
-### 4단계: 씬 전환 및 데이터 전달
-*   타이틀에서 스테이지 선택 시, 선택한 `StageDataSO`를 인게임 씬(`GameScene`)으로 넘겨 웨이브 매니저가 난이도 배율을 적용하게 하기.
+### 3단계: 로비 업그레이드 UI 구현 (데이터 연동)
+*   로비에서 획득한 골드를 소모하여 능력치를 올리는 UI 세밀화 및 저장 시스템(`PlayerPrefs`) 연동.
 
 ---
 
 ## ⚠️ 주의사항
-*   `TitleUIController`의 버튼 애니메이션 시 **위치 이동 로직은 금지** (사용자의 명확한 요청사항). 제자리 페이드/크기 조절만 유지할 것.
-*   콘솔에 뜨는 `Missing Script` 오류는 유니티 에디터에서 정리 필요.
+*   스테이지 데이터가 `Resources/Stages`에 있으므로, 이동이나 삭제 시 코드 에러 발생 주의.
+*   `TitleUIController`의 버튼 애니메이션은 반드시 제자리(Scale/Fade) 방식을 유지할 것 (위치 이동 금지).

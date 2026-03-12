@@ -124,6 +124,7 @@ namespace Necromancer.UI
                 if (btnName.Contains("start")) btn.onClick.AddListener(() => ShowPanel(stageSelectPanel));
                 else if (btnName.Contains("upgrade")) btn.onClick.AddListener(() => ShowPanel(upgradePanel));
                 else if (btnName.Contains("setting")) btn.onClick.AddListener(() => ShowPanel(settingPanel));
+                else if (btnName.Contains("back")) btn.onClick.AddListener(() => BackToMainMenu());
             }
         }
 
@@ -139,12 +140,19 @@ namespace Necromancer.UI
             if (targetPanel == null) return;
             
             // 메인 메뉴 숨기기
-            mainButtonPanel.DOFade(0, 0.3f).OnComplete(() => mainButtonPanel.gameObject.SetActive(false));
+            mainButtonPanel.DOFade(0, 0.2f).OnComplete(() => mainButtonPanel.gameObject.SetActive(false));
             
             targetPanel.gameObject.SetActive(true);
-            targetPanel.DOFade(1, 0.4f);
+            targetPanel.DOFade(1, 0.3f);
             targetPanel.interactable = true;
             targetPanel.blocksRaycasts = true;
+
+            // 추가: 스테이지 선택 패널이 열릴 때 초기 데이터 세팅이 필요하다면 여기서 처리 가능
+            var stageUI = targetPanel.GetComponent<StageSelectUI>();
+            if (stageUI != null && stageUI.selectedStage != null)
+            {
+                stageUI.SelectStage(stageUI.selectedStage);
+            }
         }
 
         public void BackToMainMenu()

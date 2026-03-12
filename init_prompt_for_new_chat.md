@@ -10,9 +10,10 @@
 
 프로젝트 폴더 최상단에 앞서 우리가 함께 작성한 기획서 파일인 [necromancer_gdd.md](file:///C:/Users/USER/.gemini/antigravity/brain/9da01c56-051c-4556-9a6c-7fa705976eca/necromancer_gdd.md)와 작업 리스트 [task.md](file:///C:/Users/USER/.gemini/antigravity/brain/9da01c56-051c-4556-9a6c-7fa705976eca/task.md)가 존재해. 
 **[지시 사항]**
-1. 가장 먼저, 파일 시스템 탐색(디렉토리 읽기, 문서 열람 등) 툴을 사용해서 폴더 어딘가(없다면 최상단)에 있는 [necromancer_gdd.md](file:///C:/Users/USER/.gemini/antigravity/brain/9da01c56-051c-4556-9a6c-7fa705976eca/necromancer_gdd.md) (기획서)와 [task.md](file:///C:/Users/USER/.gemini/antigravity/brain/9da01c56-051c-4556-9a6c-7fa705976eca/task.md) (작업 리스트)의 내용을 끝까지 다 읽고 프로젝트의 코어 루프, 폴더 구조, 그리고 내가 원하는 **12번 항목의 AI 개발 룰셋(한국어 작성 및 현업 주석 규칙)**을 완벽히 숙지할 것.
-2. 기획서를 다 읽었다면, 나에게 "프로젝트 기획을 모두 파악했습니다." 라고 알린 뒤 [task.md](file:///C:/Users/USER/.gemini/antigravity/brain/9da01c56-051c-4556-9a6c-7fa705976eca/task.md)의 첫 번째 항목부터 코드 작성 및 프로젝트 세팅 안내를 시작해 줘.
-3. 코드를 줄 때는 항상 이 코드를 어디에 저장해야 하는지(예: `Assets/_Game/Scripts/Core/WaveManager.cs`) 정확한 경로를 알려주고, 왜 이 코드를 이렇게 짰는지 친절한 한국어로 반드시 설명할 것.
+1. 가장 먼저, 파일 시스템 탐색(디렉토리 읽기, 문서 열람 등) 툴을 사용해서 폴더 어딘가(없다면 최상단)에 있는 `necromancer_gdd.md` (기획서)와 `task.md` (작업 리스트)의 내용을 끝까지 다 읽고 프로젝트의 코어 루프, 폴더 구조, 그리고 내가 원하는 **12번 항목의 AI 개발 룰셋(한국어 작성 및 현업 주석 규칙)**을 완벽히 숙지할 것.
+2. **[AI 주도적 제안]** 너는 단순한 코드 작성기를 넘어, 게임이 더 재미있어질 수 있는 방향을 항상 고민하고 먼저 제안해야 해. 나는 네 제안을 듣고 의견을 나누며 수정하는 방식으로 진행할 거야.
+3. 기획서를 다 읽었다면, 나에게 "프로젝트 기획을 모두 파악했습니다." 라고 알린 뒤 `task.md`의 첫 번째 항목부터 코드 작성 및 프로젝트 세팅 안내를 시작해 줘.
+4. 코드를 줄 때는 항상 이 코드를 어디에 저장해야 하는지(예: `Assets/_Game/Scripts/Core/WaveManager.cs`) 정확한 경로를 알려주고, 왜 이 코드를 이렇게 짰는지 친절한 한국어로 반드시 설명할 것.
 
 자, 내 프로젝트 폴더에서 기획서를 찾아서 읽고 시작해 줘!
 
