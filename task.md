@@ -43,7 +43,8 @@
 - [x] **[신규] 인게임 디버그 콘솔 (스테이지 강제 진입, 치트 등) 구현**
 - [x] **[신규] 스테이지 클리어(승리) 및 패배 처리 로직 구현**
 - [ ] **[긴급] 타이틀 스테이지 선택 UI 레이아웃 및 UX 폴리싱**
-- [ ] 폴리싱: 화면 흔들림(Camera Shake), 타격 파티클, 데미지 텍스트 팝업 (FeedbackManager 연동)
+- [x] 폴리싱: 화면 흔들림(Camera Shake), 타격 파티클, 데미지 텍스트 팝업 (FeedbackManager 연동) 완료
+- [x] **[신규]** 저체력(30% 이하) 시 화면 빨간색 깜빡임(Danger Overlay) 연출 구현
 
 ## 💎 Phase 4: 성장 데이터 연동 및 시스템 고도화
 - [x] 성장 스킬 데이터(20종 SO) 생성 및 실제 아이콘/데이터 바인딩 시스템 구축 완료
@@ -56,6 +57,8 @@
 - [x] **[버그수정]** [레벨업 시 스킬 카드 출력 안되는 이슈 수정](file:///c:/UnityGit/GitHub/Necromancer-s-Legion/Assets/Necromancer/01.Scripts/Core/SkillManager.cs)
 - [x] **[버그수정]** [UIManager NullReferenceException (RefreshSkillCards) 수정](file:///c:/UnityGit/GitHub/Necromancer-s-Legion/Assets/Necromancer/01.Scripts/UI/UIManager.cs)
 - [x] **[버그수정]** [배속 버튼 0.0 고정 및 동작 불능 이슈 수정](file:///c:/UnityGit/GitHub/Necromancer-s-Legion/Assets/Necromancer/01.Scripts/UI/UIManager.cs)
+- [x] **[버그수정]** 씬 전환 시 FeedbackManager 카메라 참조 유실 오류 수정
+- [x] **[버그수정]** 적 비활성화 시 코루틴 시작으로 인한 런타임 에러 방지 처리
 - [x] **[신규]** 모바일 노치 대응 세이프 에어리어(`SafeArea.cs`) 구현 완료
 - [ ] **[신규] 미니언 시너지 시스템 및 자동 전술 패시브 (행동 양식 변경) 구현**
 
