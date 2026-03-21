@@ -30,6 +30,13 @@ public class PlayerController : UnitBase
     private float bonusHealth;
     private float bonusMagnetRange;
 
+    [Header("Skill Effects")]
+    public float dodgeChance = 0f;
+    private float regenAmount = 0f;
+    private bool isAuraEnabled = false;
+
+    private Coroutine regenCoroutine;
+
     protected override void Awake()
     {
         // GameManager에 스스로를 등록 (성능 최적화용)
@@ -51,17 +58,22 @@ public class PlayerController : UnitBase
     {
         if (GameManager.Instance == null || GameManager.Instance.Resources == null) return;
 
-        // 예시: LobbyUpgradeSO 데이터들이 리스트로 관리되고 있다고 가정하거나
-        // 직접 ResourceManager에서 특정 스탯 타입을 가져오는 함수가 필요할 수 있습니다.
-        // 현재 LobbyUpgradeSO는 개별로 존재하므로, 기획상 20종을 어떻게 관리할지 정해야 함.
-        // 여기서는 간단하게 GameManager에서 전역적으로 관리하는 '업그레이드 값'을 사용한다고 가정.
+        var side = GameManager.Instance.Resources;
 
-        // TODO: 실제 LobbyUpgradeSO 에셋들을 로드하여 적용하는 관리자 클래스(UpgradeManager 등) 추가 검토
-        // 임시로 기본 UnitBase 스탯에 가산
-        maxHp += bonusHealth;
+        // 1. 체력 업그레이드 (LobbyUpgradeSO의 수치 적용)
+        float hpUpgrade = side.GetUpgradeValue(UpgradeStatType.Health); 
+        maxHp += hpUpgrade;
         currentHp = maxHp;
+
+        // 2. 이동 속도 업그레이드
+        float speedUpgrade = side.GetUpgradeValue(UpgradeStatType.MoveSpeed);
+        moveSpeed += speedUpgrade;
+
+        // 3. 자석 범위 업그레이드 (플레이어가 아닌 GameManager가 관리할 경우 거기서 따로 처리 가능)
+        float magnetUpgrade = side.GetUpgradeValue(UpgradeStatType.MagnetRange);
+        GameManager.Instance.magnetRadius += magnetUpgrade;
         
-        Debug.Log($"[PlayerController] Upgraded Stats Applied. HP: {maxHp}, MoveSpeed: {moveSpeed}");
+        Debug.Log($"[PlayerController] Lobby Upgrades Applied. Final HP: {maxHp}, Speed: {moveSpeed}, Magnet: {GameManager.Instance.magnetRadius}");
     }
 
     protected override void Update()
@@ -82,6 +94,53 @@ public class PlayerController : UnitBase
     private void Move()
     {
         rb.velocity = movement * moveSpeed;
+    }
+
+    public override void TakeDamage(float damage)
+    {
+        // [스킬 연동] 7. 환영 회피: 확률적 데미지 무효화
+        if (dodgeChance > 0f && Random.value <= dodgeChance)
+        {
+            Debug.Log("[Player] 회피 성공! (Phantom Evasion)");
+            return; 
+        }
+
+        base.TakeDamage(damage);
+
+        // [연출 연동] 피격 시 화면 흔들림 및 피격 효과
+        if (FeedbackManager.Instance != null && gameObject.activeInHierarchy)
+        {
+            FeedbackManager.Instance.ShakeCamera(0.15f, 0.2f);
+            FeedbackManager.Instance.PlayHitEffect(transform.position, "HitEffect");
+        }
+    }
+
+    public void AddRegen(float amount)
+    {
+        regenAmount += amount;
+        if (regenCoroutine == null)
+        {
+            regenCoroutine = StartCoroutine(RegenRoutine());
+        }
+    }
+
+    private IEnumerator RegenRoutine()
+    {
+        while (!isDead)
+        {
+            if (currentHp < maxHp)
+            {
+                currentHp = Mathf.Min(currentHp + regenAmount, maxHp);
+            }
+            yield return new WaitForSeconds(1f);
+        }
+    }
+
+    public void EnableDeathAura(bool enable)
+    {
+        isAuraEnabled = enable;
+        // TODO: 실제 오라 VFX 오브젝트를 자식으로 두어 활성화/비활성화
+        Debug.Log($"[Player] 죽음의 오라 상태: {enable}");
     }
 
     private void UpdateAnimation()

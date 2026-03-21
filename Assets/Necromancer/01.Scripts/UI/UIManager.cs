@@ -54,8 +54,54 @@ namespace Necromancer
         public TextMeshProUGUI resultTitleText;
         public TextMeshProUGUI resultStatsText;
 
-        // 현재 창에 뽑힌 임시 3개의 스킬 목록 기억 장치
+        [Header("Screen Effects")]
+        [Tooltip("저체력 시 깜빡일 빨간색 이미지의 CanvasGroup")]
+        public CanvasGroup dangerOverlay;
+        public float flashFrequency = 2.0f; // 1초에 몇 번 깜빡일지
+        public float maxAlpha = 0.4f;      // 최대 불투명도
+
         private List<SkillData> currentOptions;
+
+        private void Start()
+        {
+            // 게임씬 로드 시 자동으로 초기화 진행
+            Init();
+        }
+
+        private void Update()
+        {
+            HandleLowHPEffect();
+        }
+
+        /// <summary>
+        /// 플레이어 체력이 낮을 때 화면을 빨갛게 깜빡입니다.
+        /// </summary>
+        private void HandleLowHPEffect()
+        {
+            if (dangerOverlay == null || GameManager.Instance == null || GameManager.Instance.playerTransform == null) return;
+
+            // 플레이어 컨트롤러에서 체력 비율 확인
+            PlayerController player = GameManager.Instance.playerTransform.GetComponent<PlayerController>();
+            if (player == null || player.IsDead)
+            {
+                dangerOverlay.alpha = 0f;
+                return;
+            }
+
+            float hpRatio = player.currentHp / player.maxHp;
+
+            // 체력이 30% 이하일 때만 작동
+            if (hpRatio <= 0.3f)
+            {
+                // Sin 곡선을 이용해 0 ~ maxAlpha 사이를 부드럽게 왕복
+                float lerp = (Mathf.Sin(Time.time * flashFrequency * Mathf.PI * 2f) + 1f) * 0.5f;
+                dangerOverlay.alpha = lerp * maxAlpha;
+            }
+            else
+            {
+                dangerOverlay.alpha = 0f;
+            }
+        }
 
         private void OnEnable()
         {
@@ -64,7 +110,7 @@ namespace Necromancer
             GameManager.OnLevelUp += HandleLevelUp;
             GameManager.OnWaveStarted += HandleWaveStarted;
             GameManager.OnTimeUpdated += HandleTimeUpdated;
-            GameManager.OnSpeedChanged += UpdateSpeedToggleText;
+            GameManager.OnSpeedChanged += HandleSpeedChanged;
             GameManager.OnGameOver += ShowResultPanel;
         }
 
@@ -75,7 +121,7 @@ namespace Necromancer
             GameManager.OnLevelUp -= HandleLevelUp;
             GameManager.OnWaveStarted -= HandleWaveStarted;
             GameManager.OnTimeUpdated -= HandleTimeUpdated;
-            GameManager.OnSpeedChanged -= UpdateSpeedToggleText;
+            GameManager.OnSpeedChanged -= HandleSpeedChanged;
             GameManager.OnGameOver -= ShowResultPanel;
         }
 
@@ -86,6 +132,31 @@ namespace Necromancer
         public void Init()
         {
             DOTween.KillAll();
+
+            // --- [추가] 인스펙터 할당 누락 시 자동 찾기 시도 (Self-Healing) ---
+            if (speedButton == null)
+            {
+                var foundBtn = GameObject.Find("Speed_Btn");
+                if (foundBtn != null) speedButton = foundBtn.GetComponent<Button>();
+            }
+
+            if (textSpeedToggle == null && speedButton != null)
+            {
+                textSpeedToggle = speedButton.GetComponentInChildren<TextMeshProUGUI>();
+            }
+
+            // [추가] 저체력 오버레이 자동 할당
+            if (dangerOverlay == null)
+            {
+                var foundOverlay = GameObject.Find("DangerOverlay");
+                if (foundOverlay != null)
+                {
+                    dangerOverlay = foundOverlay.GetComponent<CanvasGroup>();
+                    var img = foundOverlay.GetComponent<Image>();
+                    if (img != null) img.color = new Color(1f, 0f, 0f, 0.5f); 
+                }
+            }
+            // -----------------------------------------------------------
 
             // 유효성 검사 (개발 단계에서 실수를 방지하기 위함)
             ValidateReferences();
@@ -140,15 +211,21 @@ namespace Necromancer
         }
 
         /// <summary>
-        /// 배속 토글 시 텍스트 변경
+        /// 배속 토글 시 텍스트 변경 (이벤트 핸들러)
+        /// 0.0과 같은 유효하지 않은 값은 무시합니다.
         /// </summary>
-        public void UpdateSpeedToggleText(float speed)
+        public void HandleSpeedChanged(float speed)
         {
+            if (speed <= 0.1f) 
+            {
+                Debug.LogWarning($"[UIManager] 유효하지 않은 배속 값({speed})이 전달되었습니다. 무시합니다.");
+                return;
+            }
+
             if (textSpeedToggle != null)
             {
-                // 최적화된 SetText 포맷 중 가장 안정적인 방식으로 변경
-                // x{0:F1} 스타일이 TMP 버전에 따라 0으로 나올 수 있어 명시적 변환 사용
                 textSpeedToggle.SetText("x" + speed.ToString("F1"));
+                Debug.Log($"[UIManager] 배속 텍스트 갱신: x{speed}");
             }
         }
 
@@ -159,7 +236,8 @@ namespace Necromancer
         {
             if (expFillBar != null && maxExp > 0)
             {
-                expFillBar.fillAmount = currentExp / maxExp;
+                // Image Type이 Filled가 아닐 경우를 대비한 안전 로직
+                expFillBar.fillAmount = Mathf.Clamp01(currentExp / maxExp);
             }
         }
 
@@ -199,22 +277,35 @@ namespace Necromancer
         /// </summary>
         public void RefreshSkillCards(List<SkillData> newOptions)
         {
+            if (newOptions == null) return;
             currentOptions = newOptions;
 
             for (int i = 0; i < 3; i++)
             {
+                // 1. 버튼 배열 자체나 현재 슬롯이 null인지 먼저 확인 (인스펙터 할당 누락 방어)
+                if (skillCardButtons == null || i >= skillCardButtons.Length || skillCardButtons[i] == null)
+                {
+                    continue; 
+                }
+
                 if (i < currentOptions.Count && currentOptions[i] != null)
                 {
                     SkillData data = currentOptions[i];
                     skillCardButtons[i].gameObject.SetActive(true);
                     
-                    if(skillCardIcons[i] != null) skillCardIcons[i].sprite = data.skillIcon;
-                    if(skillCardNames[i] != null) skillCardNames[i].SetText(data.skillName);
-                    if(skillCardDescriptions[i] != null) skillCardDescriptions[i].SetText(data.skillDescription);
+                    // 각 요소별 개별 널 체크 (아이콘, 이름, 설명 중 일부가 누락되어도 크래시 방지)
+                    if(skillCardIcons != null && i < skillCardIcons.Length && skillCardIcons[i] != null) 
+                        skillCardIcons[i].sprite = data.skillIcon;
+                        
+                    if(skillCardNames != null && i < skillCardNames.Length && skillCardNames[i] != null) 
+                        skillCardNames[i].SetText(data.skillName);
+                        
+                    if(skillCardDescriptions != null && i < skillCardDescriptions.Length && skillCardDescriptions[i] != null) 
+                        skillCardDescriptions[i].SetText(data.skillDescription);
                 }
                 else
                 {
-                    // 부족하면 카드를 하나 가림
+                    // 선택지가 부족하거나 데이터가 없으면 슬롯 비활성화
                     skillCardButtons[i].gameObject.SetActive(false);
                 }
             }

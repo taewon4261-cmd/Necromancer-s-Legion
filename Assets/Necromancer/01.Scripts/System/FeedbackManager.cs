@@ -25,12 +25,23 @@ namespace Necromancer
             if (Instance == null) Instance = this;
             if (GameManager.Instance != null) GameManager.Instance.feedbackManager = this;
             mainCamera = Camera.main;
+            
+            // 초기 위치 저장 (부모가 CameraPivot일 경우 0,0,0이 기본)
+            if (mainCamera != null) originalPos = mainCamera.transform.localPosition;
         }
 
         private void Update()
         {
             if (shakeDuration > 0)
             {
+                // [수정] 씬 전환 등으로 카메라가 파괴되었을 경우를 대비한 안전 체크
+                if (mainCamera == null)
+                {
+                    mainCamera = Camera.main;
+                    if (mainCamera == null) return;
+                    originalPos = mainCamera.transform.localPosition;
+                }
+
                 mainCamera.transform.localPosition = originalPos + Random.insideUnitSphere * shakeMagnitude;
                 shakeDuration -= Time.deltaTime * dampingSpeed;
                 
@@ -47,7 +58,16 @@ namespace Necromancer
         /// </summary>
         public void ShakeCamera(float duration = 0.1f, float magnitude = 0.15f)
         {
-            originalPos = mainCamera.transform.localPosition;
+            // 카메라가 없으면 다시 찾기 시도
+            if (mainCamera == null)
+            {
+                mainCamera = Camera.main;
+                if (mainCamera != null) originalPos = mainCamera.transform.localPosition;
+            }
+
+            if (mainCamera == null) return;
+
+            // 현재 흔들리고 있지 않을 때만 초기 위치를 0으로 잡거나 현재 위치 고정
             shakeDuration = duration;
             shakeMagnitude = magnitude;
         }
@@ -67,7 +87,11 @@ namespace Necromancer
         /// </summary>
         public void PlayHitEffect(Vector3 position, string effectTag = "HitEffect")
         {
-            if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
+            if (GameManager.Instance == null || GameManager.Instance.poolManager == null) return;
+            
+            // PoolManager 내부에 태그가 존재하는지 먼저 확인하는 로직이 있다면 좋으나,
+            // 현재는 PoolManager.Get 내부에서 이미 경고를 띄우고 있으므로 에러 발생 방지만 처리합니다.
+            if (gameObject.activeInHierarchy)
             {
                 GameManager.Instance.poolManager.Get(effectTag, position, Quaternion.identity);
             }

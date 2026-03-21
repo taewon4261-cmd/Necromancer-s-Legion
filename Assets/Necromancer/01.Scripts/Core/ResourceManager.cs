@@ -13,14 +13,47 @@ namespace Necromancer.Core
 
         public int unlockedStageLevel; // 어디 스테이지까지 열렸는지 (1~50)
 
+        [Header("Lobby Upgrades")]
+        public LobbyUpgradeSO[] upgrades; // 인스펙터에서 모든 업그레이드 SO 연결
+
         public void Init()
         {
             // 데이터 로드 로직
             currentGold = PlayerPrefs.GetInt("TotalGold", 0);
             unlockedStageLevel = PlayerPrefs.GetInt("UnlockedStageLevel", 1); // 기본 1
             currentSoul = 0;
+
+            // 로비 업그레이드 레벨 복구
+            if (upgrades != null)
+            {
+                foreach (var upgrade in upgrades)
+                {
+                    if (upgrade != null)
+                    {
+                        upgrade.currentLevel = PlayerPrefs.GetInt("Upgrade_" + upgrade.statType.ToString(), 0);
+                    }
+                }
+            }
             
-            Debug.Log($"[ResourceManager] Initialized. Unlocked Stage: {unlockedStageLevel}");
+            Debug.Log($"[ResourceManager] Initialized. Unlocked Stage: {unlockedStageLevel}, Gold: {currentGold}");
+        }
+
+        /// <summary>
+        /// 특정 스탯 타입에 대해 로비에서 업그레이드된 모든 누적 수치를 가져옵니다.
+        /// </summary>
+        public float GetUpgradeValue(UpgradeStatType type)
+        {
+            float total = 0f;
+            if (upgrades == null) return 0f;
+
+            foreach (var upgrade in upgrades)
+            {
+                if (upgrade != null && upgrade.statType == type)
+                {
+                    total += upgrade.GetTotalStatValue();
+                }
+            }
+            return total;
         }
 
         public bool IsStageUnlocked(int stageId)

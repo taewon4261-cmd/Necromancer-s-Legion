@@ -44,11 +44,11 @@ public class MinionAI : UnitBase
 
     protected override void OnEnable()
     {
-        // 1. 우선 컴포넌트 OnEnable 발동 시 전역 버프를 먼저 스탯에 적용
+        // 1. 전역 버프 적용 및 이벤트 구독
         ApplyGlobalBuffs();
+        SkillManager.OnMinionStatsChanged += ApplyGlobalBuffs;
         
-        // 2. 그 다음 기본 UnitBase.OnEnable()을 호출하여 currentHp = maxHp 등으로 리셋
-        //    (상속받은 자식에서 maxHp가 이미 뻥튀기 된 상태이어야 풀피가 제대로 참)
+        // 2. 그 다음 기본 UnitBase.OnEnable()을 호출
         base.OnEnable();
         
         spawnTime = Time.time;
@@ -85,6 +85,9 @@ public class MinionAI : UnitBase
 
     private void OnDisable()
     {
+        // 이벤트 구독 해제 (메모리 누수 방지)
+        SkillManager.OnMinionStatsChanged -= ApplyGlobalBuffs;
+
         scanCts?.Cancel();
         scanCts?.Dispose();
         scanCts = null;

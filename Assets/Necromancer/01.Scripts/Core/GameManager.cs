@@ -198,9 +198,19 @@ namespace Necromancer
 
             if (skillManager != null)
             {
-                OnExpChanged?.Invoke(currentExp, maxExp);
-                OnLevelUp?.Invoke(skillManager.GetRandomSkillsForLevelUp(3));
-                Time.timeScale = 0f;
+                var options = skillManager.GetRandomSkillsForLevelUp(3);
+                if (options != null && options.Count > 0)
+                {
+                    OnExpChanged?.Invoke(currentExp, maxExp);
+                    OnLevelUp?.Invoke(options);
+                    Time.timeScale = 0f;
+                }
+                else
+                {
+                    Debug.LogWarning("[GameManager] SkillManager returned no skill options for level up.");
+                    // 선택지가 없더라도 게임은 멈추면 안되므로 timescale은 유지하거나 리셋
+                    ResumeGameSpeed();
+                }
             }
         }
 
@@ -215,6 +225,7 @@ namespace Necromancer
             else currentGameSpeed = 1f;
 
             Time.timeScale = currentGameSpeed;
+            Debug.Log($"[GameManager] Speed Toggled: {currentGameSpeed}, Time.timeScale: {Time.timeScale}");
             OnSpeedChanged?.Invoke(currentGameSpeed);
         }
 

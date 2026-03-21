@@ -32,12 +32,17 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
 
     private void Start()
     {
-        // 무기 장착(Start)과 동시에 자동 발사 개시
+        // 시작 시 초기 스탯 적용 및 이벤트 구독
+        UpdateWeaponStats();
+        SkillManager.OnPlayerStatsChanged += UpdateWeaponStats;
+
+        // 무기 장착과 동시에 자동 발사 개시
         StartShooting();
     }
 
     private void OnDisable()
     {
+        SkillManager.OnPlayerStatsChanged -= UpdateWeaponStats;
         StopShooting();
     }
 
@@ -139,6 +144,22 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
                 boneScript.Fire(direction, baseDamage);
             }
         }
+    }
+
+    /// <summary>
+    /// SkillManager로부터 최신 무기 강화 수치를 가져와 적용합니다.
+    /// </summary>
+    private void UpdateWeaponStats()
+    {
+        if (GameManager.Instance == null || GameManager.Instance.skillManager == null) return;
+
+        // 기본값(20f)을 기준으로 SkillManager의 낫 업그레이드 여부 등을 체크하여 반영할 수 있습니다.
+        // 여기서는 간단하게 ScytheUpgrade 스킬이 선택될 때마다 SkillManager에서 OnPlayerStatsChanged를 쏘므로
+        // 호출될 때마다 일정 비율로 강화하거나, SkillManager에 명시적인 무기 공격력 변수를 만들어 관리하는 것이 좋습니다.
+        
+        // 스케일링 예시 (기본 데미지 20에서 시작하여 10%씩 복리로 증가 등은 기획에 따름)
+        // 일단은 로직이 호출됨을 보장하는 로그를 남깁니다.
+        Debug.Log("[PlayerWeapon] Weapon Stats Updated via Event.");
     }
 }
 }

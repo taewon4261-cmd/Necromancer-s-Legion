@@ -103,6 +103,7 @@ public class EnemyAI : UnitBase
     // --- [스킬 연동 로직 시작] ---
     public void ApplyPoison(float duration, float tickDamage)
     {
+        if (!gameObject.activeInHierarchy || isDead) return;
         if (poisonCoroutine != null) StopCoroutine(poisonCoroutine);
         poisonCoroutine = StartCoroutine(PoisonRoutine(duration, tickDamage));
     }
@@ -120,6 +121,7 @@ public class EnemyAI : UnitBase
 
     public void ApplyFrost(float duration, float slowdownRatio)
     {
+        if (!gameObject.activeInHierarchy || isDead) return;
         if (frostCoroutine != null) StopCoroutine(frostCoroutine);
         frostCoroutine = StartCoroutine(FrostRoutine(duration, slowdownRatio));
     }
@@ -212,12 +214,15 @@ public class EnemyAI : UnitBase
 
         base.TakeDamage(damage);
 
-        // [Polishing] 타격 연출 실행 (텍스트 출력 중단)
-        if (FeedbackManager.Instance != null)
+        // [Polishing] 타격 연출 실행
+        if (FeedbackManager.Instance != null && gameObject.activeInHierarchy)
         {
-            // 엘리트 적일 경우만 카메라 흔들림 유지
-            if (data != null && data.isElite)
-                FeedbackManager.Instance.ShakeCamera(0.12f, 0.15f);
+            float duration = (data != null && data.isElite) ? 0.12f : 0.05f;
+            float magnitude = (data != null && data.isElite) ? 0.15f : 0.08f;
+            
+            FeedbackManager.Instance.ShakeCamera(duration, magnitude);
+            // "HitEffect_Enemy"가 없을 경우를 대비해 "HitEffect" 기본 태그 사용
+            FeedbackManager.Instance.PlayHitEffect(transform.position, "HitEffect");
         }
     }
 
