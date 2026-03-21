@@ -12,7 +12,7 @@ namespace Necromancer.Editor
         [MenuItem("Necromancer/Tools/Generate 50 Stages")]
         public static void GenerateStages()
         {
-            string folderPath = "Assets/Necromancer/05.Data/Stages";
+            string folderPath = "Assets/Resources/Stages";
             
             // 1. 폴더가 없으면 생성
             if (!Directory.Exists(folderPath))
@@ -34,11 +34,19 @@ namespace Necromancer.Editor
                 stage.stageName = $"Stage {i}";
                 stage.stageDescription = $"이곳은 제 {i}구역입니다. 점점 더 강력한 적들이 등장합니다.";
                 
+                // 웨이브 데이터베이스 추가 (마스터 데이터 연동)
+                string waveDbPath = "Assets/Necromancer/02.Data/Generated/Master_WaveDatabase.asset";
+                WaveDatabase masterDb = AssetDatabase.LoadAssetAtPath<WaveDatabase>(waveDbPath);
+                if (masterDb != null)
+                {
+                    stage.waveDatabase = masterDb;
+                }
+
                 // 난이도 배율 설계: 1스테이지(1.0) ~ 50스테이지(약 5.0)
-                float multiplier = 1.0f + (i - 1) * 0.1f; // 0.1씩 증가
+                float multiplier = 1.0f + (i - 1) * 0.1f; 
                 stage.enemyHpMultiplier = multiplier;
                 stage.enemyDamageMultiplier = multiplier;
-                stage.goldGainMultiplier = 1.0f + (i - 1) * 0.05f; // 골드는 조금씩 더 줌
+                stage.goldGainMultiplier = 1.0f + (i - 1) * 0.05f; 
 
                 // 에셋 저장
                 AssetDatabase.CreateAsset(stage, fullPath);

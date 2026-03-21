@@ -483,7 +483,7 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -999,7 +999,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &370983689
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1245,9 +1245,9 @@ RectTransform:
   - {fileID: 824594937}
   m_Father: {fileID: 80237956}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 845.53796, y: -1046.1357}
   m_SizeDelta: {x: 250, y: 750}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &513376274
@@ -1380,9 +1380,9 @@ RectTransform:
   - {fileID: 351283715}
   m_Father: {fileID: 80237956}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 145.53796, y: -671.13574}
   m_SizeDelta: {x: 250, y: 750}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &677865401
@@ -2028,18 +2028,6 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1380228557}
-        m_TargetAssemblyTypeName: Necromancer.GameManager, Assembly-CSharp
-        m_MethodName: ToggleGameSpeed
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
 --- !u!114 &910097397
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2507,8 +2495,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1380228559}
   - component: {fileID: 1380228558}
-  - component: {fileID: 1380228557}
   - component: {fileID: 1380228560}
+  - component: {fileID: 1380228561}
   m_Layer: 0
   m_Name: System
   m_TagString: Untagged
@@ -2516,32 +2504,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1380228557
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1380228556}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2e9ed05fe00e1394b9f587a38c2745b6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  poolManager: {fileID: 1380228558}
-  waveManager: {fileID: 1380228560}
-  uiManager: {fileID: 1500465875}
-  skillManager: {fileID: 498314167}
-  feedbackManager: {fileID: 1735255270}
-  baseReviveChance: 30
-  minionTag: Minion
-  playerTransform: {fileID: 1583968989}
-  magnetRadius: 3
-  currentLevel: 1
-  currentExp: 0
-  maxExp: 100
-  currentGameSpeed: 1
-  isThreeTimesSpeedAllowed: 0
 --- !u!114 &1380228558
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2607,6 +2569,39 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waveDatabase: {fileID: 11400000, guid: 9d75b168f11d14a4e9917c1b8a8037e3, type: 2}
   spawnRadius: 15
+--- !u!114 &1380228561
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1380228556}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3fe2a1d20a310b49b793827e6951c7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Resources: {fileID: 0}
+  Combat: {fileID: 0}
+  Sound: {fileID: 0}
+  DebugConsole: {fileID: 0}
+  poolManager: {fileID: 0}
+  waveManager: {fileID: 0}
+  uiManager: {fileID: 0}
+  skillManager: {fileID: 0}
+  feedbackManager: {fileID: 0}
+  titleUI: {fileID: 0}
+  playerTransform: {fileID: 0}
+  magnetRadius: 3
+  baseReviveChance: 30
+  minionTag: Minion
+  currentLevel: 1
+  currentExp: 0
+  maxExp: 100
+  currentGameSpeed: 1
+  isThreeTimesSpeedAllowed: 0
+  currentStage: {fileID: 0}
+  debugDefaultStage: {fileID: 0}
 --- !u!1 &1465636269
 GameObject:
   m_ObjectHideFlags: 0
@@ -2794,6 +2789,10 @@ MonoBehaviour:
   - {fileID: 824594938}
   adRefreshButton: {fileID: 1242912607}
   textSpeedToggle: {fileID: 344642346}
+  resultPanel: {fileID: 0}
+  resultTitleText: {fileID: 0}
+  resultStatsText: {fileID: 0}
+  backToTitleButton: {fileID: 0}
 --- !u!4 &1500465876
 Transform:
   m_ObjectHideFlags: 0
@@ -3393,9 +3392,9 @@ RectTransform:
   - {fileID: 348971796}
   m_Father: {fileID: 80237956}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 495.53796, y: -1046.1357}
   m_SizeDelta: {x: 250, y: 750}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1742178707

@@ -27,6 +27,7 @@ public class MinionAI : UnitBase
     [Tooltip("공격 쿨타임")]
     public float hitCooldown = 0.5f;
 
+
     private Rigidbody2D rb;
     private Transform currentTarget;
     private float lastHitTime;
@@ -128,27 +129,30 @@ public class MinionAI : UnitBase
     {
         while (!isDead && !token.IsCancellationRequested)
         {
-            // 1주차 프로토타입용 타겟 탐색 (FindGameObjectsWithTag)
-            // 추후 최적화: EnemySpawner가 살아있는 적의 리스트를 들고 있게 처리
-            GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
-            
-            float closestDistance = Mathf.Infinity;
-            Transform closestEnemy = null;
-
-            foreach (GameObject enemyObj in enemies)
+            // 전역 GameManager의 WaveManager가 관리하는 최적화된 리스트 활용 (성능 최적화)
+            if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
             {
-                // 꺼져있는 시체를 쫓아가지 않도록 보호
-                if (!enemyObj.activeInHierarchy) continue;
+                List<EnemyAI> enemies = GameManager.Instance.waveManager.activeEnemies;
+                
+                float minDistance = Mathf.Infinity;
+                Transform bestTarget = null;
 
-                float distance = Vector2.Distance(transform.position, enemyObj.transform.position);
-                if (distance < closestDistance)
+                // 적 목록을 순회하며 가장 가까운 타겟 검색 (리스트 i-for문이 foreach보다 약간 더 빠름)
+                for (int i = 0; i < enemies.Count; i++)
                 {
-                    closestDistance = distance;
-                    closestEnemy = enemyObj.transform;
-                }
-            }
+                    EnemyAI enemy = enemies[i];
+                    if (enemy == null || !enemy.gameObject.activeInHierarchy || enemy.IsDead) continue;
 
-            currentTarget = closestEnemy;
+                    float distance = Vector2.Distance(transform.position, enemy.transform.position);
+                    if (distance < minDistance)
+                    {
+                        minDistance = distance;
+                        bestTarget = enemy.transform;
+                    }
+                }
+                
+                currentTarget = bestTarget;
+            }
 
             // 다음 스캔 주기까지 대기
             await UniTask.Delay(System.TimeSpan.FromSeconds(targetScanRate), cancellationToken: token);

@@ -23,6 +23,7 @@ namespace Necromancer
         private void Awake()
         {
             if (Instance == null) Instance = this;
+            if (GameManager.Instance != null) GameManager.Instance.feedbackManager = this;
             mainCamera = Camera.main;
         }
 

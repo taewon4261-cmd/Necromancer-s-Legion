@@ -25,7 +25,7 @@ namespace Necromancer
         public float goldGainMultiplier = 1.0f;
 
         [Header("Wave Settings")]
-        [Tooltip("해당 스테이지에서 등장할 몬스터 웨이브 테이블 (추후 연동)")]
-        public Object waveTable; 
+        [Tooltip("해당 스테이지에서 등장할 몬스터 웨이브 테이블")]
+        public WaveDatabase waveDatabase; 
     }
 }

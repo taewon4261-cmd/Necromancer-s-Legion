@@ -22,21 +22,35 @@ namespace Necromancer
         private int currentWaveIndex = 0;
         private bool isSpawning = false;
         private float gameTime = 0f;
-        
         private Transform playerTransform;
         private CancellationTokenSource spawnCts;
 
+        // --- 성능 최적화: 현재 맵에 존재하는 모든 적 목록 (FindGameObjectsWithTag 대체용) ---
+        public List<EnemyAI> activeEnemies = new List<EnemyAI>();
+
         // 최적화: 현재 화면에 떠있는 적 카운트를 추적하기 위함 (PoolManager 등에 의존할 수도 있으나 간단히 구현)
-        private int currentEnemyCount = 0;
+        // private int currentEnemyCount = 0;
+
+        private void Awake()
+        {
+            if (GameManager.Instance != null) GameManager.Instance.waveManager = this;
+        }
 
         public void Init()
         {
             if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
             {
                 playerTransform = GameManager.Instance.playerTransform;
+
+                // 추가: 현재 스테이지가 있다면 해당 스테이지의 웨이브 데이터셋을 주입
+                if (GameManager.Instance.currentStage != null && GameManager.Instance.currentStage.waveDatabase != null)
+                {
+                    waveDatabase = GameManager.Instance.currentStage.waveDatabase;
+                }
+
                 gameTime = 0f;
                 currentWaveIndex = 0;
-                currentEnemyCount = 0; // 초기화
+                activeEnemies.Clear(); 
                 
                 isSpawning = true;
                 
@@ -62,10 +76,11 @@ namespace Necromancer
 
             CheckWaveProgress();
             
-            // UI에 실시간 타임워치 및 현재 진행 중인 웨이브 단계 보고
-            if (GameManager.Instance != null && GameManager.Instance.uiManager != null && waveDatabase != null && waveDatabase.waveList.Count > 0)
+            // UI에 실시간 타임워치 및 현재 진행 중인 웨이브 단계 보고 (이벤트 발행)
+            if (waveDatabase != null && waveDatabase.waveList.Count > 0)
             {
-                GameManager.Instance.uiManager.UpdateHUD(gameTime, waveDatabase.waveList[currentWaveIndex].waveName);
+                GameManager.BroadcastTime(gameTime);
+                GameManager.BroadcastWave(currentWaveIndex, waveDatabase.waveList[currentWaveIndex].waveName);
             }
         }
 
@@ -77,10 +92,24 @@ namespace Necromancer
             if (waveDatabase == null || waveDatabase.waveList == null || waveDatabase.waveList.Count == 0) return;
             
             // 아직 끝 웨이브가 아니고, 현재 시간이 다음 웨이브의 시작시간을 넘었을 때
-            if (currentWaveIndex < waveDatabase.waveList.Count - 1 && gameTime >= waveDatabase.waveList[currentWaveIndex + 1].startTime)
+            if (currentWaveIndex < waveDatabase.waveList.Count - 1)
             {
-                currentWaveIndex++;
-                Debug.Log($"🌊 [WaveManager] 새로운 웨이브 교체: {waveDatabase.waveList[currentWaveIndex].waveName}");
+                if (gameTime >= waveDatabase.waveList[currentWaveIndex + 1].startTime)
+                {
+                    currentWaveIndex++;
+                    Debug.Log($"🌊 [WaveManager] 새로운 웨이브 교체: {waveDatabase.waveList[currentWaveIndex].waveName}");
+                }
+            }
+            else
+            {
+                // 마지막 웨이브인 경우: 마지막 웨이브 시작 후 일정 시간(예: 30초)이 지나면 승리 처리
+                // 또는 WaveData에 'duration' 필드를 추가하여 관리할 수 있으나, 현재는 간단히 30초 생존으로 정함
+                if (isSpawning && gameTime >= waveDatabase.waveList[currentWaveIndex].startTime + 30f)
+                {
+                    isSpawning = false;
+                    Debug.Log("🏆 [WaveManager] 모든 웨이브 버티기 성공! 스테이지 클리어.");
+                    GameManager.Instance.OnStageClear();
+                }
             }
         }
 

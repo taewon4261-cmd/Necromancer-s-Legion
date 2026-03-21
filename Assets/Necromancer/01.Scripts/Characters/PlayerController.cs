@@ -26,10 +26,42 @@ public class PlayerController : UnitBase
     public float slamCooldown = 0.5f;
     private float lastSlamTime;
 
+    [Header("Persistent Stats (Data Binding)")]
+    private float bonusHealth;
+    private float bonusMagnetRange;
+
     protected override void Awake()
     {
+        // GameManager에 스스로를 등록 (성능 최적화용)
+        if (GameManager.Instance != null) GameManager.Instance.playerTransform = transform;
+
         base.Awake();
         rb = GetComponent<Rigidbody2D>();
+    }
+
+    private void Start()
+    {
+        ApplyUpgradedStats();
+    }
+
+    /// <summary>
+    /// GameManager의 ResourceManager를 통해 업그레이드된 스탯을 가져와 적용합니다.
+    /// </summary>
+    private void ApplyUpgradedStats()
+    {
+        if (GameManager.Instance == null || GameManager.Instance.Resources == null) return;
+
+        // 예시: LobbyUpgradeSO 데이터들이 리스트로 관리되고 있다고 가정하거나
+        // 직접 ResourceManager에서 특정 스탯 타입을 가져오는 함수가 필요할 수 있습니다.
+        // 현재 LobbyUpgradeSO는 개별로 존재하므로, 기획상 20종을 어떻게 관리할지 정해야 함.
+        // 여기서는 간단하게 GameManager에서 전역적으로 관리하는 '업그레이드 값'을 사용한다고 가정.
+
+        // TODO: 실제 LobbyUpgradeSO 에셋들을 로드하여 적용하는 관리자 클래스(UpgradeManager 등) 추가 검토
+        // 임시로 기본 UnitBase 스탯에 가산
+        maxHp += bonusHealth;
+        currentHp = maxHp;
+        
+        Debug.Log($"[PlayerController] Upgraded Stats Applied. HP: {maxHp}, MoveSpeed: {moveSpeed}");
     }
 
     protected override void Update()
@@ -117,7 +149,12 @@ public class PlayerController : UnitBase
         rb.velocity = Vector2.zero;
         rb.bodyType = RigidbodyType2D.Static; // 죽으면 시체가 안 밀리게 고정
         
-        // TODO: GameManager에 게임 오버 이벤트 발송 (Result UI 팝업 연동)
+        // GameManager에 게임 오버 이벤트 발송
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnStageFailed();
+        }
+        
         Debug.Log("[PlayerController] Player is dead. Triggering GameOver sequence.");
     }
 }

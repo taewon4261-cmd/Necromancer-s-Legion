@@ -21,12 +21,9 @@ namespace Necromancer.UI
         [Header("Navigations")]
         public Button prevButton;
         public Button nextButton;
-        public GameObject lockOverlay; // 잠긴 스테이지 가림용
-        public TextMeshProUGUI lockMessage;
+        public Button closeOverlayButton; // 이제 쓸모없지만 필드는 비워둡니다.
 
-        [Header("List System (Hidden)")]
-        public Transform listContainer;    
-        public GameObject itemPrefab;      
+        // stageList는 여전히 필요하므로 필드로 유지
         public List<StageDataSO> stageList = new List<StageDataSO>(); 
 
         [Header("Current Selection")]
@@ -38,8 +35,10 @@ namespace Necromancer.UI
             if (startButton != null) startButton.onClick.AddListener(OnStartButtonClicked);
             if (prevButton != null) prevButton.onClick.AddListener(MovePrev);
             if (nextButton != null) nextButton.onClick.AddListener(MoveNext);
+            // closeOverlayButton.onClick.AddListener(OnCloseLockOverlay) 제거됨
             
             InitStageList();
+            // PopulateList() 호출 제거됨
 
             if (stageList != null && stageList.Count > 0)
             {
@@ -48,10 +47,23 @@ namespace Necromancer.UI
             }
         }
 
+        // PopulateList() 메서드 제거됨
+
         public void MoveNext()
         {
             if (currentIndex < stageList.Count - 1)
             {
+                // 현재 스테이지가 잠겨있다면 더 이상 뒤로(오른쪽으로) 이동 불가
+                bool isCurrentUnlocked = GameManager.Instance.Resources.IsStageUnlocked(stageList[currentIndex].stageID);
+                if (!isCurrentUnlocked)
+                {
+                    // 진동 피드백 (잠금 영역을 더 파고들려고 시도할 때)
+#if UNITY_ANDROID || UNITY_IOS
+                    Handheld.Vibrate();
+#endif
+                    return;
+                }
+
                 currentIndex++;
                 SelectStage(stageList[currentIndex]);
             }
@@ -109,12 +121,18 @@ namespace Necromancer.UI
                 stageThumbnail.color = isUnlocked ? Color.white : Color.black; // 잠기면 검게
             }
             
-            // 3. 잠금 UI 처리
-            if (lockOverlay != null) lockOverlay.SetActive(!isUnlocked);
+            // 3. 잠금 UI 처리 (lockOverlay 관련 코드 제거됨)
             if (startButton != null) 
             {
                 startButton.interactable = isUnlocked;
-                // 버튼 텍스트나 알파값 등으로 시각적 피드백 추가 가능
+            }
+
+            if (!isUnlocked)
+            {
+#if UNITY_ANDROID || UNITY_IOS
+                Handheld.Vibrate();
+#endif
+                Debug.Log("<color=red>[StageSelectUI]</color> Locked Stage Selected! Vibrate!");
             }
         }
 

@@ -47,10 +47,25 @@ public class EnemyAI : UnitBase
         base.OnEnable();
         
         stigmaStacks = 0;
+
+        // WaveManager에 실시간 적 목록 등록 (성능 최적화용)
+        if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
+        {
+            GameManager.Instance.waveManager.activeEnemies.Add(this);
+        }
         
         if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
         {
             targetPlayer = GameManager.Instance.playerTransform;
+        }
+    }
+
+    protected virtual void OnDisable()
+    {
+        // WaveManager에서 목록 제거 (성능 최적화용)
+        if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
+        {
+            GameManager.Instance.waveManager.activeEnemies.Remove(this);
         }
     }
 

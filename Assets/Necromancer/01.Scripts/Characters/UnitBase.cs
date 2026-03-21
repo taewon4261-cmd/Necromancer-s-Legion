@@ -24,6 +24,7 @@ namespace Necromancer
         public Color hitColor = Color.red;
         public float hitDuration = 0.1f;
 
+        public bool IsDead => isDead;
         protected bool isDead = false;
         private Coroutine hitFlashCoroutine;
 

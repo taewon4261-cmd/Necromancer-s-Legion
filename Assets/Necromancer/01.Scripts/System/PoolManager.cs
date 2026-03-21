@@ -24,6 +24,11 @@ public class PoolManager : MonoBehaviour
     
     private Dictionary<string, Queue<GameObject>> poolDictionary;
 
+    private void Awake()
+    {
+        if (GameManager.Instance != null) GameManager.Instance.poolManager = this;
+    }
+
     public void Init()
     {
         poolDictionary = new Dictionary<string, Queue<GameObject>>();

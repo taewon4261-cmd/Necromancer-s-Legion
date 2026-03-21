@@ -33,6 +33,9 @@ namespace Necromancer.UI
 
         private void Awake()
         {
+            // GameManager에 스스로를 등록 (성능 최적화용)
+            if (Necromancer.GameManager.Instance != null) Necromancer.GameManager.Instance.titleUI = this;
+
             layoutGroup = mainButtonPanel?.GetComponent<VerticalLayoutGroup>();
             
             // 모든 패널 리스트업 (일괄 OFF 처리용)
