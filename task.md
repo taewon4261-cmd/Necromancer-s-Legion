@@ -27,22 +27,20 @@
 - [x] UI/효과 에셋 (스킬 카드, 조이스틱, 버튼, 투사체) 완료
 - [x] **스킬 아이콘 20종 개별 이미지 배치 완료**
 - [x] 현업 최상위 표준 절대 단위 제어(Absolute Unit Control) 완료
-    - [x] 블랙 바 높이 & 루트 오프셋 수학적 동기화로 픽셀 오차 제로 구현
-    - [x] 전 기기(iPhone/iPad) HUD 가려짐 및 유격 문제 최종 해결
-    - [x] 모든 해상도에서 전문 디자인 비율과 100% 일치 확인
 - [x] 캐릭터 해상도 차이에 따른 PPU 자동 보정(Height: 2.5 Unit) 시스템 안정화
 
 ## 📺 Phase 3: UI 연출 및 씬 전환 (현재 진행 중)
-- [x] 타이틀 화면 구성 및 DOTween 애니메이션 (로고 부유, 버튼 페이드/스케일 연출) 완료
+- [x] 타이틀 화면 구성 및 DOTween 애니메이션 완료
 - [x] 타이틀 화면 모바일 최적화 (마우스 트래킹 제거 및 제자리 등장 로직) 완료
 - [x] 타이틀 내 패널 관리 시스템 구현 (스테이지 선택, 업그레이드, 세팅 연결 완료)
 - [x] **[신규]** 스테이지 선택 및 데이터 연동 UI (`StageSelectUI.cs`) 구현 완료
 - [x] **[신규]** 스테이지 데이터 대량 생성 시스템 (`StageDataGenerator.cs`) 구축 완료
 - [x] **[신규]** 유니티 에디터 설정 가이드 (`unity_setup_guide.md`) 제작 완료
 - [x] **[신규] 전용 사운드 매니저 및 SFX 풀링 시스템 구축**
-- [x] **[신규] 인게임 디버그 콘솔 (스테이지 강제 진입, 치트 등) 구현**
-- [x] **[신규] 스테이지 클리어(승리) 및 패배 처리 로직 구현**
-- [ ] **[긴급] 타이틀 스테이지 선택 UI 레이아웃 및 UX 폴리싱**
+- [/] **[진행 중] 타이틀 상점(업그레이드) 및 설정 탭 구현**
+    - [ ] 상점(업그레이드) UI 레이아웃 구성 및 스크롤 리스트 구현
+    - [ ] 업그레이드 데이터(LobbyUpgradeSO) 연동 및 구매 로직
+    - [ ] 설정(볼륨 조절) UI 및 SoundManager 연동
 - [x] 폴리싱: 화면 흔들림(Camera Shake), 타격 파티클, 데미지 텍스트 팝업 (FeedbackManager 연동) 완료
 - [x] **[신규]** 저체력(30% 이하) 시 화면 빨간색 깜빡임(Danger Overlay) 연출 구현
 
@@ -50,9 +48,6 @@
 - [x] 성장 스킬 데이터(20종 SO) 생성 및 실제 아이콘/데이터 바인딩 시스템 구축 완료
 - [x] **[신규]** 스킬 아이콘 자동 바인딩 에디터 스크립트(`SkillDataGenerator.cs`) 고도화 완료
 - [x] 실제 인게임 데이터 바인딩 및 업그레이드 로직 연동 완료
-    - [x] SkillManager - UnitBase 간 이벤트 기반 실시간 스탯 동기화 시스템 구축
-    - [x] 로비 영구 업그레이드(LobbyUpgradeSO) 수치 인게임 반영 완료
-    - [x] 20종 스킬 분기(회피, 재생, 오라, 상태이상 등) 로직 100% 구현
 - [x] **[신규] GameManager 아키텍처 정교화 (씬 전환 간 참조 유실 방지)**
 - [x] **[버그수정]** [레벨업 시 스킬 카드 출력 안되는 이슈 수정](file:///c:/UnityGit/GitHub/Necromancer-s-Legion/Assets/Necromancer/01.Scripts/Core/SkillManager.cs)
 - [x] **[버그수정]** [UIManager NullReferenceException (RefreshSkillCards) 수정](file:///c:/UnityGit/GitHub/Necromancer-s-Legion/Assets/Necromancer/01.Scripts/UI/UIManager.cs)

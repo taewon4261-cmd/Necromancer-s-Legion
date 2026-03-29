@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3de13da3839d83e4cac256fe493d509c, type: 3}
+  m_Name: Upgrade_Magnet
+  m_EditorClassIdentifier: 
+  upgradeName: "\uC601\uD63C \uC790\uC11D \uAC15\uD654"
+  statType: 2
+  icon: {fileID: 0}
+  description: "\uC601\uD63C \uBCF4\uC11D\uC744 \uB04C\uC5B4\uB2F9\uAE30\uB294 \uBC94\uC704\uB97C
+    \uC601\uAD6C\uC801\uC73C\uB85C \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4. \uB354 \uD3B8\uD558\uAC8C
+    \uC131\uC7A5\uD558\uC138\uC694!"
+  requiredUpgrade: {fileID: 0}
+  requiredLevel: 3
+  currentLevel: 0
+  maxLevel: 10
+  baseCost: 100
+  costIncreaseFactor: 1.5
+  valuePerLevel: 0.5

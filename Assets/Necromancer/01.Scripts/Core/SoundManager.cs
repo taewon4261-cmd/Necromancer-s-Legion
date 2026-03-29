@@ -101,6 +101,26 @@ namespace Necromancer.Core
             sfxPool.Enqueue(source);
         }
 
+        /// <summary>
+        /// BGM 볼륨을 설정하고 즉시 반영합니다.
+        /// </summary>
+        public void SetBGMVolume(float volume)
+        {
+            bgmVolume = Mathf.Clamp01(volume);
+            if (bgmSource != null)
+            {
+                bgmSource.volume = bgmVolume * masterVolume;
+            }
+        }
+
+        /// <summary>
+        /// SFX 볼륨을 설정합니다.
+        /// </summary>
+        public void SetSFXVolume(float volume)
+        {
+            sfxVolume = Mathf.Clamp01(volume);
+        }
+
         public void PlayBGM(AudioClip clip, bool fade = true)
         {
             if (bgmSource.clip == clip) return;
