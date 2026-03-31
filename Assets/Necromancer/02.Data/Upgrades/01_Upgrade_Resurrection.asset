@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3de13da3839d83e4cac256fe493d509c, type: 3}
+  m_Name: 01_Upgrade_Resurrection
+  m_EditorClassIdentifier: 
+  upgradeName: "\uBD80\uD65C\uC758 \uBA54\uC544\uB9AC"
+  saveKey: Upgrade_Resurrection_Lv
+  statType: 9
+  icon: {fileID: 21300000, guid: 28fd0fbf228dc6945a6ba40de9aad2a9, type: 3}
+  description: "\uC801 \uCC98\uCE58 \uC2DC \uBBF8\uB2C8\uC5B8 \uBD80\uD65C \uD655\uB960
+    +2%"
+  requiredUpgrade: {fileID: 0}
+  requiredLevel: 0
+  currentLevel: 0
+  maxLevel: 15
+  baseCost: 1500
+  costIncreaseFactor: 1
+  valuePerLevel: 2

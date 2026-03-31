@@ -1,47 +1,52 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using DG.Tweening;
+using Necromancer.Systems;
 
 namespace Necromancer.UI
 {
-    /// <summary>
-    /// 개별 업그레이드 항목의 UI를 제어합니다.
-    /// </summary>
     public class UpgradeItemUI : MonoBehaviour
     {
         [Header("UI Elements")]
         public Image iconImage;
+        public Image iconFrame;
+        public Image backgroundImage; // [UI.md] Red Flash 연출용
         public TextMeshProUGUI nameText;
         public TextMeshProUGUI levelText;
         public TextMeshProUGUI descriptionText;
         public TextMeshProUGUI costText;
         public Button upgradeButton;
+        public Slider levelSlider;
 
         private LobbyUpgradeSO data;
         private UpgradeUI owner;
+        private Color originalBgColor;
 
         private void Awake()
         {
-            // 자동 바인딩 루틴 추가
-            if (iconImage == null) iconImage = transform.Find("Icon")?.GetComponent<Image>();
-            if (nameText == null) nameText = transform.Find("Text_Name")?.GetComponent<TextMeshProUGUI>();
-            if (levelText == null) levelText = transform.Find("Text_Level")?.GetComponent<TextMeshProUGUI>();
-            if (descriptionText == null) descriptionText = transform.Find("Text_Description")?.GetComponent<TextMeshProUGUI>();
-            if (costText == null) costText = transform.Find("Text_Cost")?.GetComponent<TextMeshProUGUI>();
+            if (iconFrame == null) iconFrame = transform.Find("Icon_Frame")?.GetComponent<Image>();
+            if (iconImage == null) iconImage = iconFrame?.transform.Find("Icon")?.GetComponent<Image>() ?? transform.Find("Icon")?.GetComponent<Image>();
+            if (backgroundImage == null) backgroundImage = GetComponent<Image>();
+            if (originalBgColor == default) originalBgColor = backgroundImage != null ? backgroundImage.color : Color.white;
+
+            Transform infoGroup = transform.Find("Info_Vertical_Group");
+            if (infoGroup != null)
+            {
+                if (nameText == null) nameText = infoGroup.Find("Text_Name")?.GetComponent<TextMeshProUGUI>();
+                if (descriptionText == null) descriptionText = infoGroup.Find("Text_Description")?.GetComponent<TextMeshProUGUI>();
+                if (levelText == null) levelText = infoGroup.Find("Text_Level")?.GetComponent<TextMeshProUGUI>();
+            }
+            
             if (upgradeButton == null) upgradeButton = transform.Find("Button_Upgrade")?.GetComponent<Button>();
+            if (costText == null) costText = upgradeButton?.transform.Find("Text_Cost")?.GetComponent<TextMeshProUGUI>();
+            if (levelSlider == null) levelSlider = GetComponentInChildren<Slider>();
         }
 
         public void Setup(LobbyUpgradeSO upgradeData, UpgradeUI uiOwner)
         {
             data = upgradeData;
             owner = uiOwner;
-            
-            // 디버깅: 컴포넌트 유효성 확인
-            if (iconImage == null || nameText == null || upgradeButton == null)
-            {
-                Debug.LogError($"UpgradeItemUI [{gameObject.name}]: Missing UI references! Icon:{iconImage!=null}, Name:{nameText!=null}, Button:{upgradeButton!=null}");
-            }
-
             UpdateVisuals();
 
             if (upgradeButton != null)
@@ -49,43 +54,45 @@ namespace Necromancer.UI
                 upgradeButton.onClick.RemoveAllListeners();
                 upgradeButton.onClick.AddListener(OnUpgradeClicked);
             }
-            
-            Debug.Log($"UpgradeItemUI [{gameObject.name}]: Setup complete. Data: {data.upgradeName}, Level: {data.currentLevel}");
         }
 
-        private void UpdateVisuals()
+        public void UpdateVisuals()
         {
             if (data == null) return;
-
             bool unlocked = data.IsUnlocked();
             
-            iconImage.sprite = data.icon;
-            iconImage.color = unlocked ? Color.white : Color.black; // 잠금 시 검은색 실루엣
-
-            nameText.text = unlocked ? data.upgradeName : "??? (잠금됨)";
-            levelText.text = unlocked ? $"Lv. {data.currentLevel} / {data.maxLevel}" : "";
+            if (iconImage != null) { iconImage.sprite = data.icon; iconImage.color = unlocked ? Color.white : Color.gray; }
+            if (nameText != null) nameText.text = unlocked ? data.upgradeName : "??? (잠금됨)";
+            if (levelText != null) levelText.text = unlocked ? $"Lv. {data.currentLevel} / {data.maxLevel}" : "";
             
+            if (levelSlider != null)
+            {
+                levelSlider.gameObject.SetActive(unlocked);
+                levelSlider.maxValue = data.maxLevel;
+                levelSlider.value = data.currentLevel;
+            }
+
             if (unlocked)
             {
-                descriptionText.text = data.description;
+                if (descriptionText != null) descriptionText.text = data.description;
                 int cost = data.GetUpgradeCost();
                 if (cost < 0 || data.currentLevel >= data.maxLevel)
                 {
-                    costText.text = "MAX";
-                    upgradeButton.interactable = false;
+                    if (costText != null) costText.text = "MAX";
+                    if (upgradeButton != null) { upgradeButton.interactable = false; var img = upgradeButton.GetComponent<Image>(); if (img != null) img.color = new Color(1f, 0.8f, 0f); }
                 }
                 else
                 {
-                    costText.text = $"{cost:N0}";
-                    int currentGold = PlayerPrefs.GetInt("TotalGold", 1000);
-                    upgradeButton.interactable = currentGold >= cost;
+                    if (costText != null) costText.text = $"{cost:N0} G";
+                    int currentGold = GameManager.Instance != null && GameManager.Instance.Resources != null ? GameManager.Instance.Resources.currentGold : 0;
+                    if (upgradeButton != null) upgradeButton.interactable = currentGold >= cost;
                 }
             }
             else
             {
-                descriptionText.text = $"{data.requiredUpgrade.upgradeName} Lv.{data.requiredLevel} 달성 시 해금";
-                costText.text = "LOCKED";
-                upgradeButton.interactable = false;
+                if (descriptionText != null) descriptionText.text = $"{data.requiredUpgrade?.upgradeName} Lv.{data.requiredLevel} 달성 시 해금";
+                if (costText != null) costText.text = "LOCKED";
+                if (upgradeButton != null) upgradeButton.interactable = false;
             }
         }
 
@@ -95,17 +102,20 @@ namespace Necromancer.UI
             if (owner.TryPurchase(cost))
             {
                 data.currentLevel++;
-                // 데이터 저장 (나중에 별도 SaveManager 사용 권장)
-                PlayerPrefs.SetInt($"Upgrade_{data.statType}_Lv", data.currentLevel);
+                PlayerPrefs.SetInt(data.saveKey, data.currentLevel);
                 PlayerPrefs.Save();
-                
+                transform.DOPunchScale(Vector3.one * 0.05f, 0.2f);
                 UpdateVisuals();
-                owner.RefreshUI(); // 다른 버튼들의 구매 가능 여부 업데이트를 위해 리프레시
+                owner.UpdateAllSlotVisuals();
             }
             else
             {
-                // TODO: 골드 부족 사운드나 팝업 연출
-                Debug.Log("골드가 부족합니다!");
+                // [UI.md] 구매 실패 피드백: Shake + Red Flash
+                transform.DOShakePosition(0.3f, new Vector3(15f, 0, 0), 20, 90, false, true);
+                if (backgroundImage != null)
+                {
+                    backgroundImage.DOColor(Color.red, 0.1f).SetLoops(2, LoopType.Yoyo).OnComplete(() => backgroundImage.color = originalBgColor);
+                }
             }
         }
     }

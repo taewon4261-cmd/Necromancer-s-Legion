@@ -27,6 +27,7 @@ namespace Necromancer
     {
         [Header("Upgrade Info")]
         public string upgradeName;
+        public string saveKey; // 고정 저장 키값 (에넘 대신 사용, 직렬화됨)
         public UpgradeStatType statType;
         public Sprite icon;
         [TextArea] public string description;
@@ -73,6 +74,18 @@ namespace Necromancer
         public float GetTotalStatValue()
         {
             return currentLevel * valuePerLevel;
+        }
+
+        /// <summary>
+        /// 저장된 데이터를 불러와 현재 레벨을 갱신합니다.
+        /// </summary>
+        public void LoadLevel()
+        {
+            if (string.IsNullOrEmpty(saveKey))
+            {
+                saveKey = $"Upgrade_{statType}_Lv"; // 기본값 제공
+            }
+            currentLevel = PlayerPrefs.GetInt(saveKey, 0);
         }
     }
 }
