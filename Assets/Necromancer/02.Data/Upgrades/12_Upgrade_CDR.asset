@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   upgradeName: "\uC601\uD63C\uC758 \uC21C\uD658"
   saveKey: Upgrade_CDR_Lv
-  statType: 12
+  statType: 11
   icon: {fileID: 21300000, guid: aff2497a5968c784f89bd1f0ebd55218, type: 3}
+  iconFrame: {fileID: 0}
   description: "\uC7AC\uC0AC\uC6A9 \uB300\uAE30\uC2DC\uAC04 -5% \uAC10\uC18C"
   requiredUpgrade: {fileID: 0}
   requiredLevel: 0

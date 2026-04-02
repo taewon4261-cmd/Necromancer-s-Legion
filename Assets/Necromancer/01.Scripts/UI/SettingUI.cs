@@ -10,18 +10,32 @@ namespace Necromancer.UI
     public class SettingUI : MonoBehaviour
     {
         [Header("Volume Sliders")]
+        public Slider masterSlider;
         public Slider bgmSlider;
         public Slider sfxSlider;
 
+        [Header("Buttons")]
+        public Button loginBtn;
+        public Button privacyBtn;
+        public Button backBtn;
+        public Button quitBtn;
+
+        [Header("Texts")]
+        public TMPro.TextMeshProUGUI loginTxt;
+
+        private bool isLoggedIn = false;
+
         private void Awake()
         {
-            // 자동 바인딩
-            if (bgmSlider == null) bgmSlider = transform.Find("Slider_BGM")?.GetComponent<Slider>();
-            if (sfxSlider == null) sfxSlider = transform.Find("Slider_SFX")?.GetComponent<Slider>();
-            
-            // 만약 못 찾았다면 이름으로 다시 한 번 시도 (계층 구조 유연성)
-            if (bgmSlider == null) bgmSlider = GetComponentInChildren<Slider>(true);
-            if (sfxSlider == null) sfxSlider = GetComponentsInChildren<Slider>(true).Length > 1 ? GetComponentsInChildren<Slider>(true)[1] : sfxSlider;
+            if (masterSlider == null) Debug.LogWarning("[SettingUI] masterSlider is NOT assigned!");
+            if (bgmSlider == null) Debug.LogWarning("[SettingUI] bgmSlider is NOT assigned!");
+            if (sfxSlider == null) Debug.LogWarning("[SettingUI] sfxSlider is NOT assigned!");
+
+            // 버튼 리스너 연결 (인스펙터 할당 방식 권장하나, 코드에서도 안전하게 연결)
+            if (loginBtn != null) loginBtn.onClick.AddListener(ToggleLogin);
+            if (privacyBtn != null) privacyBtn.onClick.AddListener(OpenPrivacyPolicy);
+            if (backBtn != null) backBtn.onClick.AddListener(CloseAndSave);
+            if (quitBtn != null) quitBtn.onClick.AddListener(QuitGame);
         }
 
         private void Start()
@@ -29,53 +43,87 @@ namespace Necromancer.UI
             LoadSettings();
         }
 
-        private void OnEnable()
-        {
-            // LoadSettings(); // Moved to Start()
-        }
-
         private void LoadSettings()
         {
+            if (SaveDataManager.Instance == null || SaveDataManager.Instance.Data == null) return;
             if (SoundManager.Instance == null) return;
 
-            // 저장된 값 로드 (0~1 사이값)
-            float bgmVal = PlayerPrefs.GetFloat("Vol_BGM", SoundManager.Instance.bgmVolume);
-            float sfxVal = PlayerPrefs.GetFloat("Vol_SFX", SoundManager.Instance.sfxVolume);
+            var data = SaveDataManager.Instance.Data;
 
-            bgmSlider.value = bgmVal;
-            sfxSlider.value = sfxVal;
+            if (masterSlider != null) masterSlider.value = data.masterVolume;
+            if (bgmSlider != null) bgmSlider.value = data.bgmVolume;
+            if (sfxSlider != null) sfxSlider.value = data.sfxVolume;
 
-            bgmSlider.onValueChanged.RemoveAllListeners();
-            sfxSlider.onValueChanged.RemoveAllListeners();
+            masterSlider?.onValueChanged.RemoveAllListeners();
+            bgmSlider?.onValueChanged.RemoveAllListeners();
+            sfxSlider?.onValueChanged.RemoveAllListeners();
 
-            bgmSlider.onValueChanged.AddListener(OnBGMChanged);
-            sfxSlider.onValueChanged.AddListener(OnSFXChanged);
+            masterSlider?.onValueChanged.AddListener(OnMasterChanged);
+            bgmSlider?.onValueChanged.AddListener(OnBGMChanged);
+            sfxSlider?.onValueChanged.AddListener(OnSFXChanged);
+        }
+
+        private void OnMasterChanged(float value)
+        {
+            if (SaveDataManager.Instance != null && SoundManager.Instance != null)
+            {
+                SaveDataManager.Instance.Data.masterVolume = value;
+                SoundManager.Instance.SetMasterVolume(value);
+            }
         }
 
         private void OnBGMChanged(float value)
         {
-            if (SoundManager.Instance != null)
+            if (SaveDataManager.Instance != null && SoundManager.Instance != null)
             {
+                SaveDataManager.Instance.Data.bgmVolume = value;
                 SoundManager.Instance.SetBGMVolume(value);
-                PlayerPrefs.SetFloat("Vol_BGM", value);
             }
         }
 
         private void OnSFXChanged(float value)
         {
-            if (SoundManager.Instance != null)
+            if (SaveDataManager.Instance != null && SoundManager.Instance != null)
             {
+                SaveDataManager.Instance.Data.sfxVolume = value;
                 SoundManager.Instance.SetSFXVolume(value);
-                PlayerPrefs.SetFloat("Vol_SFX", value);
             }
         }
 
-        /// <summary>
-        /// 설정 패널을 닫을 때 저장합니다.
-        /// </summary>
+        public void ToggleLogin()
+        {
+            isLoggedIn = !isLoggedIn;
+            if (loginTxt != null)
+            {
+                loginTxt.text = isLoggedIn ? "로그아웃" : "로그인";
+            }
+            Debug.Log($"[SettingUI] Login Status: {isLoggedIn}");
+        }
+
+        public void OpenPrivacyPolicy()
+        {
+            // 사용자가 링크를 넣을 수 있도록 가이드 제공
+            string url = "https://your-privacy-policy-link.com"; 
+            Application.OpenURL(url);
+            Debug.Log($"[SettingUI] Open URL: {url}");
+        }
+
+        public void QuitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
         public void CloseAndSave()
         {
-            PlayerPrefs.Save();
+            if (SaveDataManager.Instance != null)
+            {
+                SaveDataManager.Instance.Save();
+            }
+            gameObject.SetActive(false); // 패널 닫기
         }
     }
 }

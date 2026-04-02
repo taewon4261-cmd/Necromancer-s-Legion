@@ -16,6 +16,7 @@ MonoBehaviour:
   saveKey: Upgrade_StartMinionCount_Lv
   statType: 3
   icon: {fileID: 21300000, guid: c760b1cce581e94449f1f9b6483555b8, type: 3}
+  iconFrame: {fileID: 0}
   description: "\uC2DC\uC791 \uC2DC \uAE30\uBCF8 \uBBF8\uB2C8\uC5B8 \uC218 +1\uB9C8\uB9AC
     \uC99D\uAC00"
   requiredUpgrade: {fileID: 0}

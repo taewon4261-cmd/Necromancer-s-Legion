@@ -31,10 +31,21 @@ namespace Necromancer.Core
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
                 InitPool();
+                LoadVolumesFromData();
             }
             else
             {
                 Destroy(gameObject);
+            }
+        }
+
+        private void LoadVolumesFromData()
+        {
+            if (SaveDataManager.Instance != null && SaveDataManager.Instance.Data != null)
+            {
+                masterVolume = SaveDataManager.Instance.Data.masterVolume;
+                bgmVolume = SaveDataManager.Instance.Data.bgmVolume;
+                sfxVolume = SaveDataManager.Instance.Data.sfxVolume;
             }
         }
 
@@ -119,6 +130,20 @@ namespace Necromancer.Core
         public void SetSFXVolume(float volume)
         {
             sfxVolume = Mathf.Clamp01(volume);
+        }
+
+        /// <summary>
+        /// 마스터 볼륨을 설정하고 모든 오디오 소스에 반영합니다.
+        /// </summary>
+        public void SetMasterVolume(float volume)
+        {
+            masterVolume = Mathf.Clamp01(volume);
+            if (bgmSource != null)
+            {
+                bgmSource.volume = bgmVolume * masterVolume;
+            }
+            // SFX는 재생 시점에 masterVolume을 곱하므로 별도의 루프가 필요하지 않으나, 
+            // 현재 재생 중인 SFX가 있다면 업데이트 로직을 추가할 수 있습니다.
         }
 
         public void PlayBGM(AudioClip clip, bool fade = true)

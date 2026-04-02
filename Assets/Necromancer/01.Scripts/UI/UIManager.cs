@@ -5,7 +5,7 @@ using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
 using Necromancer.Core;
-using UnityEngine.SceneManagement; // 씬 관리를 위해 추가
+using UnityEngine.SceneManagement;
 
 namespace Necromancer.UI
 {
@@ -26,7 +26,7 @@ namespace Necromancer.UI
         public Image[] skillCardIcons = new Image[3];
         public TextMeshProUGUI[] skillCardNames = new TextMeshProUGUI[3];
         public TextMeshProUGUI[] skillCardDescriptions = new TextMeshProUGUI[3];
-        
+
         [Header("Buttons")]
         public Button speedButton;
         public Button backToTitleButton;
@@ -46,23 +46,46 @@ namespace Necromancer.UI
 
         public void Init()
         {
+            // [QA AUTO-FIX] Scene Guard - 타이틀 씬에서 불필요한 인게임 UI 생성 방지
+            // [STABILITY] 플레이어가 있거나 특정 씬이면 인게임 UI 초기화 허용
+            bool isGameScene = SceneManager.GetActiveScene().name == "GameScene" || (GameObject.FindObjectOfType<PlayerController>() != null);
+            if (!isGameScene) return;
+
             DOTween.KillAll();
 
             if (inGameUIPrefab != null && inGameUIInstance == null)
             {
                 inGameUIInstance = Instantiate(inGameUIPrefab, transform);
                 inGameUIInstance.name = "[InGameUI_Root]";
+
+                // [STABILITY] 이름 기반 재귀 탐색
+                var components = inGameUIInstance.GetComponentsInChildren<Transform>(true);
+                foreach (var child in components)
+                {
+                    if (child.name == "Exp_Bar_Fill" || child.name == "Fill") expFillBar = child.GetComponent<Image>();
+                    if (child.name == "Text_Timer") textTimer = child.GetComponent<TextMeshProUGUI>();
+                    if (child.name == "Text_Wave") textWave = child.GetComponent<TextMeshProUGUI>();
+                    if (child.name == "Speed_Btn") speedButton = child.GetComponent<Button>();
+                    if (child.name == "Back_Btn") backToTitleButton = child.GetComponent<Button>();
+                    if (child.name == "Danger_Overlay") dangerOverlay = child.GetComponent<CanvasGroup>();
+                    if (child.name == "LevelUp_Panel") levelUpPanel = child.gameObject;
+                    if (child.name == "Result_Panel") resultPanel = child.gameObject;
+                }
+
+                // 스피드 텍스트는 버튼의 자식에서 찾음 (이름이 다를 수 있음)
+                if (speedButton != null && textSpeedToggle == null) 
+                    textSpeedToggle = speedButton.GetComponentInChildren<TextMeshProUGUI>();
+
+                if (textTimer == null) Debug.LogError("<color=red>[UIManager]</color> 'Text_Timer' NOT FOUND in Prefab!");
+                if (textWave == null) Debug.LogError("<color=red>[UIManager]</color> 'Text_Wave' NOT FOUND in Prefab!");
                 
-                expFillBar = inGameUIInstance.transform.Find("HUD/Exp_Bar/Fill")?.GetComponent<Image>();
-                textTimer = inGameUIInstance.transform.Find("HUD/Text_Timer")?.GetComponent<TextMeshProUGUI>();
-                textWave = inGameUIInstance.transform.Find("HUD/Text_Wave")?.GetComponent<TextMeshProUGUI>();
-                levelUpPanel = inGameUIInstance.transform.Find("Panels/LevelUp_Panel")?.gameObject;
-                resultPanel = inGameUIInstance.transform.Find("Panels/Result_Panel")?.gameObject;
-                dangerOverlay = inGameUIInstance.transform.Find("Effects/Danger_Overlay")?.GetComponent<CanvasGroup>();
-                speedButton = inGameUIInstance.transform.Find("HUD/Buttons/Speed_Btn")?.GetComponent<Button>();
-                backToTitleButton = inGameUIInstance.transform.Find("HUD/Buttons/Back_Btn")?.GetComponent<Button>();
+                // [UI SYNC] 초기 텍스트 설정
+                if (textSpeedToggle != null && GameManager.Instance != null) 
+                    textSpeedToggle.SetText("x" + GameManager.Instance.currentGameSpeed.ToString("F1"));
+                if (textTimer != null) textTimer.SetText("00:00");
+                if (textWave != null) textWave.SetText("WAVE 1");
                 
-                if (speedButton != null) textSpeedToggle = speedButton.GetComponentInChildren<TextMeshProUGUI>();
+                Debug.Log($"<color=green>[UIManager]</color> In-Game UI Root initialized. Timer: {textTimer != null}, Wave: {textWave != null}");
             }
 
             if (speedButton != null)
@@ -79,6 +102,23 @@ namespace Necromancer.UI
 
             if (levelUpPanel != null) levelUpPanel.SetActive(false);
             if (resultPanel != null) resultPanel.SetActive(false);
+        }
+
+        // [STABILITY] 타이틀 씬 이동 시 인게임 UI 인스턴스 제거
+        public void Clear()
+        {
+            if (inGameUIInstance != null)
+            {
+                Destroy(inGameUIInstance);
+                inGameUIInstance = null;
+                expFillBar = null;
+                textTimer = null;
+                textWave = null;
+                levelUpPanel = null;
+                resultPanel = null;
+                dangerOverlay = null;
+                Debug.Log("<color=orange>[UIManager]</color> In-Game UI Instance Cleared.");
+            }
         }
 
         private void OnEnable()
@@ -110,7 +150,7 @@ namespace Necromancer.UI
         {
             if (dangerOverlay == null || GameManager.Instance == null || GameManager.Instance.playerTransform == null) return;
             PlayerController player = GameManager.Instance.playerTransform.GetComponent<PlayerController>();
-            if (player == null || player.IsDead) // isDead 대신 IsDead 프로퍼티 사용
+            if (player == null || player.IsDead)
             {
                 dangerOverlay.alpha = 0f;
                 return;
@@ -189,7 +229,18 @@ namespace Necromancer.UI
         public void OnClick_BackToTitle()
         {
             Time.timeScale = 1f;
+            DOTween.KillAll();
             SceneManager.LoadScene("TitleScene");
+        }
+
+        private GameObject FindInactiveObjectByName(Transform parent, string name)
+        {
+            Transform[] allChildren = parent.GetComponentsInChildren<Transform>(true);
+            foreach (Transform child in allChildren)
+            {
+                if (child.name == name) return child.gameObject;
+            }
+            return null;
         }
     }
 }

@@ -1,35 +1,36 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace Necromancer
 {
     public enum UpgradeStatType
     {
-        Health,             // 시작 체력
-        AttackDamage,       // 기본 공격력 (본체/미니언)
+        Health,             // 체력 강화
+        AttackDamage,       // 공격력 증가 (방어무시/위력)
         MagnetRange,        // 자석 범위
-        StartMinionCount,   // 시작 시 기본 미니언 수
-        MoveSpeed,          // 이동 속도
-        GoldGain,           // 골드 획득률
-        ExpGain,            // 경험치 획득률
+        StartMinionCount,   // 시작 해골 수 증가
+        MoveSpeed,          // 이동속도
+        GoldGain,           // 골드 획득
+        ExpGain,            // 경험치 획득
         RerollCount,        // 리롤 횟수
-        AuraRange,          // 부활 오라 범위
-        Resurrection,       // 부활 횟수
-        MinionDamage,       // 미니언 전용 공격력
-        MinionSpeed,        // 미니언 전용 이속
-        CooldownReduction   // 재사용 대기시간 감소
+        AuraRange,          // 오라 범위
+        MinionDamage,       // 미니언 공격력
+        MinionSpeed,        // 미니언 속도
+        CooldownReduction,   // 재사용 대기시간 감소
+        Resurrection
     }
 
     /// <summary>
-    /// 로비(타이틀 상점)에서 골드를 소모하여 영구적으로 올릴 수 있는 스탯 강화 데이터입니다.
+    /// 로비(영구 업그레이드)에서 골드를 소비하여 영구적으로 스탯을 강화하는 데이터 에셋입니다.
     /// </summary>
     [CreateAssetMenu(fileName = "Upgrade_", menuName = "Necromancer/Lobby Upgrade Data")]
     public class LobbyUpgradeSO : ScriptableObject
     {
         [Header("Upgrade Info")]
         public string upgradeName;
-        public string saveKey; // 고정 저장 키값 (에넘 대신 사용, 직렬화됨)
+        public string saveKey; // 데이터 저장 키 (자석 업그레이드, 체력 등)
         public UpgradeStatType statType;
         public Sprite icon;
+        public Sprite iconFrame; // [DESIGN] 업그레이드 전용 아이콘 프레임 (인게임 스킬과 차별화)
         [TextArea] public string description;
 
         [Header("Unlock Requirements")]
@@ -39,19 +40,19 @@ namespace Necromancer
         [Header("Level & Cost")]
         public int currentLevel = 0;
         public int maxLevel = 10;
-        
-        [Tooltip("고정 비용 (레벨업 시 기본 소모 골드)")]
+
+        [Tooltip("기초 비용 (업그레이드 전 초기 비용)")]
         public int baseCost = 100;
-        
-        [Tooltip("레벨당 비용 증가 계수 (기존 비용 + (level * costIncreaseRate))")]
+
+        [Tooltip("업그레이드당 비용 증가 계수 (기초 비용 * (costIncreaseFactor ^ currentLevel))")]
         public float costIncreaseFactor = 1.5f;
 
         [Header("Stat Values")]
-        [Tooltip("기본 증가 수치 (1레벨당 이만큼 증가)")]
+        [Tooltip("레벨당 스탯 증가치 (1레벨당 오르는 값)")]
         public float valuePerLevel = 1.0f;
 
         /// <summary>
-        /// 해당 업그레이드가 현재 해금 가능한 상태인지 확인합니다.
+        /// 현재 잠금 해제 조건이 만족되었는지 확인합니다.
         /// </summary>
         public bool IsUnlocked()
         {
@@ -60,7 +61,7 @@ namespace Necromancer
         }
 
         /// <summary>
-        /// 현재 레벨에서 다음 레벨로 올리기 위한 비용을 계산합니다.
+        /// 현재 레벨에서 다음 레벨로 올리기 위해 필요한 비용을 계산합니다.
         /// </summary>
         public int GetUpgradeCost()
         {
@@ -69,7 +70,7 @@ namespace Necromancer
         }
 
         /// <summary>
-        /// 실제 인게임에 적용될 총 누적 강화 수치를 반환합니다.
+        /// 현재 레벨까지 적용된 총 스탯 증가량을 반환합니다.
         /// </summary>
         public float GetTotalStatValue()
         {
@@ -77,13 +78,13 @@ namespace Necromancer
         }
 
         /// <summary>
-        /// 저장된 데이터를 불러와 현재 레벨을 갱신합니다.
+        /// 저장된 데이터를 기반으로 업그레이드 레벨을 로드합니다.
         /// </summary>
         public void LoadLevel()
         {
             if (string.IsNullOrEmpty(saveKey))
             {
-                saveKey = $"Upgrade_{statType}_Lv"; // 기본값 제공
+                saveKey = $"Upgrade_{statType}_Lv"; // 기본값 자동 생성
             }
             currentLevel = PlayerPrefs.GetInt(saveKey, 0);
         }

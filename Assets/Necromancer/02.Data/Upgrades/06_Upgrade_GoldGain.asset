@@ -16,6 +16,7 @@ MonoBehaviour:
   saveKey: Upgrade_GoldGain_Lv
   statType: 5
   icon: {fileID: 21300000, guid: f981e7cd9deb5ad4fa04ac7493f49400, type: 3}
+  iconFrame: {fileID: 0}
   description: "\uAC8C\uC784 \uC885\uB8CC \uC2DC \uACE8\uB4DC \uD68D\uB4DD +10%"
   requiredUpgrade: {fileID: 0}
   requiredLevel: 0

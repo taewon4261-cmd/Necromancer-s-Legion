@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
-using UnityEngine.SceneManagement; // 씬 관리를 위해 추가
+using UnityEngine.SceneManagement;
 
 namespace Necromancer
 {
@@ -11,7 +11,7 @@ namespace Necromancer
         [Header("Wave Configuration (SO Database)")]
         public WaveDatabase waveDatabase;
         public float spawnRadius = 15f;
-        
+
         private int currentWaveIndex = 0;
         private bool isSpawning = false;
         private float gameTime = 0f;
@@ -27,8 +27,11 @@ namespace Necromancer
 
         public void Init()
         {
-            // [STABILITY] 씬 가드: GameScene이 아닐 경우 초기화 방지
-            if (SceneManager.GetActiveScene().name != "GameScene") return;
+            // [STABILITY] 씬 이름 대신 '플레이어 검색' 또는 씬 이름으로 체크 (더 견고함)
+            bool isGameScene = SceneManager.GetActiveScene().name == "GameScene" || (GameObject.FindObjectOfType<PlayerController>() != null);
+            if (!isGameScene) return;
+
+            Debug.Log($"<color=orange>[WaveManager]</color> Init triggered. Scene: {SceneManager.GetActiveScene().name}");
 
             if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
             {
@@ -40,31 +43,30 @@ namespace Necromancer
 
                 gameTime = 0f;
                 currentWaveIndex = 0;
-                activeEnemies.Clear(); 
+                activeEnemies.Clear();
                 isSpawning = true;
-                
+
                 spawnCts?.Cancel();
                 spawnCts?.Dispose();
                 spawnCts = new CancellationTokenSource();
-                
+
                 SpawnLoopAsync(spawnCts.Token).Forget();
-                Debug.Log($"✅ [WaveManager]: 글로벌 웨이브 시스템 가동 시작!");
+                Debug.Log($"<color=green>[WaveManager]</color> Initialized for {SceneManager.GetActiveScene().name}.");
             }
             else
             {
-                Debug.LogError("🔥 [WaveManager] 플레이어 Transform을 찾을 수 없어 스폰을 중단합니다!");
+                // 게임 씬인데 플레이어 트랜스폼이 없는 경우에만 경고
+                Debug.LogWarning("[WaveManager] Initialization failed: Player Transform is missing in GameScene.");
             }
         }
 
         private void Update()
         {
-            // [CRITICAL] 씬 가드: 타이틀 씬 등에서 불필요한 연산 즉시 중단
-            if (SceneManager.GetActiveScene().name != "GameScene") return;
             if (!isSpawning) return;
 
             gameTime += Time.deltaTime;
             CheckWaveProgress();
-            
+
             if (waveDatabase != null && waveDatabase.waveList.Count > 0)
             {
                 GameManager.BroadcastTime(gameTime);
@@ -80,7 +82,7 @@ namespace Necromancer
                 if (gameTime >= waveDatabase.waveList[currentWaveIndex + 1].startTime)
                 {
                     currentWaveIndex++;
-                    Debug.Log($"🌊 [WaveManager] 새로운 웨이브 교체: {waveDatabase.waveList[currentWaveIndex].waveName}");
+                    Debug.Log($"[WaveManager] Wave advanced: {waveDatabase.waveList[currentWaveIndex].waveName}");
                 }
             }
             else
@@ -97,8 +99,6 @@ namespace Necromancer
         {
             while (isSpawning && !token.IsCancellationRequested)
             {
-                // [CRITICAL] 루프 내 씬 가드 재검사
-                if (SceneManager.GetActiveScene().name != "GameScene") break;
 
                 if (waveDatabase != null && waveDatabase.waveList != null && waveDatabase.waveList.Count > 0 && currentWaveIndex < waveDatabase.waveList.Count)
                 {
@@ -107,10 +107,15 @@ namespace Necromancer
                     {
                         SpawnEnemy(currentWave);
                     }
+                    else
+                    {
+                        Debug.LogWarning("[WaveManager] PoolManager missing or GameManager null.");
+                    }
                     await UniTask.Delay(System.TimeSpan.FromSeconds(currentWave.spawnDelay), cancellationToken: token);
                 }
                 else
                 {
+                    Debug.LogWarning($"[WaveManager] WaveData invalid. DB: {waveDatabase != null}, Count: {waveDatabase?.waveList?.Count}");
                     await UniTask.Delay(System.TimeSpan.FromSeconds(1f), cancellationToken: token);
                 }
             }
@@ -128,8 +133,13 @@ namespace Necromancer
 
             if (enemyObj != null)
             {
+                Debug.Log($"[WaveManager] Spawned enemy from tag: {selectedEnemyData.poolTag}");
                 EnemyAI ai = enemyObj.GetComponent<EnemyAI>();
                 if (ai != null) ai.Setup(selectedEnemyData);
+            }
+            else
+            {
+                Debug.LogError($"[WaveManager] Failed to spawn enemy from tag: {selectedEnemyData.poolTag}. Is it in the Pooled List?");
             }
         }
 

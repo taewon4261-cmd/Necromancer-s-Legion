@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using DG.Tweening;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -7,7 +7,7 @@ using System.Collections.Generic;
 namespace Necromancer.UI
 {
     /// <summary>
-    /// 타이틀 화면의 비주얼 연출과 각 기능 패널(스테이지, 업그레이드, 세팅) 전환을 담당합니다.
+    /// 타이틀 씬의 메인 UI 및 서브 패널(스테이지 선택, 업그레이드, 설정) 애니메이션과 전환을 관리합니다.
     /// </summary>
     public class TitleUIController : MonoBehaviour
     {
@@ -15,7 +15,7 @@ namespace Necromancer.UI
         public RectTransform logoTransform;
         public CanvasGroup mainButtonPanel;
         public RectTransform backgroundImage;
-        
+
         [Header("Sub Panels")]
         public CanvasGroup stageSelectPanel;
         public CanvasGroup upgradePanel;
@@ -28,21 +28,21 @@ namespace Necromancer.UI
         public float staggerDelay = 0.12f;
 
         private List<CanvasGroup> allPanels = new List<CanvasGroup>();
-        private bool isTransitioning = false; // [STABILITY] 전환 중 중복 클릭 방지 플래그
+        private bool isTransitioning = false; 
 
         private void Awake()
         {
-            if (Necromancer.GameManager.Instance != null) Necromancer.GameManager.Instance.titleUI = this;
-
-            // 패널 자동 추적 및 리스트업
-            if (stageSelectPanel == null) stageSelectPanel = GameObject.Find("Panel_StageSelect ")?.GetComponent<CanvasGroup>();
-            if (upgradePanel == null) upgradePanel = GameObject.Find("Panel_Upgrade ")?.GetComponent<CanvasGroup>();
-            if (settingPanel == null) settingPanel = GameObject.Find("Panel_Setting ")?.GetComponent<CanvasGroup>();
+            if (Necromancer.GameManager.Instance != null) Necromancer.GameManager.Instance.titleUI = this;      
 
             if (stageSelectPanel != null) allPanels.Add(stageSelectPanel);
+            else Debug.LogWarning("[TitleUI] stageSelectPanel is NOT assigned in the Inspector!");
+
             if (upgradePanel != null) allPanels.Add(upgradePanel);
+            else Debug.LogWarning("[TitleUI] upgradePanel is NOT assigned in the Inspector!");
+
             if (settingPanel != null) allPanels.Add(settingPanel);
-            
+            else Debug.LogWarning("[TitleUI] settingPanel is NOT assigned in the Inspector!");
+
             InitPanels();
         }
 
@@ -67,7 +67,7 @@ namespace Necromancer.UI
         {
             if (logoTransform != null)
             {
-                logoTransform.DOAnchorPosY(logoTransform.anchoredPosition.y + floatingAmount, floatingDuration)
+                logoTransform.DOAnchorPosY(logoTransform.anchoredPosition.y + floatingAmount, floatingDuration) 
                     .SetEase(Ease.InOutSine)
                     .SetLoops(-1, LoopType.Yoyo);
             }
@@ -76,7 +76,7 @@ namespace Necromancer.UI
             {
                 mainButtonPanel.alpha = 0;
                 mainButtonPanel.DOFade(1, fadeDuration).SetDelay(0.3f);
-                
+
                 for (int i = 0; i < mainButtonPanel.transform.childCount; i++)
                 {
                     RectTransform childRT = mainButtonPanel.transform.GetChild(i) as RectTransform;
@@ -89,23 +89,32 @@ namespace Necromancer.UI
 
         private void SetupButtonEvents()
         {
-            if (mainButtonPanel == null) return;
-            Button[] buttons = mainButtonPanel.GetComponentsInChildren<Button>();
-            
-            foreach (var btn in buttons)
+            if (mainButtonPanel != null)
             {
-                RectTransform rt = btn.GetComponent<RectTransform>();
-                string btnName = btn.name.ToLower();
-
-                EventTrigger trigger = btn.gameObject.GetComponent<EventTrigger>() ?? btn.gameObject.AddComponent<EventTrigger>();
-                AddEvent(trigger, EventTriggerType.PointerEnter, (d) => { if(!isTransitioning) rt.DOScale(1.05f, 0.2f); });
-                AddEvent(trigger, EventTriggerType.PointerExit, (d) => { rt.DOScale(1f, 0.2f); });
-
-                if (btnName.Contains("start")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Start Button Clicked"); ShowPanel(stageSelectPanel); });
-                else if (btnName.Contains("upgrade")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Upgrade Button Clicked"); ShowPanel(upgradePanel); });
-                else if (btnName.Contains("setting")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Setting Button Clicked"); ShowPanel(settingPanel); });
-                else if (btnName.Contains("back")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Back Button Clicked"); BackToMainMenu(); });
+                Button[] mainButtons = mainButtonPanel.GetComponentsInChildren<Button>();
+                foreach (var btn in mainButtons) BindButtonAction(btn);
             }
+
+            foreach (var panel in allPanels)
+            {
+                Button[] subButtons = panel.GetComponentsInChildren<Button>(true);
+                foreach (var btn in subButtons) BindButtonAction(btn);
+            }
+        }
+
+        private void BindButtonAction(Button btn)
+        {
+            RectTransform rt = btn.GetComponent<RectTransform>();
+            string btnName = btn.name.ToLower();
+
+            EventTrigger trigger = btn.gameObject.GetComponent<EventTrigger>() ?? btn.gameObject.AddComponent<EventTrigger>();
+            AddEvent(trigger, EventTriggerType.PointerEnter, (d) => { if (!isTransitioning) rt.DOScale(1.05f, 0.2f); });
+            AddEvent(trigger, EventTriggerType.PointerExit, (d) => { if (rt != null) rt.DOScale(1f, 0.2f); });  
+
+            if (btnName.Contains("start")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Start Button Clicked"); ShowPanel(stageSelectPanel); });
+            else if (btnName.Contains("upgrade")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Upgrade Button Clicked"); ShowPanel(upgradePanel); });
+            else if (btnName.Contains("setting")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Setting Button Clicked"); ShowPanel(settingPanel); });
+            else if (btnName.Contains("back")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Back Button Clicked"); BackToMainMenu(); });
         }
 
         private void AddEvent(EventTrigger trigger, EventTriggerType type, UnityEngine.Events.UnityAction<BaseEventData> action)
@@ -119,14 +128,14 @@ namespace Necromancer.UI
         {
             if (targetPanel == null || isTransitioning) return;
             isTransitioning = true;
-            
+
             if (mainButtonPanel != null)
             {
                 mainButtonPanel.interactable = false;
                 mainButtonPanel.blocksRaycasts = false;
-                mainButtonPanel.DOFade(0, 0.2f).OnComplete(() => mainButtonPanel.gameObject.SetActive(false));
+                mainButtonPanel.DOFade(0, 0.2f).OnComplete(() => mainButtonPanel.gameObject.SetActive(false));  
             }
-            
+
             targetPanel.gameObject.SetActive(true);
             targetPanel.alpha = 0f;
             targetPanel.DOFade(1f, 0.3f).OnComplete(() => {
@@ -135,7 +144,6 @@ namespace Necromancer.UI
                 isTransitioning = false;
             });
 
-            // 업그레이드 패널 레이아웃 강제 정렬 (UI.md 지침)
             var upgradeUI = targetPanel.GetComponent<UpgradeUI>();
             if (upgradeUI != null)
             {
@@ -143,12 +151,12 @@ namespace Necromancer.UI
                 if (upgradeUI.contentRoot != null)
                 {
                     Canvas.ForceUpdateCanvases();
-                    LayoutRebuilder.ForceRebuildLayoutImmediate(upgradeUI.contentRoot as RectTransform);
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(upgradeUI.contentRoot as RectTransform);        
                 }
             }
 
             var stageUI = targetPanel.GetComponent<StageSelectUI>();
-            if (stageUI != null && stageUI.selectedStage != null) stageUI.SelectStage(stageUI.selectedStage);
+            if (stageUI != null && stageUI.selectedStage != null) stageUI.SelectStage(stageUI.selectedStage);   
         }
 
         public void BackToMainMenu()
@@ -169,12 +177,18 @@ namespace Necromancer.UI
             if (mainButtonPanel != null)
             {
                 mainButtonPanel.gameObject.SetActive(true);
-                // [CRITICAL] 상호작용 속성 복구
-                mainButtonPanel.interactable = true;
-                mainButtonPanel.blocksRaycasts = true;
-                mainButtonPanel.DOFade(1, 0.3f).OnComplete(() => isTransitioning = false);
+                mainButtonPanel.alpha = 0f; // [QA] 페이드 시작 전 알파 초기화
+                mainButtonPanel.interactable = true; // [QA] 버튼 상호작용 복구
+                mainButtonPanel.blocksRaycasts = true; 
+                mainButtonPanel.DOFade(1, 0.3f).OnComplete(() => {
+                    isTransitioning = false;
+                    Debug.Log("<color=green>[TitleUI]</color> Main Menu Panel restored and interactable.");
+                });
             }
-            else isTransitioning = false;
+            else
+            {
+                isTransitioning = false;
+            }
         }
     }
 }

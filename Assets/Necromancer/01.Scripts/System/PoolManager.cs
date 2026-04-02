@@ -27,6 +27,7 @@ public class PoolManager : MonoBehaviour
     private void Awake()
     {
         if (GameManager.Instance != null) GameManager.Instance.poolManager = this;
+        if (poolDictionary == null) poolDictionary = new Dictionary<string, Queue<GameObject>>();
     }
 
     public void Init()
@@ -98,9 +99,10 @@ public class PoolManager : MonoBehaviour
     /// </summary>
     public void Release(string tag, GameObject obj)
     {
-        if (!poolDictionary.ContainsKey(tag))
+        if (poolDictionary == null || !poolDictionary.ContainsKey(tag))
         {
-            Debug.LogWarning($"[PoolManager] Invalid pool tag: {tag}");
+            Debug.LogWarning($"[PoolManager] Invalid pool tag or dictionary not initialized: {tag}");
+            if (obj != null) obj.SetActive(false);
             return;
         }
 
