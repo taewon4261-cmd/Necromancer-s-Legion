@@ -32,18 +32,27 @@ namespace Necromancer.UI
 
         private void Awake()
         {
-            if (Necromancer.GameManager.Instance != null) Necromancer.GameManager.Instance.titleUI = this;      
+            // [자가 치유] 인스펙터에서 유실되었을 경우 이름을 기반으로 자동 탐색
+            if (mainButtonPanel == null) mainButtonPanel = FindPanel("Panel_Title ");
+            if (stageSelectPanel == null) stageSelectPanel = FindPanel("Panel_StageSelect ");
+            if (upgradePanel == null) upgradePanel = FindPanel("Panel_Upgrade ");
+            if (settingPanel == null) settingPanel = FindPanel("Panel_Setting ");
 
             if (stageSelectPanel != null) allPanels.Add(stageSelectPanel);
-            else Debug.LogWarning("[TitleUI] stageSelectPanel is NOT assigned in the Inspector!");
-
             if (upgradePanel != null) allPanels.Add(upgradePanel);
-            else Debug.LogWarning("[TitleUI] upgradePanel is NOT assigned in the Inspector!");
-
             if (settingPanel != null) allPanels.Add(settingPanel);
-            else Debug.LogWarning("[TitleUI] settingPanel is NOT assigned in the Inspector!");
 
             InitPanels();
+        }
+
+        private CanvasGroup FindPanel(string name)
+        {
+            // 씬 전체에서 탐색 (UI_Root 하위에 있을 것이므로)
+            var obj = GameObject.Find(name);
+            if (obj == null) obj = GameObject.Find(name.Trim()); // 공백 없는 버전도 시도
+            
+            if (obj != null) return obj.GetComponent<CanvasGroup>();
+            return null;
         }
 
         private void Start()

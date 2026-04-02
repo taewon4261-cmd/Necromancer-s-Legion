@@ -53,6 +53,13 @@ namespace Necromancer.UI
 
             DOTween.KillAll();
 
+            // [자가 치유] 인게임 UI 프리팹이 비어있다면 자동 탐색
+            if (inGameUIPrefab == null)
+            {
+                inGameUIPrefab = Resources.Load<GameObject>("Prefabs/InGameUI");
+                if (inGameUIPrefab == null) inGameUIPrefab = Resources.Load<GameObject>("HUD_Canvas");
+            }
+
             if (inGameUIPrefab != null && inGameUIInstance == null)
             {
                 inGameUIInstance = Instantiate(inGameUIPrefab, transform);

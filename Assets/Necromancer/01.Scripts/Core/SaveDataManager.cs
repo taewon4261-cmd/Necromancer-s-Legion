@@ -24,26 +24,16 @@ namespace Necromancer.Core
 
     public class SaveDataManager : MonoBehaviour
     {
-        public static SaveDataManager Instance { get; private set; }
-
         private string savePath;
         private GameSaveData currentData;
 
         public GameSaveData Data => currentData;
 
-        private void Awake()
+        public void Init()
         {
-            if (Instance == null)
-            {
-                Instance = this;
-                DontDestroyOnLoad(gameObject);
-                savePath = Path.Combine(Application.persistentDataPath, "savedata.json");
-                Load();
-            }
-            else
-            {
-                Destroy(gameObject);
-            }
+            savePath = Path.Combine(Application.persistentDataPath, "savedata.json");
+            Load();
+            Debug.Log("<color=green>[SaveDataManager]</color> Initialized by GameManager.");
         }
 
         /// <summary>

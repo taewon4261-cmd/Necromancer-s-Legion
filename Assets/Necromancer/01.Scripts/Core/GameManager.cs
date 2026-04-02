@@ -13,19 +13,54 @@ namespace Necromancer
     {
         public static GameManager Instance { get; private set; }
 
-        [Header("Sub Managers")]
-        public ResourceManager Resources;
-        public CombatManager Combat;
-        public SoundManager Sound;
-        public DebugConsole DebugConsole;
+        [Header("Global Managers (Private for Self-Healing)")]
+        [SerializeField] private SaveDataManager _saveData;
+        [SerializeField] private ResourceManager _resources;
+        [SerializeField] private CombatManager _combat;
+        [SerializeField] private SoundManager _sound;
+        [SerializeField] private DebugConsole _debugConsole;
 
-        [Header("In-Game Managers")]
-        public PoolManager poolManager;
-        public WaveManager waveManager;
-        public SkillManager skillManager;
-        public FeedbackManager feedbackManager;
-        public UIManager uiManager;
-        public TitleUIController titleUI;
+        [Header("Scene Managers (Private for Self-Healing)")]
+        [SerializeField] private PoolManager _poolManager;
+        [SerializeField] private WaveManager _waveManager;
+        [SerializeField] private SkillManager _skillManager;
+        [SerializeField] private FeedbackManager _feedbackManager;
+        [SerializeField] private UIManager _uiManager;
+        [SerializeField] private TitleUIController _titleUI;
+
+        // --- [Self-Healing Properties] ---
+        public SaveDataManager SaveData => GetManager(ref _saveData);
+        public ResourceManager Resources => GetManager(ref _resources);
+        public CombatManager Combat => GetManager(ref _combat);
+        public SoundManager Sound => GetManager(ref _sound);
+        public DebugConsole DebugConsole => GetManager(ref _debugConsole);
+
+        public PoolManager poolManager => GetManager(ref _poolManager);
+        public WaveManager waveManager => GetManager(ref _waveManager);
+        public SkillManager skillManager => GetManager(ref _skillManager);
+        public FeedbackManager feedbackManager => GetManager(ref _feedbackManager);
+        public UIManager uiManager => GetManager(ref _uiManager);
+        public TitleUIController titleUI => GetManager(ref _titleUI);
+
+        /// <summary>
+        /// 자가 치유(Self-Healing) 로직: 참조가 없으면 자식 객체에서 다시 찾습니다.
+        /// </summary>
+        private T GetManager<T>(ref T field) where T : MonoBehaviour
+        {
+            if (field == null)
+            {
+                field = GetComponentInChildren<T>(true);
+                if (field == null)
+                {
+                    Debug.LogError($"<color=red><b>[GameManager]</b> Critical Error: {typeof(T).Name} is missing in Hierarchy!</color>");
+                }
+                else
+                {
+                    Debug.Log($"<color=yellow><b>[GameManager]</b> Self-Healed: {typeof(T).Name} reference restored.</color>");
+                }
+            }
+            return field;
+        }
 
         public static event Action<float, float> OnExpChanged;
         public static event Action<List<SkillData>> OnLevelUp;
@@ -56,19 +91,37 @@ namespace Necromancer
                 Instance = this;
                 transform.SetParent(null);
                 DontDestroyOnLoad(gameObject);
+                
+                // 프리팹 내부 참조가 이미 되어있을 것이므로, 
+                // 만약 에디터에서 실수로 비워두었을 때만 보충합니다.
+                ValidateManagerReferences();
+                
                 SceneManager.sceneLoaded += OnSceneLoaded;
                 InitAllManagers();
             }
             else Destroy(gameObject);
         }
 
+        private void ValidateManagerReferences()
+        {
+            if (_saveData == null) _saveData = GetComponentInChildren<SaveDataManager>(true);
+            if (_resources == null) _resources = GetComponentInChildren<ResourceManager>(true);
+            if (_combat == null) _combat = GetComponentInChildren<CombatManager>(true);
+            if (_sound == null) _sound = GetComponentInChildren<SoundManager>(true);
+            if (_debugConsole == null) _debugConsole = GetComponentInChildren<DebugConsole>(true);
+            
+            if (_poolManager == null) _poolManager = GetComponentInChildren<PoolManager>(true);
+            if (_waveManager == null) _waveManager = GetComponentInChildren<WaveManager>(true);
+            if (_skillManager == null) _skillManager = GetComponentInChildren<SkillManager>(true);
+            if (_feedbackManager == null) _feedbackManager = GetComponentInChildren<FeedbackManager>(true);
+            if (_uiManager == null) _uiManager = GetComponentInChildren<UIManager>(true);
+        }
+
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            // [STABILITY] 씬 이름 대신 '플레이어 검색' 또는 씬 이름으로 체크 (더 견고함)
             bool isGameScene = scene.name == "GameScene" || (GameObject.FindObjectOfType<PlayerController>() != null);
             if (isGameScene)
             {
-                // [STABILITY] 씬 하이라키에서 플레이어 자동 탐색 (Awake 타이밍 이슈 방지)
                 if (playerTransform == null)
                 {
                     var player = GameObject.FindWithTag("Player");
@@ -76,19 +129,20 @@ namespace Necromancer
                     else playerTransform = GameObject.FindObjectOfType<PlayerController>()?.transform;
                 }
 
+                // [STABILITY] 프리팹 내부 참조를 그대로 사용하므로 Null 체크만 수행
                 if (poolManager != null) poolManager.Init();
                 if (waveManager != null) waveManager.Init();
                 if (skillManager != null) skillManager.Init();
                 if (uiManager != null) uiManager.Init();
 
-                // [UI SYNC] UI가 초기화 된 후 현재 게임 속도를 강제로 다시 전송
                 OnSpeedChanged?.Invoke(currentGameSpeed);
                 IsGameOver = false;
-                Debug.Log("<color=cyan><b>[GameManager]</b> In-Game Managers initialized for GameScene.</color>");
+                Debug.Log("<color=cyan><b>[GameManager]</b> In-Game Managers initialized from Prefab.</color>");
             }
             else if (scene.name == "TitleScene")
             {
-                // [QA AUTO-FIX] 타이틀 복귀 시 세션 데이터 클린업
+                if (_titleUI == null) _titleUI = GameObject.FindObjectOfType<TitleUIController>();
+
                 if (uiManager != null) uiManager.Clear();
                 if (waveManager != null) waveManager.StopSpawning();
                 
@@ -102,13 +156,18 @@ namespace Necromancer
 
         private void InitAllManagers()
         {
-            if (Resources == null) Resources = GetComponentInChildren<ResourceManager>() ?? gameObject.AddComponent<ResourceManager>();
-            if (Combat == null) Combat = GetComponentInChildren<CombatManager>() ?? gameObject.AddComponent<CombatManager>();
-            if (Sound == null) Sound = GetComponentInChildren<SoundManager>() ?? gameObject.AddComponent<SoundManager>();
-            if (DebugConsole == null) DebugConsole = GetComponentInChildren<DebugConsole>() ?? gameObject.AddComponent<DebugConsole>();
+            // 모든 매니저를 GameManager 하위로 강제 정렬 (프리팹 구조 유지)
+            foreach(Transform child in transform)
+            {
+                // 특수한 경우가 아니면 자식으로 유지
+            }
 
+            if (SaveData != null) SaveData.Init();
             if (Resources != null) Resources.Init();
             if (Combat != null) Combat.Init();
+            if (Sound != null) Sound.Init();
+            
+            Debug.Log("<color=cyan><b>[GameManager]</b> Global Managers initialization complete.</color>");
         }
 
         public void StartGame(StageDataSO stage)

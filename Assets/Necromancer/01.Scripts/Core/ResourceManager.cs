@@ -8,8 +8,8 @@ namespace Necromancer.Core {
         public int unlockedStageLevel;
         private List<LobbyUpgradeSO> upgradeList = new List<LobbyUpgradeSO>();
         public void Init() {
-            if (SaveDataManager.Instance != null && SaveDataManager.Instance.Data != null) {
-                var data = SaveDataManager.Instance.Data;
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null) {
+                var data = GameManager.Instance.SaveData.Data;
                 currentGold = data.currentGold;
                 unlockedStageLevel = data.unlockedStageLevel;
             }
@@ -22,25 +22,25 @@ namespace Necromancer.Core {
         public void UnlockLevel(int id) { 
             if (id > unlockedStageLevel) { 
                 unlockedStageLevel = id; 
-                if (SaveDataManager.Instance != null) {
-                    SaveDataManager.Instance.Data.unlockedStageLevel = id;
-                    SaveDataManager.Instance.Save();
+                if (GameManager.Instance != null && GameManager.Instance.SaveData != null) {
+                    GameManager.Instance.SaveData.Data.unlockedStageLevel = id;
+                    GameManager.Instance.SaveData.Save();
                 }
             } 
         }
         public void AddGold(int a) { 
             currentGold += a; 
-            if (SaveDataManager.Instance != null) {
-                SaveDataManager.Instance.Data.currentGold = currentGold;
-                SaveDataManager.Instance.Save();
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null) {
+                GameManager.Instance.SaveData.Data.currentGold = currentGold;
+                GameManager.Instance.SaveData.Save();
             }
         }
         public bool SpendGold(int a) { 
             if (currentGold >= a) { 
                 currentGold -= a; 
-                if (SaveDataManager.Instance != null) {
-                    SaveDataManager.Instance.Data.currentGold = currentGold;
-                    SaveDataManager.Instance.Save();
+                if (GameManager.Instance != null && GameManager.Instance.SaveData != null) {
+                    GameManager.Instance.SaveData.Data.currentGold = currentGold;
+                    GameManager.Instance.SaveData.Save();
                 }
                 return true; 
             } return false; 

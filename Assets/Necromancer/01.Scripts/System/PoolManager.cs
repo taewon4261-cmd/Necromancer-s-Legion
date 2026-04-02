@@ -24,36 +24,53 @@ public class PoolManager : MonoBehaviour
     
     private Dictionary<string, Queue<GameObject>> poolDictionary;
 
-    private void Awake()
-    {
-        if (GameManager.Instance != null) GameManager.Instance.poolManager = this;
-        if (poolDictionary == null) poolDictionary = new Dictionary<string, Queue<GameObject>>();
-    }
-
     public void Init()
     {
-        poolDictionary = new Dictionary<string, Queue<GameObject>>();
+        if (poolDictionary == null) poolDictionary = new Dictionary<string, Queue<GameObject>>();
+        poolDictionary.Clear();
+
+        // [자가 치유] 인스펙터 리스트가 비어있다면 프로젝트 폴더에서 프리팹을 자동으로 로드
+        if (pools == null || pools.Count == 0)
+        {
+            AutoPopulatePools();
+        }
 
         foreach (Pool pool in pools)
         {
+            if (pool.prefab == null) continue;
+
             Queue<GameObject> objectPool = new Queue<GameObject>();
-
-            // 🚨 버그 수정 (널 레퍼런스 에러 방어)
-            // 에디터 인스펙터에서 사용자가 프리팹을 실수로 집어넣지 않았을 때 에러로 터지는 것을 막습니다.
-            if (pool.prefab == null)
-            {
-                Debug.LogError($"[PoolManager] 🔥 '{pool.tag}' 이름의 프리팹 칸이 비어있습니다! 00.Scenes의 [System] 오브젝트를 클릭해서 프리팹을 쏙 채워주세요!");
-                continue; // 생성을 건너뛰어서 크러시(튕김)를 미연에 방지합니다.
-            }
-
             for (int i = 0; i < pool.size; i++)
             {
                 GameObject obj = Instantiate(pool.prefab, this.transform); 
                 obj.SetActive(false);
                 objectPool.Enqueue(obj);
             }
+            if (!poolDictionary.ContainsKey(pool.tag))
+                poolDictionary.Add(pool.tag, objectPool);
+        }
+        Debug.Log($"<color=green>[PoolManager]</color> Initialized with {poolDictionary.Count} pools.");
+    }
 
-            poolDictionary.Add(pool.tag, objectPool);
+    private void AutoPopulatePools()
+    {
+        pools = new List<Pool>();
+        // 주요 프리팹들을 리소스로부터 혹은 경로로부터 자동 로드 (여기서는 주요 태그 기반)
+        string[] corePrefabs = { "Enemy", "ExpGem", "Minion", "HitEffect" };
+        foreach (var pName in corePrefabs)
+        {
+            GameObject prefab = Resources.Load<GameObject>($"Prefabs/{pName}");
+            if (prefab == null) prefab = Resources.Load<GameObject>(pName); // 루트 시도
+            
+            if (prefab != null)
+            {
+                pools.Add(new Pool { tag = pName, prefab = prefab, size = 20 });
+            }
+        }
+        
+        if (pools.Count == 0)
+        {
+            Debug.LogWarning("[PoolManager] AutoPopulate failed. Please check if prefabs are in 'Resources' folder or assigned in Inspector.");
         }
     }
 

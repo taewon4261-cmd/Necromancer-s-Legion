@@ -215,14 +215,14 @@ public class EnemyAI : UnitBase
         base.TakeDamage(damage);
 
         // [Polishing] 타격 연출 실행
-        if (FeedbackManager.Instance != null && gameObject.activeInHierarchy)
+        if (GameManager.Instance != null && GameManager.Instance.feedbackManager != null && gameObject.activeInHierarchy)
         {
             float duration = (data != null && data.isElite) ? 0.12f : 0.05f;
             float magnitude = (data != null && data.isElite) ? 0.15f : 0.08f;
             
-            FeedbackManager.Instance.ShakeCamera(duration, magnitude);
+            GameManager.Instance.feedbackManager.ShakeCamera(duration, magnitude);
             // "HitEffect_Enemy"가 없을 경우를 대비해 "HitEffect" 기본 태그 사용
-            FeedbackManager.Instance.PlayHitEffect(transform.position, "HitEffect");
+            GameManager.Instance.feedbackManager.PlayHitEffect(transform.position, "HitEffect");
         }
     }
 

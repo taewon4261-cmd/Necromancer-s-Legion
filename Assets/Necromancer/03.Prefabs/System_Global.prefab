@@ -44,6 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2f6bb94025b3d545baf9c1dbbe05a49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  inGameUIPrefab: {fileID: 0}
   expFillBar: {fileID: 0}
   textTimer: {fileID: 0}
   textWave: {fileID: 0}
@@ -64,12 +65,15 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   - {fileID: 0}
-  adRefreshButton: {fileID: 0}
+  speedButton: {fileID: 0}
+  backToTitleButton: {fileID: 0}
   textSpeedToggle: {fileID: 0}
   resultPanel: {fileID: 0}
   resultTitleText: {fileID: 0}
   resultStatsText: {fileID: 0}
-  backToTitleButton: {fileID: 0}
+  dangerOverlay: {fileID: 0}
+  flashFrequency: 2
+  maxAlpha: 0.4
 --- !u!1 &6178726164652871663
 GameObject:
   m_ObjectHideFlags: 0
@@ -136,9 +140,8 @@ MonoBehaviour:
     prefab: {fileID: 7402268239645625210, guid: 8160c8b83503fb042a3b8d15f5dd8087,
       type: 3}
     size: 200
-  - tag: DamageText
-    prefab: {fileID: 5223242958314427728, guid: 845ad8da30187e14caf33daef8adba46,
-      type: 3}
+  - tag: HitEffect
+    prefab: {fileID: 0}
     size: 200
 --- !u!114 &4268069913136301506
 MonoBehaviour:
@@ -154,6 +157,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waveDatabase: {fileID: 11400000, guid: 9d75b168f11d14a4e9917c1b8a8037e3, type: 2}
   spawnRadius: 15
+  activeEnemies: []
 --- !u!114 &2435100814045926009
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -166,27 +170,26 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3fe2a1d20a310b49b793827e6951c7e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Resources: {fileID: 0}
-  Combat: {fileID: 0}
-  Sound: {fileID: 0}
-  DebugConsole: {fileID: 0}
-  poolManager: {fileID: 0}
-  waveManager: {fileID: 0}
-  uiManager: {fileID: 0}
-  skillManager: {fileID: 0}
-  feedbackManager: {fileID: 0}
-  titleUI: {fileID: 0}
+  _saveData: {fileID: 0}
+  _resources: {fileID: 0}
+  _combat: {fileID: 0}
+  _sound: {fileID: 0}
+  _debugConsole: {fileID: 0}
+  _poolManager: {fileID: 0}
+  _waveManager: {fileID: 0}
+  _skillManager: {fileID: 0}
+  _feedbackManager: {fileID: 0}
+  _uiManager: {fileID: 0}
+  _titleUI: {fileID: 0}
   playerTransform: {fileID: 0}
   magnetRadius: 3
   baseReviveChance: 30
   minionTag: Minion
+  currentGameSpeed: 1
+  currentStage: {fileID: 0}
   currentLevel: 1
   currentExp: 0
   maxExp: 100
-  currentGameSpeed: 1
-  isThreeTimesSpeedAllowed: 0
-  currentStage: {fileID: 0}
-  debugDefaultStage: {fileID: 0}
 --- !u!1 &8188729343294353411
 GameObject:
   m_ObjectHideFlags: 0
@@ -279,14 +282,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillDB: {fileID: 11400000, guid: 5480528291a1d3b4a958525e7ee9fbda, type: 2}
-  globalMinionHpBonusRatio: 1
-  globalMinionSpeedBonusRatio: 1
-  globalMinionDamageBonusRatio: 1
-  currentMaxMinions: 50
-  vampiricChance: 0
-  minionExplosionDamage: 0
   hasToxicBlade: 0
   hasFrostWeapon: 0
   hasBloodFrenzy: 0
   hasCursedStigma: 0
   hasGiantHunter: 0
+  globalMinionHpBonusRatio: 1
+  globalMinionDamageBonusRatio: 1
+  globalMinionSpeedBonusRatio: 1
+  currentMaxMinions: 50
+  vampiricChance: 0
+  minionExplosionDamage: 0

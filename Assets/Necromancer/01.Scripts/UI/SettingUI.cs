@@ -45,10 +45,10 @@ namespace Necromancer.UI
 
         private void LoadSettings()
         {
-            if (SaveDataManager.Instance == null || SaveDataManager.Instance.Data == null) return;
-            if (SoundManager.Instance == null) return;
+            if (GameManager.Instance == null || GameManager.Instance.SaveData == null || GameManager.Instance.SaveData.Data == null) return;
+            if (GameManager.Instance.Sound == null) return;
 
-            var data = SaveDataManager.Instance.Data;
+            var data = GameManager.Instance.SaveData.Data;
 
             if (masterSlider != null) masterSlider.value = data.masterVolume;
             if (bgmSlider != null) bgmSlider.value = data.bgmVolume;
@@ -65,28 +65,28 @@ namespace Necromancer.UI
 
         private void OnMasterChanged(float value)
         {
-            if (SaveDataManager.Instance != null && SoundManager.Instance != null)
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.Sound != null)
             {
-                SaveDataManager.Instance.Data.masterVolume = value;
-                SoundManager.Instance.SetMasterVolume(value);
+                GameManager.Instance.SaveData.Data.masterVolume = value;
+                GameManager.Instance.Sound.SetMasterVolume(value);
             }
         }
 
         private void OnBGMChanged(float value)
         {
-            if (SaveDataManager.Instance != null && SoundManager.Instance != null)
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.Sound != null)
             {
-                SaveDataManager.Instance.Data.bgmVolume = value;
-                SoundManager.Instance.SetBGMVolume(value);
+                GameManager.Instance.SaveData.Data.bgmVolume = value;
+                GameManager.Instance.Sound.SetBGMVolume(value);
             }
         }
 
         private void OnSFXChanged(float value)
         {
-            if (SaveDataManager.Instance != null && SoundManager.Instance != null)
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.Sound != null)
             {
-                SaveDataManager.Instance.Data.sfxVolume = value;
-                SoundManager.Instance.SetSFXVolume(value);
+                GameManager.Instance.SaveData.Data.sfxVolume = value;
+                GameManager.Instance.Sound.SetSFXVolume(value);
             }
         }
 
@@ -119,9 +119,9 @@ namespace Necromancer.UI
 
         public void CloseAndSave()
         {
-            if (SaveDataManager.Instance != null)
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
             {
-                SaveDataManager.Instance.Save();
+                GameManager.Instance.SaveData.Save();
             }
             gameObject.SetActive(false); // 패널 닫기
         }

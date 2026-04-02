@@ -6,8 +6,6 @@ namespace Necromancer
 {
     public class FeedbackManager : MonoBehaviour
     {
-        public static FeedbackManager Instance { get; private set; }
-
         [Header("Damage Popup Settings")]
         public string damageTextPoolTag = "DamageText";
         public Color normalDamageColor = Color.white;
@@ -20,14 +18,11 @@ namespace Necromancer
         private float dampingSpeed = 1.0f;
         private Camera mainCamera;
 
-        private void Awake()
+        public void Init()
         {
-            if (Instance == null) Instance = this;
-            if (GameManager.Instance != null) GameManager.Instance.feedbackManager = this;
             mainCamera = Camera.main;
-            
-            // 초기 위치 저장 (부모가 CameraPivot일 경우 0,0,0이 기본)
             if (mainCamera != null) originalPos = mainCamera.transform.localPosition;
+            Debug.Log("<color=cyan>[FeedbackManager]</color> Initialized.");
         }
 
         private void Update()

@@ -108,10 +108,10 @@ public class PlayerController : UnitBase
         base.TakeDamage(damage);
 
         // [연출 연동] 피격 시 화면 흔들림 및 피격 효과
-        if (FeedbackManager.Instance != null && gameObject.activeInHierarchy)
+        if (GameManager.Instance != null && GameManager.Instance.feedbackManager != null && gameObject.activeInHierarchy)
         {
-            FeedbackManager.Instance.ShakeCamera(0.15f, 0.2f);
-            FeedbackManager.Instance.PlayHitEffect(transform.position, "HitEffect");
+            GameManager.Instance.feedbackManager.ShakeCamera(0.15f, 0.2f);
+            GameManager.Instance.feedbackManager.PlayHitEffect(transform.position, "HitEffect");
         }
     }
 

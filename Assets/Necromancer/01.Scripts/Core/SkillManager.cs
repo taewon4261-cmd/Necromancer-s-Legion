@@ -32,15 +32,6 @@ namespace Necromancer
         public float vampiricChance = 0f;
         public float minionExplosionDamage = 0f;
 
-        private void Awake()
-        {
-            // GameManager에 스스로를 등록 (성능 최적화 및 접근성 확보)
-            if (GameManager.Instance != null)
-            {
-                GameManager.Instance.skillManager = this;
-            }
-        }
-
         /// <summary>
         /// 안전하게 초기화용으로 비워둡니다.
         /// </summary>

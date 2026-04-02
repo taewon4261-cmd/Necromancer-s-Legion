@@ -20,11 +20,6 @@ namespace Necromancer
 
         public List<EnemyAI> activeEnemies = new List<EnemyAI>();
 
-        private void Awake()
-        {
-            if (GameManager.Instance != null) GameManager.Instance.waveManager = this;
-        }
-
         public void Init()
         {
             // [STABILITY] 씬 이름 대신 '플레이어 검색' 또는 씬 이름으로 체크 (더 견고함)
@@ -39,6 +34,13 @@ namespace Necromancer
                 if (GameManager.Instance.currentStage != null && GameManager.Instance.currentStage.waveDatabase != null)
                 {
                     waveDatabase = GameManager.Instance.currentStage.waveDatabase;
+                }
+                
+                // [자가 치유] 데이터베이스가 여전히 없다면 프로젝트 내 기본 데이터 탐색
+                if (waveDatabase == null)
+                {
+                    waveDatabase = Resources.Load<WaveDatabase>("Data/WaveDatabase_Default");
+                    if (waveDatabase == null) waveDatabase = Resources.Load<WaveDatabase>("WaveDatabase");
                 }
 
                 gameTime = 0f;

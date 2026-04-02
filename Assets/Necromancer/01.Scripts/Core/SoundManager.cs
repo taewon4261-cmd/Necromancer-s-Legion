@@ -9,8 +9,6 @@ namespace Necromancer.Core
     /// </summary>
     public class SoundManager : MonoBehaviour
     {
-        public static SoundManager Instance { get; private set; }
-
         [Header("Audio Sources")]
         [SerializeField] private AudioSource bgmSource;
         [SerializeField] private GameObject sfxSourcePrefab;
@@ -24,28 +22,20 @@ namespace Necromancer.Core
         private Queue<AudioSource> sfxPool = new Queue<AudioSource>();
         private List<AudioSource> activeSfx = new List<AudioSource>();
 
-        private void Awake()
+        public void Init()
         {
-            if (Instance == null)
-            {
-                Instance = this;
-                DontDestroyOnLoad(gameObject);
-                InitPool();
-                LoadVolumesFromData();
-            }
-            else
-            {
-                Destroy(gameObject);
-            }
+            InitPool();
+            LoadVolumesFromData();
+            Debug.Log("<color=cyan>[SoundManager]</color> Initialized by GameManager.");
         }
 
         private void LoadVolumesFromData()
         {
-            if (SaveDataManager.Instance != null && SaveDataManager.Instance.Data != null)
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null)
             {
-                masterVolume = SaveDataManager.Instance.Data.masterVolume;
-                bgmVolume = SaveDataManager.Instance.Data.bgmVolume;
-                sfxVolume = SaveDataManager.Instance.Data.sfxVolume;
+                masterVolume = GameManager.Instance.SaveData.Data.masterVolume;
+                bgmVolume = GameManager.Instance.SaveData.Data.bgmVolume;
+                sfxVolume = GameManager.Instance.SaveData.Data.sfxVolume;
             }
         }
 
