@@ -84,15 +84,12 @@ namespace Necromancer
         }
 
         /// <summary>
-        /// 플레이어가 UI 카드 버튼을 클릭하여 스킬을 선택했을 때 도달하는 최종 함수.
-        /// (UIManager에서 카드 클릭 시 이 함수를 호출할 예정)
+        /// 최종 선정된 스킬의 실제 효과를 캐릭터와 시스템에 적용합니다.
         /// </summary>
-        /// <param name="selectedSkill">사용자가 고른 스킬 데이터</param>
-        public void ApplySkill(SkillData selectedSkill)
+        /// <param name="data">적용할 스킬 데이터</param>
+        public void LearnSkill(SkillData data)
         {
-            if (selectedSkill == null) return;
-
-            Debug.Log($"[SkillManager] 선택된 스킬: <color=yellow>{selectedSkill.skillName}</color> 적용 완료!");
+            if (data == null) return;
 
             PlayerController player = (GameManager.Instance != null && GameManager.Instance.playerTransform != null) 
                 ? GameManager.Instance.playerTransform.GetComponent<PlayerController>() 
@@ -101,7 +98,20 @@ namespace Necromancer
             bool isMinionUpdateNeeded = false;
             bool isPlayerUpdateNeeded = false;
 
-            switch (selectedSkill.type)
+            // 1. 특정 이름 기반 예외 처리 (사용자 요청: 공격력 증가/체력 회복)
+            if (data.skillName == "공격력 증가")
+            {
+                if (player != null) player.bodySlamDamage += 10f; // 공격력 10 증가 (예시 수치)
+                isPlayerUpdateNeeded = true;
+            }
+            else if (data.skillName == "체력 회복")
+            {
+                if (player != null) player.currentHp = player.maxHp; // 체력을 최대치로 채움
+                isPlayerUpdateNeeded = true;
+            }
+
+            // 2. 기존 SkillType 기반 로직 실행
+            switch (data.type)
             {
                 // --- [본체 생존 및 유틸 계열] ---
                 case SkillType.ScytheUpgrade:
@@ -193,7 +203,7 @@ namespace Necromancer
                     break;
                     
                 default:
-                    Debug.LogWarning($"-> 누락된 기능 구현: {selectedSkill.type}");
+                    Debug.LogWarning($"-> 누락된 기능 구현: {data.type}");
                     break;
             }
 

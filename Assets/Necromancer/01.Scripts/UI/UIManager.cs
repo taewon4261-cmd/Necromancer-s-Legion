@@ -43,62 +43,102 @@ namespace Necromancer.UI
         public float maxAlpha = 0.4f;
 
         private List<SkillData> currentOptions;
+        private PlayerController cachedPlayer;
+
+        private void Update()
+        {
+            HandleLowHPEffect();
+        }
 
         public void Init()
         {
             // [QA AUTO-FIX] Scene Guard - 타이틀 씬에서 불필요한 인게임 UI 생성 방지
-            // [STABILITY] 플레이어가 있거나 특정 씬이면 인게임 UI 초기화 허용
             bool isGameScene = SceneManager.GetActiveScene().name == "GameScene" || (GameObject.FindObjectOfType<PlayerController>() != null);
             if (!isGameScene) return;
 
             DOTween.KillAll();
+            cachedPlayer = null;
 
-            // [자가 치유] 인게임 UI 프리팹이 비어있다면 자동 탐색
-            if (inGameUIPrefab == null)
-            {
-                inGameUIPrefab = Resources.Load<GameObject>("Prefabs/InGameUI");
-                if (inGameUIPrefab == null) inGameUIPrefab = Resources.Load<GameObject>("HUD_Canvas");
-            }
-
-            if (inGameUIPrefab != null && inGameUIInstance == null)
+            // [ARCHITECTURAL PURITY] 자동 탐색/복구 로직 제거.
+            // 인스턴스가 없다면 오직 지정된 프리팹으로만 생성합니다.
+            if (inGameUIInstance == null && inGameUIPrefab != null)
             {
                 inGameUIInstance = Instantiate(inGameUIPrefab, transform);
                 inGameUIInstance.name = "[InGameUI_Root]";
+            }
 
-                // [STABILITY] 이름 기반 재귀 탐색
-                var components = inGameUIInstance.GetComponentsInChildren<Transform>(true);
-                foreach (var child in components)
+            if (inGameUIInstance != null)
+            {
+                // [PERFORMANCE] 플레이어 참조 캐싱 (매 프레임 GetComponent 방지)
+                if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
                 {
-                    if (child.name == "Exp_Bar_Fill" || child.name == "Fill") expFillBar = child.GetComponent<Image>();
-                    if (child.name == "Text_Timer") textTimer = child.GetComponent<TextMeshProUGUI>();
-                    if (child.name == "Text_Wave") textWave = child.GetComponent<TextMeshProUGUI>();
-                    if (child.name == "Speed_Btn") speedButton = child.GetComponent<Button>();
-                    if (child.name == "Back_Btn") backToTitleButton = child.GetComponent<Button>();
-                    if (child.name == "Danger_Overlay") dangerOverlay = child.GetComponent<CanvasGroup>();
-                    if (child.name == "LevelUp_Panel") levelUpPanel = child.gameObject;
-                    if (child.name == "Result_Panel") resultPanel = child.gameObject;
+                    cachedPlayer = GameManager.Instance.playerTransform.GetComponent<PlayerController>();
+                }
+
+                // [DECOUPLING] 이름 기반 탐색 제거 -> InGameHUD 브릿지 컴포넌트 사용
+                InGameHUD hud = inGameUIInstance.GetComponent<InGameHUD>();
+                if (hud != null)
+                {
+                    expFillBar = hud.expFillBar;
+                    textTimer = hud.textTimer;
+                    textWave = hud.textWave;
+                    speedButton = hud.speedButton;
+                    backToTitleButton = hud.backToTitleButton;
+                    dangerOverlay = hud.dangerOverlay;
+                    levelUpPanel = hud.levelUpPanel;
+                    resultPanel = hud.resultPanel;
+
+                    // 스킬 카드 UI 연결
+                    for (int i = 0; i < 3; i++)
+                    {
+                        if (i < hud.skillCardButtons.Length) skillCardButtons[i] = hud.skillCardButtons[i];
+                        if (i < hud.skillCardIcons.Length) skillCardIcons[i] = hud.skillCardIcons[i];
+                        if (i < hud.skillCardNames.Length) skillCardNames[i] = hud.skillCardNames[i];
+                        if (i < hud.skillCardDescriptions.Length) skillCardDescriptions[i] = hud.skillCardDescriptions[i];
+                    }
+
+                    Debug.Log("<color=green>[UIManager]</color> UI References Mapped via InGameHUD component.");
+                }
+                else
+                {
+                    Debug.LogError("<color=red>[UIManager]</color> InGameHUD component NOT FOUND on UI root! Please attach it to the prefab.");
                 }
 
                 // 스피드 텍스트는 버튼의 자식에서 찾음 (이름이 다를 수 있음)
-                if (speedButton != null && textSpeedToggle == null) 
+                if (speedButton != null) 
                     textSpeedToggle = speedButton.GetComponentInChildren<TextMeshProUGUI>();
 
-                if (textTimer == null) Debug.LogError("<color=red>[UIManager]</color> 'Text_Timer' NOT FOUND in Prefab!");
-                if (textWave == null) Debug.LogError("<color=red>[UIManager]</color> 'Text_Wave' NOT FOUND in Prefab!");
-                
-                // [UI SYNC] 초기 텍스트 설정
-                if (textSpeedToggle != null && GameManager.Instance != null) 
-                    textSpeedToggle.SetText("x" + GameManager.Instance.currentGameSpeed.ToString("F1"));
+                // [UI SYNC] 초기 텍스트 및 바 설정
+                if (textSpeedToggle != null) 
+                {
+                    float currentSpeed = (GameManager.Instance != null) ? GameManager.Instance.currentGameSpeed : 1.0f;
+                    textSpeedToggle.SetText("x" + currentSpeed.ToString("F1"));
+                }
                 if (textTimer != null) textTimer.SetText("00:00");
                 if (textWave != null) textWave.SetText("WAVE 1");
                 
-                Debug.Log($"<color=green>[UIManager]</color> In-Game UI Root initialized. Timer: {textTimer != null}, Wave: {textWave != null}");
+                // [PERFORMANCE] 초기 경험치 바 동기화
+                if (GameManager.Instance != null)
+                {
+                    UpdateExpBar(GameManager.Instance.currentExp, GameManager.Instance.maxExp);
+                }
+                else
+                {
+                    if (expFillBar != null) expFillBar.fillAmount = 0f;
+                }
+            }
+            else
+            {
+                Debug.LogWarning("<color=yellow>[UIManager]</color> In-Game UI Instance/Prefab NOT FOUND.");
             }
 
+            // 버튼 리스너 재연결
             if (speedButton != null)
             {
                 speedButton.onClick.RemoveAllListeners();
-                speedButton.onClick.AddListener(() => GameManager.Instance.ToggleGameSpeed());
+                speedButton.onClick.AddListener(() => {
+                    if (GameManager.Instance != null) GameManager.Instance.ToggleGameSpeed();
+                });
             }
 
             if (backToTitleButton != null)
@@ -124,6 +164,7 @@ namespace Necromancer.UI
                 levelUpPanel = null;
                 resultPanel = null;
                 dangerOverlay = null;
+                cachedPlayer = null;
                 Debug.Log("<color=orange>[UIManager]</color> In-Game UI Instance Cleared.");
             }
         }
@@ -148,22 +189,17 @@ namespace Necromancer.UI
             GameManager.OnGameOver -= ShowResultPanel;
         }
 
-        private void Update()
-        {
-            HandleLowHPEffect();
-        }
-
         private void HandleLowHPEffect()
         {
-            if (dangerOverlay == null || GameManager.Instance == null || GameManager.Instance.playerTransform == null) return;
-            PlayerController player = GameManager.Instance.playerTransform.GetComponent<PlayerController>();
-            if (player == null || player.IsDead)
+            if (dangerOverlay == null || cachedPlayer == null) return;
+            
+            if (cachedPlayer.IsDead)
             {
                 dangerOverlay.alpha = 0f;
                 return;
             }
 
-            float hpRatio = player.currentHp / player.maxHp;
+            float hpRatio = cachedPlayer.currentHp / cachedPlayer.maxHp;
             if (hpRatio <= 0.3f)
             {
                 float lerp = (Mathf.Sin(Time.time * flashFrequency * Mathf.PI * 2f) + 1f) * 0.5f;
@@ -208,18 +244,56 @@ namespace Necromancer.UI
         {
             if (newOptions == null) return;
             currentOptions = newOptions;
+
             for (int i = 0; i < 3; i++)
             {
                 if (skillCardButtons == null || i >= skillCardButtons.Length || skillCardButtons[i] == null) continue;
+
                 if (i < currentOptions.Count)
                 {
+                    int index = i; // 클로저 캡처 방지
                     skillCardButtons[i].gameObject.SetActive(true);
+                    
                     if (skillCardIcons[i] != null) skillCardIcons[i].sprite = currentOptions[i].skillIcon;
                     if (skillCardNames[i] != null) skillCardNames[i].SetText(currentOptions[i].skillName);
                     if (skillCardDescriptions[i] != null) skillCardDescriptions[i].SetText(currentOptions[i].skillDescription);
+
+                    // 버튼 리스너 설정 (사용자 요구사항: 3단계 프로세스)
+                    skillCardButtons[i].onClick.RemoveAllListeners();
+                    skillCardButtons[i].onClick.AddListener(() => OnClick_SelectSkill(index));
                 }
-                else skillCardButtons[i].gameObject.SetActive(false);
+                else
+                {
+                    skillCardButtons[i].gameObject.SetActive(false);
+                }
             }
+        }
+
+        /// <summary>
+        /// 스킬 카드를 선택했을 때 실행되는 단계별 로직 (LearnSkill -> UI Close -> Resume Speed)
+        /// </summary>
+        private void OnClick_SelectSkill(int index)
+        {
+            if (currentOptions == null || index >= currentOptions.Count) return;
+
+            SkillData selectedSkill = currentOptions[index];
+
+            // 1단계. LearnSkill 호출: 선택한 스킬 데이터를 전달
+            if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
+            {
+                GameManager.Instance.skillManager.LearnSkill(selectedSkill);
+            }
+
+            // 2단계. 레벨업 패널 비활성화 (창 닫기)
+            if (levelUpPanel != null) levelUpPanel.SetActive(false);
+
+            // 3단계. GameManager가 기억하고 있는 원래 배속으로 복구합니다.
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.ResumeGameSpeed();
+            }
+
+            Debug.Log($"<color=yellow>[UIManager]</color> Skill Learned: {selectedSkill.skillName}, UI Closed, Time Resumed via GameManager.");
         }
 
         public void ShowResultPanel(bool isVictory)

@@ -22,27 +22,38 @@ namespace Necromancer
 
         public void Init()
         {
-            // [STABILITY] 씬 이름 대신 '플레이어 검색' 또는 씬 이름으로 체크 (더 견고함)
             bool isGameScene = SceneManager.GetActiveScene().name == "GameScene" || (GameObject.FindObjectOfType<PlayerController>() != null);
             if (!isGameScene) return;
 
             Debug.Log($"<color=orange>[WaveManager]</color> Init triggered. Scene: {SceneManager.GetActiveScene().name}");
 
-            if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
-            {
-                playerTransform = GameManager.Instance.playerTransform;
-                if (GameManager.Instance.currentStage != null && GameManager.Instance.currentStage.waveDatabase != null)
-                {
-                    waveDatabase = GameManager.Instance.currentStage.waveDatabase;
-                }
-                
-                // [자가 치유] 데이터베이스가 여전히 없다면 프로젝트 내 기본 데이터 탐색
-                if (waveDatabase == null)
-                {
-                    waveDatabase = Resources.Load<WaveDatabase>("Data/WaveDatabase_Default");
-                    if (waveDatabase == null) waveDatabase = Resources.Load<WaveDatabase>("WaveDatabase");
-                }
+            if (GameManager.Instance == null) return;
 
+            // [STABILITY] 데이터 로드와 플레이어 참조 분리
+            // 1. 스테이지 데이터 먼저 확보
+            if (GameManager.Instance.currentStage != null)
+            {
+                waveDatabase = GameManager.Instance.currentStage.waveDatabase;
+                Debug.Log($"<color=green>[WaveManager]</color> Stage data loaded: {GameManager.Instance.currentStage.stageName}");
+            }
+            
+            if (waveDatabase == null)
+            {
+                Debug.LogError("<color=red>[WaveManager]</color> WaveDatabase is missing! Please assign it in StageData or Inspector.");
+                return;
+            }
+
+            // 2. 플레이어 참조 확보
+            playerTransform = GameManager.Instance.playerTransform;
+            if (playerTransform == null)
+            {
+                Debug.LogWarning("[WaveManager] Player Transform is currently NULL. Searching...");
+                var player = GameObject.FindWithTag("Player");
+                if (player != null) playerTransform = player.transform;
+            }
+
+            if (playerTransform != null)
+            {
                 gameTime = 0f;
                 currentWaveIndex = 0;
                 activeEnemies.Clear();
@@ -53,12 +64,11 @@ namespace Necromancer
                 spawnCts = new CancellationTokenSource();
 
                 SpawnLoopAsync(spawnCts.Token).Forget();
-                Debug.Log($"<color=green>[WaveManager]</color> Initialized for {SceneManager.GetActiveScene().name}.");
+                Debug.Log($"<color=green>[WaveManager]</color> Spawn Loop Started.");
             }
             else
             {
-                // 게임 씬인데 플레이어 트랜스폼이 없는 경우에만 경고
-                Debug.LogWarning("[WaveManager] Initialization failed: Player Transform is missing in GameScene.");
+                Debug.LogError("<color=red>[WaveManager]</color> Initialization failed: Player Transform NOT FOUND in Scene!");
             }
         }
 

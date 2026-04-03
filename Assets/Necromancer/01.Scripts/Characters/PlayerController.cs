@@ -49,6 +49,12 @@ public class PlayerController : UnitBase
     private void Start()
     {
         ApplyUpgradedStats();
+        
+        // [STABILITY] 가상 조이스틱 자동 검색 (동적 UI 생성 대응)
+        if (virtualJoystick == null)
+        {
+            virtualJoystick = FindObjectOfType<VirtualJoystick>();
+        }
     }
 
     /// <summary>
@@ -93,6 +99,7 @@ public class PlayerController : UnitBase
 
     private void Move()
     {
+        // Time.timeScale이 0일 경우 물리 연산이 멈추므로 이동 불가
         rb.velocity = movement * moveSpeed;
     }
 
@@ -145,7 +152,7 @@ public class PlayerController : UnitBase
 
     private void UpdateAnimation()
     {
-        if (animator == null) return;
+        if (animator == null || rb == null) return;
 
         // 1. 이동 애니메이션 제어 (속도가 있으면 재생)
         bool isMoving = rb.velocity.sqrMagnitude > 0.01f;

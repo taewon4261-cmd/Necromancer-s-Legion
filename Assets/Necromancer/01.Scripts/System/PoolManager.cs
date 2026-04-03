@@ -20,7 +20,7 @@ public class PoolManager : MonoBehaviour
     }
 
     [Header("Pool Settings")]
-    public List<Pool> pools;
+    [SerializeField] private List<Pool> pools = new List<Pool>();
     
     private Dictionary<string, Queue<GameObject>> poolDictionary;
 
@@ -29,15 +29,21 @@ public class PoolManager : MonoBehaviour
         if (poolDictionary == null) poolDictionary = new Dictionary<string, Queue<GameObject>>();
         poolDictionary.Clear();
 
-        // [자가 치유] 인스펙터 리스트가 비어있다면 프로젝트 폴더에서 프리팹을 자동으로 로드
+        // [STABILITY] 데이터 보호: 런타임 자동 할당(AutoPopulate) 제거. 
+        // 모든 풀은 인스펙터에서 명시적으로 설정되어야 합니다.
         if (pools == null || pools.Count == 0)
         {
-            AutoPopulatePools();
+            Debug.LogError("<color=red>[PoolManager]</color> Pools list is empty! Please configure pools in the Inspector.");
+            return;
         }
 
         foreach (Pool pool in pools)
         {
-            if (pool.prefab == null) continue;
+            if (pool.prefab == null) 
+            {
+                Debug.LogWarning($"<color=yellow>[PoolManager]</color> Prefab missing for tag: {pool.tag}");
+                continue;
+            }
 
             Queue<GameObject> objectPool = new Queue<GameObject>();
             for (int i = 0; i < pool.size; i++)
@@ -52,27 +58,7 @@ public class PoolManager : MonoBehaviour
         Debug.Log($"<color=green>[PoolManager]</color> Initialized with {poolDictionary.Count} pools.");
     }
 
-    private void AutoPopulatePools()
-    {
-        pools = new List<Pool>();
-        // 주요 프리팹들을 리소스로부터 혹은 경로로부터 자동 로드 (여기서는 주요 태그 기반)
-        string[] corePrefabs = { "Enemy", "ExpGem", "Minion", "HitEffect" };
-        foreach (var pName in corePrefabs)
-        {
-            GameObject prefab = Resources.Load<GameObject>($"Prefabs/{pName}");
-            if (prefab == null) prefab = Resources.Load<GameObject>(pName); // 루트 시도
-            
-            if (prefab != null)
-            {
-                pools.Add(new Pool { tag = pName, prefab = prefab, size = 20 });
-            }
-        }
-        
-        if (pools.Count == 0)
-        {
-            Debug.LogWarning("[PoolManager] AutoPopulate failed. Please check if prefabs are in 'Resources' folder or assigned in Inspector.");
-        }
-    }
+
 
     /// <summary>
     /// 풀에서 오브젝트 Get (Instantiate 대체)

@@ -20,4 +20,4 @@ MonoBehaviour:
   enemyHpMultiplier: 5.6
   enemyDamageMultiplier: 5.6
   goldGainMultiplier: 3.3
-  waveTable: {fileID: 0}
+  waveDatabase: {fileID: 11400000, guid: 9d75b168f11d14a4e9917c1b8a8037e3, type: 2}
