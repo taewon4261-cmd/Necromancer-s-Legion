@@ -46,18 +46,18 @@ namespace Necromancer
             
             if (animator != null)
             {
+                animator.updateMode = AnimatorUpdateMode.Normal;
                 animator.SetBool(Necromancer.Systems.UIConstants.AnimParam_Die, false);
             }
             
             OnHealthChanged?.Invoke(currentHp, maxHp);
         }
 
+
+
         protected virtual void Update()
         {
-            if (!isDead && currentHp <= 0)
-            {
-                Die();
-            }
+            // [REDUNDANT] HP 0 체크는 이제 TakeDamage에서 수행하므로 Update에서 제거
         }
 
         public virtual void TakeDamage(float damage)

@@ -255,7 +255,6 @@ namespace Necromancer.UI
         {
             if (textSoul != null)
             {
-                // [QA] 최적화보다 '동작' 확인을 위해 원시적인 방식으로 교체
                 string result = string.Format(" SOUL : {0:N0}", amount);
                 textSoul.text = result;
                 Debug.Log($"<color=cyan>[QA Check]</color> Soul UI Updated to: {result}");
@@ -316,11 +315,9 @@ namespace Necromancer.UI
             int souls = (GameManager.Instance != null && GameManager.Instance.Resources != null) ? 
                 GameManager.Instance.Resources.currentSessionSoul : 0;
 
+            // [STABILITY] 결과창 출력 즉시 세계 정지 (Master's Directive)
             resultUI.Open(isVictory, souls);
-
-            DOVirtual.DelayedCall(0.5f, () => {
-                Time.timeScale = 0f;
-            }).SetUpdate(true);
+            Time.timeScale = 0f;
         }
 
         public void OnClick_BackToTitle()

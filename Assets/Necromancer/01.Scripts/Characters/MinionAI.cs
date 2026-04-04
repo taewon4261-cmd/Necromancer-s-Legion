@@ -1,4 +1,4 @@
-// File: Assets/Necromancer/01.Scripts/Characters/MinionAI.cs
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -65,20 +65,11 @@ public class MinionAI : UnitBase
         ScanForTargetAsync(scanCts.Token).Forget();
     }
 
-    /// <summary>
-    /// SkillManager가 중앙에서 들고 있는 누적 글로벌 버프(특성)를
-    /// 미니언이 스폰되는(켜지는) 이 한 번의 순간에만 자기 스탯에 곱해서 복사해옵니다.
-    /// (이를 통해 매 프레임 수백 마리의 스탯을 관리하는 렉을 없앱니다.)
-    /// </summary>
     private void ApplyGlobalBuffs()
     {
         if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
         {
             SkillManager sManager = GameManager.Instance.skillManager;
-            
-            // 프리팹 원본에 손상을 주지 않기 위해 기본값(하드코딩 또는 보관된 원본값)을 기준으로 곱합니다.
-            // 여기서는 단순화를 위해 매번 곱해지는 누적 오류를 막고자 프로퍼티 초기화 로직을 생략하나,
-            // 1주차 프로토타입 기준에서는 아래와 같이 단순 덮어쓰기 방식으로 작동시킵니다 (원본값이 필요하면 별도 보관 권장).
             this.maxHp = 50f * sManager.globalMinionHpBonusRatio;
             this.moveSpeed = 3f * sManager.globalMinionSpeedBonusRatio;
             this.attackDamage = 15f * sManager.globalMinionDamageBonusRatio;
@@ -87,7 +78,6 @@ public class MinionAI : UnitBase
 
     private void OnDisable()
     {
-        // 이벤트 구독 해제 (메모리 누수 방지)
         SkillManager.OnMinionStatsChanged -= ApplyGlobalBuffs;
 
         scanCts?.Cancel();
@@ -97,28 +87,27 @@ public class MinionAI : UnitBase
 
     protected override void Update()
     {
-        base.Update();
-        if (isDead) return;
+        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) 
+        {
+            if (rb != null) rb.velocity = Vector2.zero;
+            return;
+        }
 
+        base.Update();
         UpdateAnimation();
 
-        // [LEASH & TELEPORT] 플레이어와의 거리 체크
         if (playerTransform != null)
         {
             float distToPlayer = Vector2.Distance(transform.position, playerTransform.position);
-            
-            // 18.0f 초과 시 즉시 텔레포트
             if (distToPlayer > 18.0f)
             {
                 transform.position = playerTransform.position + (Vector3)Random.insideUnitCircle * 2f;
-                Debug.Log("<color=cyan>[MinionAI]</color> Teleported to Player (Too far!)");
             }
         }
 
-        // 수명 체크 로직
         if (Time.time > spawnTime + lifeTime)
         {
-            Die(); // 수명이 다하면 스스로 소멸
+            Die();
         }
     }
 
@@ -135,31 +124,32 @@ public class MinionAI : UnitBase
 
     private void FixedUpdate()
     {
-        if (isDead) return;
+        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) 
+        {
+             if (rb != null) rb.velocity = Vector2.zero;
+             return;
+        }
         
         ChaseTarget();
     }
 
-    /// <summary>
-    /// 매 프레임 Vector3.Distance를 돌리는 최악의 사태(O(N^2))를 방지하기 위해, 지정된 0.5초 주기로만 타겟을 찾습니다. (UniTask 적용)
-    /// </summary>
     private async UniTaskVoid ScanForTargetAsync(CancellationToken token)
     {
         while (!isDead && !token.IsCancellationRequested)
         {
-            // [REBORN] 플레이어로부터 10.0f 이상 떨어지면 타겟팅 강제 해제 및 복귀 모드
+            if (GameManager.Instance != null && GameManager.Instance.IsGameOver) break;
+
             if (playerTransform != null)
             {
                 float distToPlayer = Vector2.Distance(transform.position, playerTransform.position);
                 if (distToPlayer > 10.0f)
                 {
-                    currentTarget = null; // 리쉬 범위 밖이면 추적 중단
+                    currentTarget = null;
                     await UniTask.Delay(System.TimeSpan.FromSeconds(targetScanRate), cancellationToken: token);
                     continue;
                 }
             }
 
-            // 전역 GameManager의 WaveManager가 관리하는 최적화된 리스트 활용 (성능 최적화)
             if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
             {
                 List<EnemyAI> enemies = GameManager.Instance.waveManager.activeEnemies;
@@ -167,17 +157,14 @@ public class MinionAI : UnitBase
                 float minDistance = Mathf.Infinity;
                 Transform bestTarget = null;
 
-                // [BALANCING] 플레이어와의 거리 8.0f 이내인 적만 공격 대상으로 삼음
                 for (int i = 0; i < enemies.Count; i++)
                 {
                     EnemyAI enemy = enemies[i];
                     if (enemy == null || !enemy.gameObject.activeInHierarchy || enemy.IsDead) continue;
 
-                    // 1. 플레이어와의 거리 체크 (8.0f 이내인가?)
                     float distFromPlayer = Vector2.Distance(playerTransform.position, enemy.transform.position);
                     if (distFromPlayer > 8.0f) continue;
 
-                    // 2. 미니언과의 거리 체크 (가장 가까운 대상 찾기)
                     float distance = Vector2.Distance(transform.position, enemy.transform.position);
                     if (distance < minDistance)
                     {
@@ -189,23 +176,18 @@ public class MinionAI : UnitBase
                 currentTarget = bestTarget;
             }
 
-            // 다음 스캔 주기까지 대기
             await UniTask.Delay(System.TimeSpan.FromSeconds(targetScanRate), cancellationToken: token);
         }
     }
 
-    /// <summary>
-    /// 찾은 타겟을 향해 이동
-    /// </summary>
     private void ChaseTarget()
     {
-        // 타겟이 없거나 적이 범위를 벗어난 경우 플레이어에게 복귀
         if (currentTarget == null || !currentTarget.gameObject.activeInHierarchy)
         {
             if (playerTransform != null)
             {
                 float distToPlayer = Vector2.Distance(transform.position, playerTransform.position);
-                if (distToPlayer > 2.0f) // 2.0f 이상 떨어져 있을 때만 플레이어에게 접근
+                if (distToPlayer > 2.0f)
                 {
                     Vector2 returnDir = (playerTransform.position - transform.position).normalized;
                     rb.velocity = returnDir * moveSpeed;
@@ -222,16 +204,17 @@ public class MinionAI : UnitBase
     }
 
     /// <summary>
-    /// 물리 충돌 판정 (적 타격 로직)
+    /// 트리거 충돌 판정 (적 타격 로직) - 뱀서류 군집 AI 최적화
     /// </summary>
-    private void OnCollisionStay2D(Collision2D collision)
+    private void OnTriggerStay2D(Collider2D collision)
     {
-        if (isDead || Time.time < lastHitTime + hitCooldown) return;
+        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) return;
+        if (Time.time < lastHitTime + hitCooldown) return;
 
         // 상대방이 적인지 태그로 확인
-        if (collision.gameObject.CompareTag("Enemy"))
+        if (collision.CompareTag("Enemy"))
         {
-            UnitBase targetUnit = collision.gameObject.GetComponent<UnitBase>();
+            UnitBase targetUnit = collision.GetComponent<UnitBase>();
             if (targetUnit != null)
             {
                 SkillManager sManager = GameManager.Instance.skillManager;
@@ -239,14 +222,12 @@ public class MinionAI : UnitBase
 
                 if (sManager != null)
                 {
-                    // [스킬 연동] 20. 거인 사냥꾼: 정예/보스 몹에게 데미지 증폭 (임시로 EnemyAI에 isBoss 필드가 있다고 가정하거나, maxHp로 퉁침)
                     if (sManager.hasGiantHunter && targetUnit.maxHp >= 200f) 
                     {
                         finalDamage *= 1.3f;
                     }
                 }
 
-                // 적 타격 성공 및 애니메이션 재생!
                 if (animator != null) animator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
 
                 targetUnit.TakeDamage(finalDamage);
@@ -254,42 +235,33 @@ public class MinionAI : UnitBase
                 
                 if (sManager != null)
                 {
-                    // [스킬 연동] 15. 독성 칼날 / 16. 서리 무기 / 19. 저주받은 낙인
                     EnemyAI enemyScript = targetUnit as EnemyAI;
                     if (enemyScript != null)
                     {
-                        if (sManager.hasToxicBlade) enemyScript.ApplyPoison(3f, 2f); // 3초간 초당 2 데미지
-                        if (sManager.hasFrostWeapon) enemyScript.ApplyFrost(2f, 0.3f); // 2초간 이속 30% 감소
-                        if (sManager.hasCursedStigma) enemyScript.AddStigmaStack(); // 10대 맞으면 피해증폭 20%
+                        if (sManager.hasToxicBlade) enemyScript.ApplyPoison(3f, 2f);
+                        if (sManager.hasFrostWeapon) enemyScript.ApplyFrost(2f, 0.3f);
+                        if (sManager.hasCursedStigma) enemyScript.AddStigmaStack();
                     }
 
-                    // [스킬 연동] 12. 흡혈의 이빨: 미니언 타격 시 일정 확률로 플레이어 본체 회복
                     if (sManager.vampiricChance > 0f && Random.value <= sManager.vampiricChance)
                     {
                         PlayerController player = GameManager.Instance.playerTransform.GetComponent<PlayerController>();
                         if (player != null && player.currentHp < player.maxHp)
                         {
-                            player.currentHp += 1f; // 1 회복
+                            player.currentHp += 1f;
                             player.currentHp = Mathf.Clamp(player.currentHp, 0, player.maxHp);
                         }
                     }
                 }
-
-                // TODO: 뼈 부딪히는 타격 사운드 호출
             }
         }
     }
 
-    /// <summary>
-    /// 미니언 사망 또는 수명 만료 처리
-    /// </summary>
     protected override void Die()
     {
         base.Die();
-        
         rb.velocity = Vector2.zero;
         
-        // [스킬 연동] 13. 연쇄 폭발: 사망 시 반경 2m 내 적에게 광역 피해
         SkillManager sManager = GameManager.Instance.skillManager;
         if (sManager != null && sManager.minionExplosionDamage > 0f)
         {
@@ -302,11 +274,8 @@ public class MinionAI : UnitBase
                     if (enemyObj != null) enemyObj.TakeDamage(sManager.minionExplosionDamage);
                 }
             }
-            // Debug.Log("[SkillEffect] 펑! 미니언 폭발 데미지 발생");
         }
         
-        // TODO: 미니언 특유의 소멸 파티클 (가루가 되는 연출)
-
         if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
         {
             GameManager.Instance.poolManager.Release("Minion", gameObject);

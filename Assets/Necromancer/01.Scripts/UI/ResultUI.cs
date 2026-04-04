@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using TMPro;
 using Necromancer.Core;
 using UnityEngine.SceneManagement;
+using DG.Tweening;
 
 namespace Necromancer.UI
 {
@@ -15,6 +16,7 @@ namespace Necromancer.UI
         [SerializeField] private TextMeshProUGUI tmpTitle;
         [SerializeField] private TextMeshProUGUI tmpSoulCount;
         [SerializeField] private Button btnConfirm;
+        [SerializeField] private CanvasGroup canvasGroup;
 
         private void Awake()
         {
@@ -29,6 +31,16 @@ namespace Necromancer.UI
         public void Open(bool isVictory, int soulCount)
         {
             gameObject.SetActive(true);
+
+            // [STABILITY] 시간 정지 상태에서도 애니메이션이 작동하도록 SetUpdate(true) 필수 적용
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 0f;
+                canvasGroup.DOFade(1f, 0.5f).SetUpdate(true);
+            }
+            
+            transform.localScale = Vector3.one * 0.8f;
+            transform.DOScale(1f, 0.5f).SetEase(Ease.OutBack).SetUpdate(true);
 
             if (tmpTitle != null)
             {

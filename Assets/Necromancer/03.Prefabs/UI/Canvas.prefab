@@ -526,6 +526,7 @@ GameObject:
   - component: {fileID: 5734339740064073565}
   - component: {fileID: 1747543173807390331}
   - component: {fileID: 7201122914883048273}
+  - component: {fileID: 7368956386159078996}
   m_Layer: 5
   m_Name: ResultPanel
   m_TagString: Untagged
@@ -608,6 +609,19 @@ MonoBehaviour:
   tmpTitle: {fileID: 7603661455056782608}
   tmpSoulCount: {fileID: 8368374432670634856}
   btnConfirm: {fileID: 2066508554599232268}
+  canvasGroup: {fileID: 7368956386159078996}
+--- !u!225 &7368956386159078996
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1884338217277531430}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &1904745966115491638
 GameObject:
   m_ObjectHideFlags: 0

@@ -105,6 +105,9 @@ public class PlayerController : UnitBase
 
     public override void TakeDamage(float damage)
     {
+        // [QA DEBUG] 데미지 진입 로그
+        // Debug.Log($"[Player] TakeDamage Called. Amount: {damage}, CurrentHP: {currentHp}");
+
         // [스킬 연동] 7. 환영 회피: 확률적 데미지 무효화
         if (dodgeChance > 0f && Random.value <= dodgeChance)
         {
@@ -118,8 +121,6 @@ public class PlayerController : UnitBase
         if (GameManager.Instance != null && GameManager.Instance.feedbackManager != null && gameObject.activeInHierarchy)
         {
             GameManager.Instance.feedbackManager.ShakeCamera(0.15f, 0.2f);
-            // [DEPRECATED] 대규모 전투 최적화 및 셰이더 에러 방지를 위해 이펙트 미출력
-            // GameManager.Instance.feedbackManager.PlayHitEffect(transform.position, "HitEffect");
         }
     }
 
@@ -189,14 +190,14 @@ public class PlayerController : UnitBase
     /// <summary>
     /// 무기가 없는 1주차 테스트용 플레이어 몸통 박치기 판정
     /// </summary>
-    private void OnCollisionStay2D(Collision2D collision)
+    private void OnTriggerStay2D(Collider2D collision)
     {
         if (isDead || Time.time < lastSlamTime + slamCooldown) return;
 
         // 상대방이 적인지 태그로 확인
-        if (collision.gameObject.CompareTag("Enemy"))
+        if (collision.CompareTag("Enemy"))
         {
-            UnitBase enemyObj = collision.gameObject.GetComponent<UnitBase>();
+            UnitBase enemyObj = collision.GetComponent<UnitBase>();
             if (enemyObj != null)
             {
                 enemyObj.TakeDamage(bodySlamDamage); // 적 피 깎기
@@ -212,9 +213,15 @@ public class PlayerController : UnitBase
     {
         base.Die();
         
+        // [VISUAL] 월드가 정지(timeScale=0)되어도 플레이어 사망 애니메이션은 재생되도록 설정
+        if (animator != null)
+        {
+            animator.updateMode = AnimatorUpdateMode.UnscaledTime;
+        }
+
         // 이동 중지 처리 및 샌드백처럼 밀리는 현상 방지
         rb.velocity = Vector2.zero;
-        rb.bodyType = RigidbodyType2D.Static; // 죽으면 시체가 안 밀리게 고정
+        rb.bodyType = RigidbodyType2D.Static; 
         
         // GameManager에 게임 오버 이벤트 발송
         if (GameManager.Instance != null)

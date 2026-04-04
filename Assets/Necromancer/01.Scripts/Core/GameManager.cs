@@ -219,26 +219,26 @@ namespace Necromancer
             if (currentStage != null && Resources != null) 
             {
                 Resources.UnlockLevel(currentStage.stageID + 1);
-                Resources.CommitSessionSoul(); // [ADD] 클리어 시 획득한 소울을 확정 저장
             }
             
-            // [NEW] 영혼 흡수 및 결과 출력 시퀀스 시작
+            // [NEW] 영혼 흡수(Vacuum) 연출 진행 후 최종 저장 및 UI 출력
             StartCoroutine(StageClearSequence());
         }
 
         private IEnumerator StageClearSequence()
         {
-            // 맵에 흩어진 모든 영혼 진공 흡수
+            // 1. 맵에 흩어진 모든 영혼 진공 흡수 (애니메이션)
             ExpGem[] gems = GameObject.FindObjectsOfType<ExpGem>();
             foreach (var gem in gems) gem.StartVacuum();
 
-            // 흡수 연출을 위한 잠시 대기
+            // 2. 흡수 완료 시점까지 대기 (약 1.5초)
             yield return new WaitForSeconds(1.5f);
 
-            // 결과 UI 출력 알림 (UIManager가 가로채서 화면에 띄움)
+            // 3. [DATA INTEGRITY] 모든 연합이 끝난 시점의 최종 획득량을 저장 (Master's Directive)
+            if (Resources != null) Resources.CommitSessionSoul();
+
+            // 4. 결과 UI 출력 알림 (UIManager가 받아 ShowResultPanel 호출)
             OnGameOver?.Invoke(true);
-            
-            // [주의] Time.timeScale = 0f는 UIManager에서 결과창 애니메이션 후 처리하도록 순서 조정
         }
 
         public void OnStageFailed()
@@ -246,10 +246,13 @@ namespace Necromancer
             if (IsGameOver) return;
             IsGameOver = true;
             
-            if (Resources != null) Resources.CommitSessionSoul(); // [ADD] 실패 시에도 얻은 만큼은 확정 저장
+            // [STABILITY] 즉각적인 게임 정지 (Master's Directive)
+            Time.timeScale = 0f;
+
+            // [DATA INTEGRITY] 정지된 시점의 소울 저장 (정합성 0% 편차 보장)
+            if (Resources != null) Resources.CommitSessionSoul();
 
             OnGameOver?.Invoke(false);
-            //Time.timeScale = 0f; // UI 애니메이션을 위해 지연 처리 권장
         }
     }
 }
