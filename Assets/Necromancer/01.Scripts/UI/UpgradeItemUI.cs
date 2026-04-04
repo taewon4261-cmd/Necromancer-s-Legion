@@ -83,9 +83,9 @@ namespace Necromancer.UI
                 }
                 else
                 {
-                    if (costText != null) costText.text = $"{cost:N0} G";
-                    int currentGold = GameManager.Instance != null && GameManager.Instance.Resources != null ? GameManager.Instance.Resources.currentGold : 0;
-                    if (upgradeButton != null) upgradeButton.interactable = currentGold >= cost;
+                    if (costText != null) costText.text = $"{cost:N0} Soul";
+                    int currentSoul = GameManager.Instance != null && GameManager.Instance.Resources != null ? GameManager.Instance.Resources.currentSoul : 0;
+                    if (upgradeButton != null) upgradeButton.interactable = currentSoul >= cost;
                 }
             }
             else

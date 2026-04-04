@@ -28,7 +28,7 @@ namespace Necromancer.Editor
                 new UpgradeDataSpec("03_Upgrade_Attack", "사신의 낫", "Upgrade_Attack_Lv", UpgradeStatType.AttackDamage, "기본 공격(낫) 데미지 +5 증가", 10, 600, 0.6f, 5.0f),
                 new UpgradeDataSpec("04_Upgrade_MoveSpeed", "가벼운 발걸음", "Upgrade_MoveSpeed_Lv", UpgradeStatType.MoveSpeed, "플레이어 이동 속도 +0.2 증가", 5, 800, 0.8f, 0.2f),
                 new UpgradeDataSpec("05_Upgrade_AuraRange", "죽음의 오라", "Upgrade_AuraRange_Lv", UpgradeStatType.AuraRange, "부활 인식 범위 +0.5m 증가", 5, 700, 0.7f, 0.5f),
-                new UpgradeDataSpec("06_Upgrade_GoldGain", "탐욕스러운 눈", "Upgrade_GoldGain_Lv", UpgradeStatType.GoldGain, "게임 종료 시 골드 획득 +10%", 10, 1000, 0.6f, 10.0f),
+                new UpgradeDataSpec("06_Upgrade_SoulGain", "탐욕스러운 눈", "Upgrade_SoulGain_Lv", UpgradeStatType.SoulGain, "게임 종료 시 영혼 획득 +10%", 10, 1000, 0.6f, 10.0f),
                 new UpgradeDataSpec("07_Upgrade_ExpGain", "명민한 영혼", "Upgrade_ExpGain_Lv", UpgradeStatType.ExpGain, "경험치 획득량 +10% 증가", 10, 900, 0.6f, 10.0f),
                 new UpgradeDataSpec("08_Upgrade_Magnet", "영혼 갈무리", "Upgrade_MagnetRange_Lv", UpgradeStatType.MagnetRange, "보석 자석 흡수 범위 +1.0m 증가", 5, 600, 0.5f, 1.0f),
                 new UpgradeDataSpec("09_Upgrade_MinionDamage", "군단의 분노", "Upgrade_MinionDamage_Lv", UpgradeStatType.MinionDamage, "모든 미니언 공격력 +2 증가", 10, 1200, 0.9f, 2.0f),

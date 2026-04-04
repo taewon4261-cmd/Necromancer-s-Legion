@@ -23,7 +23,7 @@ namespace Necromancer.Systems
         public const string AnimParam_Hit = "Hit";
 
         // PlayerPrefs / Data Keys
-        public const string Key_TotalGold = "TotalGold";
+        public const string Key_TotalSoul = "TotalSoul";
         public const string Key_HighestWave = "HighestWave";
     }
 }

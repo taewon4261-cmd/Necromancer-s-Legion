@@ -16,7 +16,7 @@ namespace Necromancer.Core
         public float sfxVolume = 0.8f;
 
         [Header("Resources")]
-        public int currentGold = 0;
+        public int currentSoul = 0;
         public int unlockedStageLevel = 1;
 
         // 필요 시 더 많은 데이터 추가 가능 (예: 업그레이드 레벨 등)

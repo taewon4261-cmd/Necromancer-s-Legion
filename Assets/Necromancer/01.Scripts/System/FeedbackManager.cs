@@ -68,28 +68,32 @@ namespace Necromancer
         }
 
         /// <summary>
-        /// 데미지 숫자 띄우기 (현재 비활성화됨)
+        /// 데미지 숫자 띄우기 (최적화 및 안정성을 위해 비활성화)
         /// </summary>
         public void ShowDamageText(Vector3 position, float damage, bool isElite = false)
         {
-            // 텍스트 출력 기능 비활성화 요청으로 인한 중단
-            // if (GameManager.Instance == null || GameManager.Instance.poolManager == null) return;
+            // [OPTIMIZATION] 대규모 전투 최적화를 위해 데미지 텍스트 생성을 중단합니다.
+            /*
+            if (GameManager.Instance == null || GameManager.Instance.poolManager == null) return;
+            string tag = damageTextPoolTag;
+            GameObject obj = GameManager.Instance.poolManager.Get(tag, position, Quaternion.identity);
             // ...
+            */
         }
 
         /// <summary>
-        /// 피격 이펙트 생성
+        /// 피격 이펙트 생성 (최적화 및 안정성을 위해 비활성화)
         /// </summary>
         public void PlayHitEffect(Vector3 position, string effectTag = "HitEffect")
         {
+            // [STABILITY] Magenta 셰이더 에러 방지 및 GC 부하 감소를 위해 이펙트 생성을 중단합니다.
+            /*
             if (GameManager.Instance == null || GameManager.Instance.poolManager == null) return;
-            
-            // PoolManager 내부에 태그가 존재하는지 먼저 확인하는 로직이 있다면 좋으나,
-            // 현재는 PoolManager.Get 내부에서 이미 경고를 띄우고 있으므로 에러 발생 방지만 처리합니다.
             if (gameObject.activeInHierarchy)
             {
                 GameManager.Instance.poolManager.Get(effectTag, position, Quaternion.identity);
             }
+            */
         }
     }
 }

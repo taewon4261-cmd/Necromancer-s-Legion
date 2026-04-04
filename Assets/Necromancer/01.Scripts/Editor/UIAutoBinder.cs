@@ -13,7 +13,7 @@ namespace Necromancer.UI
                 var viewport = ui.transform.Find("Scroll View/Viewport");
                 if (viewport != null) ui.contentRoot = viewport.Find("Content");
             }
-            if (ui.goldText == null) ui.goldText = ui.transform.Find("Text_GoldDisplay")?.GetComponent<TextMeshProUGUI>();
+            if (ui.soulText == null) ui.soulText = ui.transform.Find("Text_GoldDisplay")?.GetComponent<TextMeshProUGUI>();
             
             UnityEditor.EditorUtility.SetDirty(ui);
         }

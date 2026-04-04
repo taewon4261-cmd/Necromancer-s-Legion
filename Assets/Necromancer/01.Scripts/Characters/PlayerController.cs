@@ -118,7 +118,8 @@ public class PlayerController : UnitBase
         if (GameManager.Instance != null && GameManager.Instance.feedbackManager != null && gameObject.activeInHierarchy)
         {
             GameManager.Instance.feedbackManager.ShakeCamera(0.15f, 0.2f);
-            GameManager.Instance.feedbackManager.PlayHitEffect(transform.position, "HitEffect");
+            // [DEPRECATED] 대규모 전투 최적화 및 셰이더 에러 방지를 위해 이펙트 미출력
+            // GameManager.Instance.feedbackManager.PlayHitEffect(transform.position, "HitEffect");
         }
     }
 

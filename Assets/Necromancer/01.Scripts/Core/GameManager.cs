@@ -46,13 +46,15 @@ namespace Necromancer
 
         public static event Action<float, float> OnExpChanged;
         public static event Action<List<SkillData>> OnLevelUp;
-        public static event Action<int, string> OnWaveStarted;
+        public static event Action<int, int, string> OnWaveStarted;
+        public static event Action<int> OnSoulChanged;
         public static event Action<float> OnTimeUpdated;
         public static event Action<float> OnSpeedChanged;
         public static event Action<bool> OnGameOver;
 
         public static void BroadcastTime(float time) => OnTimeUpdated?.Invoke(time);
-        public static void BroadcastWave(int index, string name) => OnWaveStarted?.Invoke(index, name);
+        public static void BroadcastWave(int index, int total, string name) => OnWaveStarted?.Invoke(index, total, name);
+        public static void BroadcastSoul(int amount) => OnSoulChanged?.Invoke(amount);
 
         public Transform playerTransform;
         public float magnetRadius = 3f;
@@ -64,7 +66,7 @@ namespace Necromancer
 
         public int currentLevel = 1;
         public float currentExp = 0f;
-        public float maxExp = 100f;
+        public float maxExp = 200f;
 
         private void Awake()
         {
@@ -96,6 +98,11 @@ namespace Necromancer
                 // [STABILITY] 게임 시작 시 시간 흐름 보장 (이전 세션의 Pause/GameOver 상태 초기화)
                 Time.timeScale = currentGameSpeed;
                 IsGameOver = false;
+                if (Resources != null) 
+                {
+                    Resources.currentSessionSoul = 0;
+                    BroadcastSoul(0); // 인게임 진입 시 HUD 소울 0으로 초기화
+                }
 
                 if (playerTransform == null)
                 {
@@ -139,6 +146,7 @@ namespace Necromancer
                 currentExp = 0f;
                 currentLevel = 1;
                 Time.timeScale = 1f;
+                if (Resources != null) Resources.currentSessionSoul = 0;
                 Debug.Log("<color=cyan><b>[GameManager]</b> Session data cleared for TitleScene.</color>");
             }
         }
@@ -182,7 +190,7 @@ namespace Necromancer
             {
                 currentExp -= maxExp;
                 currentLevel++;
-                maxExp = 100f + (currentLevel * 30f);
+                maxExp = 200f + (currentLevel * 50f);
                 if (skillManager != null)
                 {
                     var options = skillManager.GetRandomSkillsForLevelUp(3);
@@ -208,17 +216,40 @@ namespace Necromancer
         {
             if (IsGameOver) return;
             IsGameOver = true;
-            if (currentStage != null && Resources != null) Resources.UnlockLevel(currentStage.stageID + 1);     
+            if (currentStage != null && Resources != null) 
+            {
+                Resources.UnlockLevel(currentStage.stageID + 1);
+                Resources.CommitSessionSoul(); // [ADD] 클리어 시 획득한 소울을 확정 저장
+            }
+            
+            // [NEW] 영혼 흡수 및 결과 출력 시퀀스 시작
+            StartCoroutine(StageClearSequence());
+        }
+
+        private IEnumerator StageClearSequence()
+        {
+            // 맵에 흩어진 모든 영혼 진공 흡수
+            ExpGem[] gems = GameObject.FindObjectsOfType<ExpGem>();
+            foreach (var gem in gems) gem.StartVacuum();
+
+            // 흡수 연출을 위한 잠시 대기
+            yield return new WaitForSeconds(1.5f);
+
+            // 결과 UI 출력 알림 (UIManager가 가로채서 화면에 띄움)
             OnGameOver?.Invoke(true);
-            Time.timeScale = 0f;
+            
+            // [주의] Time.timeScale = 0f는 UIManager에서 결과창 애니메이션 후 처리하도록 순서 조정
         }
 
         public void OnStageFailed()
         {
             if (IsGameOver) return;
             IsGameOver = true;
+            
+            if (Resources != null) Resources.CommitSessionSoul(); // [ADD] 실패 시에도 얻은 만큼은 확정 저장
+
             OnGameOver?.Invoke(false);
-            Time.timeScale = 0f;
+            //Time.timeScale = 0f; // UI 애니메이션을 위해 지연 처리 권장
         }
     }
 }

@@ -19,6 +19,7 @@ namespace Necromancer.UI
         public Image expFillBar;
         public TextMeshProUGUI textTimer;
         public TextMeshProUGUI textWave;
+        public TextMeshProUGUI textSoul;
 
         [Header("Level Up Panel")]
         public GameObject levelUpPanel;
@@ -30,12 +31,11 @@ namespace Necromancer.UI
         [Header("Buttons")]
         public Button speedButton;
         public Button backToTitleButton;
+        public Button rerollButton;
         public TextMeshProUGUI textSpeedToggle;
 
-        [Header("Result Panel")]
-        public GameObject resultPanel;
-        public TextMeshProUGUI resultTitleText;
-        public TextMeshProUGUI resultStatsText;
+        [Header("Result UI")]
+        public ResultUI resultUI;
 
         [Header("Screen Effects")]
         public CanvasGroup dangerOverlay;
@@ -53,7 +53,7 @@ namespace Necromancer.UI
         public void Init()
         {
             // [QA AUTO-FIX] Scene Guard - 타이틀 씬에서 불필요한 인게임 UI 생성 방지
-            bool isGameScene = SceneManager.GetActiveScene().name == "GameScene" || (GameObject.FindObjectOfType<PlayerController>() != null);
+            bool isGameScene = SceneManager.GetActiveScene().name == "GameScene";
             if (!isGameScene) return;
 
             DOTween.KillAll();
@@ -82,11 +82,14 @@ namespace Necromancer.UI
                     expFillBar = hud.expFillBar;
                     textTimer = hud.textTimer;
                     textWave = hud.textWave;
+                    textSoul = hud.textSoul;
                     speedButton = hud.speedButton;
                     backToTitleButton = hud.backToTitleButton;
                     dangerOverlay = hud.dangerOverlay;
                     levelUpPanel = hud.levelUpPanel;
-                    resultPanel = hud.resultPanel;
+                    resultUI = hud.resultUI;
+                    rerollButton = hud.rerollButton;
+                    textSpeedToggle = hud.textSpeedToggle;
 
                     // 스킬 카드 UI 연결
                     for (int i = 0; i < 3; i++)
@@ -104,10 +107,6 @@ namespace Necromancer.UI
                     Debug.LogError("<color=red>[UIManager]</color> InGameHUD component NOT FOUND on UI root! Please attach it to the prefab.");
                 }
 
-                // 스피드 텍스트는 버튼의 자식에서 찾음 (이름이 다를 수 있음)
-                if (speedButton != null) 
-                    textSpeedToggle = speedButton.GetComponentInChildren<TextMeshProUGUI>();
-
                 // [UI SYNC] 초기 텍스트 및 바 설정
                 if (textSpeedToggle != null) 
                 {
@@ -116,6 +115,11 @@ namespace Necromancer.UI
                 }
                 if (textTimer != null) textTimer.SetText("00:00");
                 if (textWave != null) textWave.SetText("WAVE 1");
+                if (textSoul != null) 
+                {
+                    // [BUG-FIX] 이전 판 데이터가 남는 'Ghost Value' 현상 방지를 위해 즉시 초기화
+                    textSoul.text = " SOUL : 0"; 
+                }
                 
                 // [PERFORMANCE] 초기 경험치 바 동기화
                 if (GameManager.Instance != null)
@@ -147,11 +151,16 @@ namespace Necromancer.UI
                 backToTitleButton.onClick.AddListener(OnClick_BackToTitle);
             }
 
+            if (rerollButton != null)
+            {
+                rerollButton.onClick.RemoveAllListeners();
+                rerollButton.onClick.AddListener(OnClick_RerollWithAds);
+            }
+
             if (levelUpPanel != null) levelUpPanel.SetActive(false);
-            if (resultPanel != null) resultPanel.SetActive(false);
+            if (resultUI != null) resultUI.gameObject.SetActive(false);
         }
 
-        // [STABILITY] 타이틀 씬 이동 시 인게임 UI 인스턴스 제거
         public void Clear()
         {
             if (inGameUIInstance != null)
@@ -162,7 +171,7 @@ namespace Necromancer.UI
                 textTimer = null;
                 textWave = null;
                 levelUpPanel = null;
-                resultPanel = null;
+                resultUI = null;
                 dangerOverlay = null;
                 cachedPlayer = null;
                 Debug.Log("<color=orange>[UIManager]</color> In-Game UI Instance Cleared.");
@@ -174,6 +183,7 @@ namespace Necromancer.UI
             GameManager.OnExpChanged += UpdateExpBar;
             GameManager.OnLevelUp += HandleLevelUp;
             GameManager.OnWaveStarted += HandleWaveStarted;
+            GameManager.OnSoulChanged += UpdateSoulUI;
             GameManager.OnTimeUpdated += HandleTimeUpdated;
             GameManager.OnSpeedChanged += HandleSpeedChanged;
             GameManager.OnGameOver += ShowResultPanel;
@@ -184,6 +194,7 @@ namespace Necromancer.UI
             GameManager.OnExpChanged -= UpdateExpBar;
             GameManager.OnLevelUp -= HandleLevelUp;
             GameManager.OnWaveStarted -= HandleWaveStarted;
+            GameManager.OnSoulChanged -= UpdateSoulUI;
             GameManager.OnTimeUpdated -= HandleTimeUpdated;
             GameManager.OnSpeedChanged -= HandleSpeedChanged;
             GameManager.OnGameOver -= ShowResultPanel;
@@ -235,9 +246,20 @@ namespace Necromancer.UI
             }
         }
 
-        private void HandleWaveStarted(int index, string waveName)
+        private void HandleWaveStarted(int index, int total, string waveName)
         {
-            if (textWave != null) textWave.SetText(waveName);
+            if (textWave != null) textWave.SetText($"WAVE {index + 1} / {total}");
+        }
+
+        private void UpdateSoulUI(int amount)
+        {
+            if (textSoul != null)
+            {
+                // [QA] 최적화보다 '동작' 확인을 위해 원시적인 방식으로 교체
+                string result = string.Format(" SOUL : {0:N0}", amount);
+                textSoul.text = result;
+                Debug.Log($"<color=cyan>[QA Check]</color> Soul UI Updated to: {result}");
+            }
         }
 
         public void RefreshSkillCards(List<SkillData> newOptions)
@@ -251,14 +273,13 @@ namespace Necromancer.UI
 
                 if (i < currentOptions.Count)
                 {
-                    int index = i; // 클로저 캡처 방지
+                    int index = i;
                     skillCardButtons[i].gameObject.SetActive(true);
                     
                     if (skillCardIcons[i] != null) skillCardIcons[i].sprite = currentOptions[i].skillIcon;
                     if (skillCardNames[i] != null) skillCardNames[i].SetText(currentOptions[i].skillName);
                     if (skillCardDescriptions[i] != null) skillCardDescriptions[i].SetText(currentOptions[i].skillDescription);
 
-                    // 버튼 리스너 설정 (사용자 요구사항: 3단계 프로세스)
                     skillCardButtons[i].onClick.RemoveAllListeners();
                     skillCardButtons[i].onClick.AddListener(() => OnClick_SelectSkill(index));
                 }
@@ -269,42 +290,37 @@ namespace Necromancer.UI
             }
         }
 
-        /// <summary>
-        /// 스킬 카드를 선택했을 때 실행되는 단계별 로직 (LearnSkill -> UI Close -> Resume Speed)
-        /// </summary>
         private void OnClick_SelectSkill(int index)
         {
             if (currentOptions == null || index >= currentOptions.Count) return;
 
             SkillData selectedSkill = currentOptions[index];
 
-            // 1단계. LearnSkill 호출: 선택한 스킬 데이터를 전달
             if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
             {
                 GameManager.Instance.skillManager.LearnSkill(selectedSkill);
             }
 
-            // 2단계. 레벨업 패널 비활성화 (창 닫기)
             if (levelUpPanel != null) levelUpPanel.SetActive(false);
 
-            // 3단계. GameManager가 기억하고 있는 원래 배속으로 복구합니다.
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.ResumeGameSpeed();
             }
-
-            Debug.Log($"<color=yellow>[UIManager]</color> Skill Learned: {selectedSkill.skillName}, UI Closed, Time Resumed via GameManager.");
         }
 
         public void ShowResultPanel(bool isVictory)
         {
-            if (resultPanel == null) return;
-            resultPanel.SetActive(true);
-            if (resultTitleText != null)
-            {
-                resultTitleText.SetText(isVictory ? "STAGE CLEAR" : "YOU DIED");
-                resultTitleText.color = isVictory ? Color.green : Color.red;
-            }
+            if (resultUI == null) return;
+            
+            int souls = (GameManager.Instance != null && GameManager.Instance.Resources != null) ? 
+                GameManager.Instance.Resources.currentSessionSoul : 0;
+
+            resultUI.Open(isVictory, souls);
+
+            DOVirtual.DelayedCall(0.5f, () => {
+                Time.timeScale = 0f;
+            }).SetUpdate(true);
         }
 
         public void OnClick_BackToTitle()
@@ -314,14 +330,15 @@ namespace Necromancer.UI
             SceneManager.LoadScene("TitleScene");
         }
 
-        private GameObject FindInactiveObjectByName(Transform parent, string name)
+        public void OnClick_RerollWithAds()
         {
-            Transform[] allChildren = parent.GetComponentsInChildren<Transform>(true);
-            foreach (Transform child in allChildren)
+            Debug.Log("<color=cyan>[ADS]</color> 광고 시청 완료 - 스킬 카드 리롤을 시도합니다.");
+
+            if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
             {
-                if (child.name == name) return child.gameObject;
+                var newOptions = GameManager.Instance.skillManager.GetRandomSkillsForLevelUp(3);
+                RefreshSkillCards(newOptions);
             }
-            return null;
         }
     }
 }

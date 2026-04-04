@@ -1045,7 +1045,7 @@ MonoBehaviour:
   contentRoot: {fileID: 339212431}
   slotPrefab: {fileID: 8293275331917451820, guid: b0c46dfbd7157c64a9bc100b7148f1be,
     type: 3}
-  goldText: {fileID: 853982778}
+  soulText: {fileID: 0}
   initialGold: 1000
 --- !u!1 &330585543
 GameObject:

@@ -12,8 +12,8 @@ namespace Necromancer.Systems
         [Header("Grid Setup")]
         public Transform playerTransform;
         public Sprite tileSprite;
-        public float tileSize = 10f; // PPU 100 기준 1000px 이미지일 때 10이 최적
-        public int gridSize = 4; // 4x4로 설정
+        public float tileSize = 10f; 
+        public int gridSize = 12; // Ortho 18 카메라 대응을 위해 12x12 권장 (총 120x120 영역 확보)
         public int sortingOrder = -100;
 
         [Header("Movement Boundary (Optional)")]

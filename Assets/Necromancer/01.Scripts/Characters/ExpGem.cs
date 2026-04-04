@@ -55,6 +55,15 @@ public class ExpGem : MonoBehaviour
     }
 
     /// <summary>
+    /// 마지막 몬스터 처치 시 모든 영혼을 강제로 빨아들이는 명령
+    /// </summary>
+    public void StartVacuum()
+    {
+        isFollowing = true;
+        flySpeed = 40f; // 빨려오는 속도 상향
+    }
+
+    /// <summary>
     /// 플레이어의 콜라이더와 부딪히면 냠냠
     /// </summary>
     private void OnTriggerEnter2D(Collider2D collision)
@@ -64,7 +73,15 @@ public class ExpGem : MonoBehaviour
             // 경험치 추가
             if (GameManager.Instance != null)
             {
+                // 경험치 추가
                 GameManager.Instance.AddExp(expAmount);
+
+                // [NEW] 보석 획득 시 1 소울(영혼) 고정 추가
+                if (GameManager.Instance.Resources != null)
+                {
+                    GameManager.Instance.Resources.AddSoul(1);
+                }
+
                 GameManager.Instance.poolManager.Release("ExpGem", gameObject);
             }
             else

@@ -32,9 +32,8 @@ public class MinionAI : UnitBase
     private Transform currentTarget;
     private float lastHitTime;
     private float spawnTime;
-    
-    // UniTask 취소 토큰
     private CancellationTokenSource scanCts;
+    private Transform playerTransform;
 
     protected override void Awake()
     {
@@ -53,6 +52,9 @@ public class MinionAI : UnitBase
         
         spawnTime = Time.time;
         currentTarget = null;
+
+        // 플레이어 위치 캐싱
+        if (GameManager.Instance != null) playerTransform = GameManager.Instance.playerTransform;
         
         // 기존 토큰 초기화
         scanCts?.Cancel();
@@ -100,6 +102,19 @@ public class MinionAI : UnitBase
 
         UpdateAnimation();
 
+        // [LEASH & TELEPORT] 플레이어와의 거리 체크
+        if (playerTransform != null)
+        {
+            float distToPlayer = Vector2.Distance(transform.position, playerTransform.position);
+            
+            // 18.0f 초과 시 즉시 텔레포트
+            if (distToPlayer > 18.0f)
+            {
+                transform.position = playerTransform.position + (Vector3)Random.insideUnitCircle * 2f;
+                Debug.Log("<color=cyan>[MinionAI]</color> Teleported to Player (Too far!)");
+            }
+        }
+
         // 수명 체크 로직
         if (Time.time > spawnTime + lifeTime)
         {
@@ -132,6 +147,18 @@ public class MinionAI : UnitBase
     {
         while (!isDead && !token.IsCancellationRequested)
         {
+            // [REBORN] 플레이어로부터 10.0f 이상 떨어지면 타겟팅 강제 해제 및 복귀 모드
+            if (playerTransform != null)
+            {
+                float distToPlayer = Vector2.Distance(transform.position, playerTransform.position);
+                if (distToPlayer > 10.0f)
+                {
+                    currentTarget = null; // 리쉬 범위 밖이면 추적 중단
+                    await UniTask.Delay(System.TimeSpan.FromSeconds(targetScanRate), cancellationToken: token);
+                    continue;
+                }
+            }
+
             // 전역 GameManager의 WaveManager가 관리하는 최적화된 리스트 활용 (성능 최적화)
             if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
             {
@@ -140,12 +167,17 @@ public class MinionAI : UnitBase
                 float minDistance = Mathf.Infinity;
                 Transform bestTarget = null;
 
-                // 적 목록을 순회하며 가장 가까운 타겟 검색 (리스트 i-for문이 foreach보다 약간 더 빠름)
+                // [BALANCING] 플레이어와의 거리 8.0f 이내인 적만 공격 대상으로 삼음
                 for (int i = 0; i < enemies.Count; i++)
                 {
                     EnemyAI enemy = enemies[i];
                     if (enemy == null || !enemy.gameObject.activeInHierarchy || enemy.IsDead) continue;
 
+                    // 1. 플레이어와의 거리 체크 (8.0f 이내인가?)
+                    float distFromPlayer = Vector2.Distance(playerTransform.position, enemy.transform.position);
+                    if (distFromPlayer > 8.0f) continue;
+
+                    // 2. 미니언과의 거리 체크 (가장 가까운 대상 찾기)
                     float distance = Vector2.Distance(transform.position, enemy.transform.position);
                     if (distance < minDistance)
                     {
@@ -167,9 +199,21 @@ public class MinionAI : UnitBase
     /// </summary>
     private void ChaseTarget()
     {
+        // 타겟이 없거나 적이 범위를 벗어난 경우 플레이어에게 복귀
         if (currentTarget == null || !currentTarget.gameObject.activeInHierarchy)
         {
-            rb.velocity = Vector2.zero; // 타겟이 없으면 대기 (또는 오라 부근으로 복귀 로직 추가 가능)
+            if (playerTransform != null)
+            {
+                float distToPlayer = Vector2.Distance(transform.position, playerTransform.position);
+                if (distToPlayer > 2.0f) // 2.0f 이상 떨어져 있을 때만 플레이어에게 접근
+                {
+                    Vector2 returnDir = (playerTransform.position - transform.position).normalized;
+                    rb.velocity = returnDir * moveSpeed;
+                }
+                else rb.velocity = Vector2.zero;
+            }
+            else rb.velocity = Vector2.zero;
+            
             return;
         }
 

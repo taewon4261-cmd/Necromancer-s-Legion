@@ -20,7 +20,7 @@ namespace Necromancer.UI
         [Header("UI References (Assign in Inspector)")]
         public Transform contentRoot;
         public GameObject slotPrefab;
-        public TextMeshProUGUI goldText;
+        public TextMeshProUGUI soulText;
         public int initialGold = 1000;
 
         private List<UpgradeItemUI> activeSlots = new List<UpgradeItemUI>();
@@ -29,10 +29,7 @@ namespace Necromancer.UI
 
         private void OnEnable()
         {
-            if (goldText == null)
-                goldText = transform.Find("Top_Bar/Text_GoldDisplay")?.GetComponent<TextMeshProUGUI>();
-
-            UpdateGoldUI(true);
+            UpdateSoulUI(true);
             RefreshUI();
         }
 
@@ -63,7 +60,7 @@ namespace Necromancer.UI
                 if (data != null) data.LoadLevel();
             }
 
-            UpdateGoldUI(true);
+            UpdateSoulUI(true);
 
             if (upgradeList != null)
             {
@@ -121,24 +118,24 @@ namespace Necromancer.UI
 #endif
         }
 
-        public void UpdateGoldUI(bool immediate = false)
+        public void UpdateSoulUI(bool immediate = false)
         {
-            if (goldText == null || GameManager.Instance == null || GameManager.Instance.Resources == null) return;
-            int targetGold = GameManager.Instance.Resources.currentGold;
+            if (soulText == null || GameManager.Instance == null || GameManager.Instance.Resources == null) return;
+            int targetSoul = GameManager.Instance.Resources.currentSoul;
             
             if (immediate)
             {
                 goldTweener?.Kill();
-                goldText.text = $"{targetGold:N0}";
-                lastDisplayedGold = targetGold;
+                soulText.text = $"{targetSoul:N0}";
+                lastDisplayedGold = targetSoul;
             }
-            else if (lastDisplayedGold != targetGold)
+            else if (lastDisplayedGold != targetSoul)
             {
                 goldTweener?.Kill();
                 goldTweener = DOTween.To(() => lastDisplayedGold, x => {
                     lastDisplayedGold = x;
-                    goldText.text = $"{x:N0}";
-                }, targetGold, 0.5f).SetEase(Ease.OutQuad);
+                    soulText.text = $"{x:N0}";
+                }, targetSoul, 0.5f).SetEase(Ease.OutQuad);
             }
         }
 
@@ -146,9 +143,9 @@ namespace Necromancer.UI
         {
             if (GameManager.Instance != null && GameManager.Instance.Resources != null)
             {
-                if (GameManager.Instance.Resources.SpendGold(cost))
+                if (GameManager.Instance.Resources.SpendSoul(cost))
                 {
-                    UpdateGoldUI();
+                    UpdateSoulUI();
                     return true;
                 }
             }

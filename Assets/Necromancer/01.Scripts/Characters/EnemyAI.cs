@@ -1,7 +1,8 @@
-// File: Assets/Necromancer/01.Scripts/Characters/EnemyAI.cs
-using System.Collections;
-using System.Collections.Generic;
+
 using UnityEngine;
+using Cysharp.Threading.Tasks;
+using System.Threading;
+using System.Collections;
 
 namespace Necromancer
 {
@@ -26,11 +27,10 @@ public class EnemyAI : UnitBase
     private Transform targetPlayer;
     private Rigidbody2D rb;
     private float lastHitTime;
+    private CancellationTokenSource enrageCts;
 
     // --- [스킬 연동: 상태이상 디버프 변수들] ---
     private float originalMoveSpeed;
-    private Coroutine poisonCoroutine;
-    private Coroutine frostCoroutine;
     private int stigmaStacks = 0;
 
     protected override void Awake()
@@ -58,6 +58,12 @@ public class EnemyAI : UnitBase
         {
             targetPlayer = GameManager.Instance.playerTransform;
         }
+
+        // [ENRAGE] 스폰 20초 후 광폭화 루틴 시작
+        enrageCts?.Cancel();
+        enrageCts?.Dispose();
+        enrageCts = new CancellationTokenSource();
+        EnrageAfterDelayAsync(enrageCts.Token).Forget();
     }
 
     protected virtual void OnDisable()
@@ -67,6 +73,10 @@ public class EnemyAI : UnitBase
         {
             GameManager.Instance.waveManager.activeEnemies.Remove(this);
         }
+
+        enrageCts?.Cancel();
+        enrageCts?.Dispose();
+        enrageCts = null;
     }
 
     /// <summary>
@@ -100,37 +110,62 @@ public class EnemyAI : UnitBase
         if (spriteRenderer != null) spriteRenderer.color = Color.white;
     }
 
+    /// <summary>
+    /// 스폰 후 일정 시간(20초)이 지나면 적을 광폭화시켜 플레이어를 압박합니다.
+    /// </summary>
+    private async UniTaskVoid EnrageAfterDelayAsync(CancellationToken token)
+    {
+        // 20초 대기 (UniTask 활용으로 성능 최적화)
+        bool isCancelled = await UniTask.Delay(System.TimeSpan.FromSeconds(20.0f), cancellationToken: token).SuppressCancellationThrow();
+        
+        if (!isCancelled && !isDead && gameObject.activeInHierarchy)
+        {
+            // 1. 이동 속도 1.5배 증가
+            moveSpeed *= 1.5f;
+
+            // 2. 공격 쿨타임 30% 단축
+            hitCooldown *= 0.7f;
+
+            // 3. 시각적 연출 (빨간색)
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.color = Color.red;
+            }
+
+            Debug.Log($"<color=red>[EnemyAI]</color> {gameObject.name} ENRAGED! (20s reached)");
+        }
+    }
+
     // --- [스킬 연동 로직 시작] ---
     public void ApplyPoison(float duration, float tickDamage)
     {
         if (!gameObject.activeInHierarchy || isDead) return;
-        if (poisonCoroutine != null) StopCoroutine(poisonCoroutine);
-        poisonCoroutine = StartCoroutine(PoisonRoutine(duration, tickDamage));
+        PoisonAsync(duration, tickDamage, gameObject.GetCancellationTokenOnDestroy()).Forget();
     }
 
-    private IEnumerator PoisonRoutine(float duration, float tickDamage)
+    private async UniTaskVoid PoisonAsync(float duration, float tickDamage, CancellationToken token)
     {
         float timer = 0f;
-        while (timer < duration && !isDead)
+        while (timer < duration && !isDead && !token.IsCancellationRequested)
         {
             TakeDamage(tickDamage);
             timer += 1f;
-            yield return new WaitForSeconds(1f);
+            bool isCancelled = await UniTask.Delay(System.TimeSpan.FromSeconds(1f), cancellationToken: token).SuppressCancellationThrow();
+            if (isCancelled) return;
         }
     }
 
     public void ApplyFrost(float duration, float slowdownRatio)
     {
         if (!gameObject.activeInHierarchy || isDead) return;
-        if (frostCoroutine != null) StopCoroutine(frostCoroutine);
-        frostCoroutine = StartCoroutine(FrostRoutine(duration, slowdownRatio));
+        FrostAsync(duration, slowdownRatio, gameObject.GetCancellationTokenOnDestroy()).Forget();
     }
 
-    private IEnumerator FrostRoutine(float duration, float slowdownRatio)
+    private async UniTaskVoid FrostAsync(float duration, float slowdownRatio, CancellationToken token)
     {
         moveSpeed = originalMoveSpeed * (1f - slowdownRatio);
-        yield return new WaitForSeconds(duration);
-        if(!isDead) moveSpeed = originalMoveSpeed;
+        bool isCancelled = await UniTask.Delay(System.TimeSpan.FromSeconds(duration), cancellationToken: token).SuppressCancellationThrow();
+        if (!isCancelled && !isDead) moveSpeed = originalMoveSpeed;
     }
 
     public void AddStigmaStack()
@@ -221,8 +256,8 @@ public class EnemyAI : UnitBase
             float magnitude = (data != null && data.isElite) ? 0.15f : 0.08f;
             
             GameManager.Instance.feedbackManager.ShakeCamera(duration, magnitude);
-            // "HitEffect_Enemy"가 없을 경우를 대비해 "HitEffect" 기본 태그 사용
-            GameManager.Instance.feedbackManager.PlayHitEffect(transform.position, "HitEffect");
+            // [DEPRECATED] 대규모 전투 최적화 및 셰이더 에러 방지를 위해 이펙트 미출력
+            // GameManager.Instance.feedbackManager.PlayHitEffect(transform.position, "HitEffect");
         }
     }
 
@@ -232,9 +267,6 @@ public class EnemyAI : UnitBase
     protected override void Die()
     {
         base.Die();
-        
-        if (poisonCoroutine != null) StopCoroutine(poisonCoroutine);
-        if (frostCoroutine != null) StopCoroutine(frostCoroutine);
         
         rb.velocity = Vector2.zero;
         

@@ -14,15 +14,17 @@ namespace Necromancer.UI
         public Image expFillBar;
         public TextMeshProUGUI textTimer;
         public TextMeshProUGUI textWave;
+        public TextMeshProUGUI textSoul;
 
         [Header("Panels")]
         public GameObject levelUpPanel;
-        public GameObject resultPanel;
+        public ResultUI resultUI;
         public CanvasGroup dangerOverlay;
 
         [Header("Buttons")]
         public Button speedButton;
         public Button backToTitleButton;
+        public Button rerollButton;
         public TextMeshProUGUI textSpeedToggle;
         
         [Header("Skill Selection (Part of LevelUp Panel)")]

@@ -10,6 +10,8 @@ namespace Necromancer
         public string waveName;
         [Tooltip("이 웨이브가 시작되는 게임 경과 시간 (초)")]
         public float startTime;
+        [Tooltip("웨이브 지속 시간 (초), 이 시간이 지나면 다음 웨이브로 넘어가거나 스폰이 중단됩니다.")]
+        public float duration = 60f;
         [Tooltip("스폰 주기 (초)")]
         public float spawnDelay = 1f;
 

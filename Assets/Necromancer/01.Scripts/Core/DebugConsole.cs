@@ -82,11 +82,11 @@ namespace Necromancer.Core
             
             switch (cmd)
             {
-                case "gold":
+                case "soul":
                     if (parts.Length > 1 && int.TryParse(parts[1], out int goldAmount))
                     {
-                        GameManager.Instance.Resources.AddGold(goldAmount);
-                        Log($"Added {goldAmount} Gold.");
+                        GameManager.Instance.Resources.AddSoul(goldAmount);
+                        Log($"Harvested {goldAmount} Soul.");
                     }
                     break;
 
@@ -111,7 +111,7 @@ namespace Necromancer.Core
                     break;
 
                 case "help":
-                    Log("Commands: gold [val], exp [val], win, die, help");
+                    Log("Commands: soul [val], exp [val], win, die, help");
                     break;
 
                 default:

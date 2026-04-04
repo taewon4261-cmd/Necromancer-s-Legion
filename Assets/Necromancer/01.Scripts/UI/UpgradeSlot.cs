@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
@@ -82,8 +82,8 @@ namespace Necromancer.UI
                         costText.text = $"{cost:N0}";
                         // 실제 재화 체크는 ResourceManager를 통하도록 설계됨 (UpgradeUI에서 제어)
                         // 임시로 버튼의 interactable만 간단히 체크
-                        int currentGold = PlayerPrefs.GetInt("TotalGold", 0);
-                        if (upgradeButton != null) upgradeButton.interactable = currentGold >= cost;
+                        int currentSoul = PlayerPrefs.GetInt(Systems.UIConstants.Key_TotalSoul, 0);
+                        if (upgradeButton != null) upgradeButton.interactable = currentSoul >= cost;
                     }
                 }
             }
@@ -112,7 +112,7 @@ namespace Necromancer.UI
             }
             else
             {
-                Debug.Log("<color=yellow>[UpgradeSlot]</color> 골드가 부족하여 업그레이드에 실패했습니다.");
+                Debug.Log("<color=yellow>[UpgradeSlot]</color> 영혼이 부족하여 업그레이드에 실패했습니다.");
             }
         }
     }

@@ -14,7 +14,7 @@ namespace Necromancer
 
         private int currentWaveIndex = 0;
         private bool isSpawning = false;
-        private float gameTime = 0f;
+        public float gameTime = 0f;
         private Transform playerTransform;
         private CancellationTokenSource spawnCts;
 
@@ -74,23 +74,48 @@ namespace Necromancer
 
         private void Update()
         {
-            if (!isSpawning) return;
-
+            // [수정] 스폰이 끝났더라도(isSpawning = false), 
+            // 마지막 적을 처치해서 스테이지 클리어 조건을 체크해야 하므로 Update는 계속 돌아야 합니다.
+            
+            // 1. 게임 타이머 업데이트 (스폰 중일 때만 시간이 흐르게 하거나, 클리어 전까지 계속 흐르게 할지 선택)
+            // 여기선 클리어 전까지 계속 흐르게 하여 '플레이 타임'에 기록되도록 합니다.
             gameTime += Time.deltaTime;
+
+            // 2. 웨이브 진행 및 클리어 조건 상시 체크
             CheckWaveProgress();
 
-            if (waveDatabase != null && waveDatabase.waveList.Count > 0)
+            // 3. UI 브로드캐스트
+            if (waveDatabase != null && waveDatabase.waveList != null && waveDatabase.waveList.Count > 0)
             {
+                int safeIndex = Mathf.Clamp(currentWaveIndex, 0, waveDatabase.waveList.Count - 1);
                 GameManager.BroadcastTime(gameTime);
-                GameManager.BroadcastWave(currentWaveIndex, waveDatabase.waveList[currentWaveIndex].waveName);
+                GameManager.BroadcastWave(safeIndex, waveDatabase.waveList.Count, waveDatabase.waveList[safeIndex].waveName);
             }
         }
 
         private void CheckWaveProgress()
         {
             if (waveDatabase == null || waveDatabase.waveList == null || waveDatabase.waveList.Count == 0) return;
+            
+            // [추가] 이미 스테이지가 종료(클리어/실패)되었다면 체크 중단
+            if (GameManager.Instance != null && GameManager.Instance.IsGameOver) return;
+            
+            // 1. [웨이브 가속 시스템] 필드의 적이 0마리이면 즉시 다음 웨이브로 시간 점프
+            // (마지막 웨이브가 아닐 때만 발동)
             if (currentWaveIndex < waveDatabase.waveList.Count - 1)
             {
+                if (activeEnemies.Count == 0 && isSpawning)
+                {
+                    // 다음 웨이브 시작 시간으로 게임 타임 조정
+                    float nextStartTime = waveDatabase.waveList[currentWaveIndex + 1].startTime;
+                    if (gameTime < nextStartTime)
+                    {
+                        gameTime = nextStartTime;
+                        Debug.Log($"<color=yellow>[WaveManager]</color> EARLY CLEAR! Jumping to next wave: {waveDatabase.waveList[currentWaveIndex + 1].waveName}");
+                    }
+                }
+
+                // 일반적인 웨이브 전진 체크
                 if (gameTime >= waveDatabase.waveList[currentWaveIndex + 1].startTime)
                 {
                     currentWaveIndex++;
@@ -99,11 +124,20 @@ namespace Necromancer
             }
             else
             {
-                if (isSpawning && gameTime >= waveDatabase.waveList[currentWaveIndex].startTime + 30f)
+                // 2. [최후의 결전] 마지막 웨이브일 때 스폰 중단 체크
+                // 스폰 중단 이후에도 '전멸'할 때까지 클리어를 시키지 않습니다.
+                WaveData lastWave = waveDatabase.waveList[currentWaveIndex];
+                if (isSpawning && gameTime >= lastWave.startTime + lastWave.duration)
                 {
                     isSpawning = false;
-                    GameManager.Instance.OnStageClear();
+                    Debug.Log("[WaveManager] FINAL WAVE SPAWN ENDED. Eliminate all remaining enemies!");
                 }
+            }
+
+            // 3. 스테이지 클리어 조건: 마지막 웨이브이고, 스폰이 끝났으며, 활성 적이 0마리일 때
+            if (!isSpawning && currentWaveIndex == waveDatabase.waveList.Count - 1 && activeEnemies.Count == 0)
+            {
+                GameManager.Instance.OnStageClear();
             }
         }
 

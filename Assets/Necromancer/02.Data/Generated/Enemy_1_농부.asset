@@ -18,6 +18,6 @@ MonoBehaviour:
   maxHp: 10
   moveSpeed: 1.5
   attackDamage: 5
-  dropExpAmount: 5
+  dropExpAmount: 2
   isRanged: 0
   isElite: 0

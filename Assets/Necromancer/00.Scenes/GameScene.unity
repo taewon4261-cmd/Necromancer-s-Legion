@@ -160,7 +160,7 @@ MonoBehaviour:
   playerTransform: {fileID: 0}
   tileSprite: {fileID: 21300000, guid: a5af0c6e51d55374a82a90cf09414538, type: 3}
   tileSize: 10
-  gridSize: 4
+  gridSize: 8
   sortingOrder: -100
   useLimit: 0
   mapLimit: 100
@@ -400,7 +400,7 @@ Camera:
   far clip plane: 1000
   field of view: 60.000004
   orthographic: 1
-  orthographic size: 10
+  orthographic size: 18
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -1218,7 +1218,7 @@ MonoBehaviour:
   m_Follow: {fileID: 1583968989}
   m_Lens:
     FieldOfView: 60.000004
-    OrthographicSize: 10
+    OrthographicSize: 18
     NearClipPlane: 0.3
     FarClipPlane: 1000
     Dutch: 0

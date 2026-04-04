@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace Necromancer
 {
@@ -9,7 +9,7 @@ namespace Necromancer
         MagnetRange,        // 자석 범위
         StartMinionCount,   // 시작 해골 수 증가
         MoveSpeed,          // 이동속도
-        GoldGain,           // 골드 획득
+        SoulGain,           // 영혼 획득
         ExpGain,            // 경험치 획득
         RerollCount,        // 리롤 횟수
         AuraRange,          // 오라 범위
@@ -20,7 +20,7 @@ namespace Necromancer
     }
 
     /// <summary>
-    /// 로비(영구 업그레이드)에서 골드를 소비하여 영구적으로 스탯을 강화하는 데이터 에셋입니다.
+    /// 로비(영구 업그레이드)에서 영혼을 소비하여 영구적으로 스탯을 강화하는 데이터 에셋입니다.
     /// </summary>
     [CreateAssetMenu(fileName = "Upgrade_", menuName = "Necromancer/Lobby Upgrade Data")]
     public class LobbyUpgradeSO : ScriptableObject

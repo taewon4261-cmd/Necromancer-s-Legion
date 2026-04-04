@@ -21,8 +21,8 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     [Tooltip("한 방당 데미지")]
     public float baseDamage = 20f;
     
-    [Tooltip("적 탐색 반경")]
-    public float detectionRadius = 10f;
+    [Tooltip("적 탐색 반경 (기획: 화면 중앙에서 2/3 지점인 5.5f로 하향)")]
+    public float detectionRadius = 5.5f;
 
     [Tooltip("풀매니저에서 꺼내올 투사체 이름")]
     public string projectileTag = "BoneProjectile";
