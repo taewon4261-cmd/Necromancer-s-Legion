@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 7063953439979360031}
   - component: {fileID: -4724947027001510696}
   m_Layer: 0
-  m_Name: 'Enemy '
+  m_Name: Enemy
   m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -139,6 +139,9 @@ MonoBehaviour:
   data: {fileID: 0}
   attackDamage: 10
   hitCooldown: 0.5
+  separationRadius: 0.8
+  separationStrength: 5
+  movementSmoothTime: 0.15
 --- !u!58 &7063953439979360031
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -168,7 +171,7 @@ CircleCollider2D:
   m_CallbackLayers:
     serializedVersion: 2
     m_Bits: 4294967295
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
   m_Offset: {x: 0, y: 0}

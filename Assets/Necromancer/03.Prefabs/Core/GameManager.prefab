@@ -48,6 +48,7 @@ MonoBehaviour:
   expFillBar: {fileID: 0}
   textTimer: {fileID: 0}
   textWave: {fileID: 0}
+  textSoul: {fileID: 0}
   levelUpPanel: {fileID: 0}
   skillCardButtons:
   - {fileID: 0}
@@ -67,10 +68,9 @@ MonoBehaviour:
   - {fileID: 0}
   speedButton: {fileID: 0}
   backToTitleButton: {fileID: 0}
+  rerollButton: {fileID: 0}
   textSpeedToggle: {fileID: 0}
-  resultPanel: {fileID: 0}
-  resultTitleText: {fileID: 0}
-  resultStatsText: {fileID: 0}
+  resultUI: {fileID: 0}
   dangerOverlay: {fileID: 0}
   flashFrequency: 2
   maxAlpha: 0.4
@@ -123,22 +123,27 @@ MonoBehaviour:
     prefab: {fileID: 2495789859562200455, guid: 6ec7191723998cb418c0a4f2c91d4c63,
       type: 3}
     size: 100
+    batchSize: 10
   - tag: Enemy
     prefab: {fileID: 8518950666829332875, guid: 6b9ef74c3ec77bd46aa318d73a8d3868,
       type: 3}
-    size: 100
+    size: 600
+    batchSize: 50
   - tag: BoneProjectile
     prefab: {fileID: 6499782855709715269, guid: 272e97b5dcaf1464ba702fa22c2a12f6,
       type: 3}
     size: 50
+    batchSize: 10
   - tag: ExpGem
     prefab: {fileID: 7402268239645625210, guid: 8160c8b83503fb042a3b8d15f5dd8087,
       type: 3}
-    size: 200
+    size: 700
+    batchSize: 100
   - tag: HitEffect
     prefab: {fileID: 1557028968340073735, guid: a39308bdd6b574b4bbac2eee404fb945,
       type: 3}
-    size: 200
+    size: 100
+    batchSize: 30
 --- !u!1 &1697176078313282221
 GameObject:
   m_ObjectHideFlags: 0
@@ -185,6 +190,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waveDatabase: {fileID: 11400000, guid: 9d75b168f11d14a4e9917c1b8a8037e3, type: 2}
   spawnRadius: 15
+  gameTime: 0
   activeEnemies: []
 --- !u!1 &2086205799551222942
 GameObject:
@@ -230,8 +236,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd2d81e97e6934c46ba551e5d70a6191, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  currentGold: 0
   currentSoul: 0
+  currentSessionSoul: 0
   unlockedStageLevel: 0
 --- !u!1 &3613388938948720123
 GameObject:

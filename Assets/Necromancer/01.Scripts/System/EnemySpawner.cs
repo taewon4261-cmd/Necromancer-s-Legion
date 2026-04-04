@@ -39,11 +39,8 @@ public class EnemySpawner : MonoBehaviour
             playerTransform = GameManager.Instance.playerTransform;
             isSpawning = true;
             
-            spawnCts?.Cancel();
-            spawnCts?.Dispose();
-            spawnCts = new CancellationTokenSource();
-            
-            SpawnRoutineAsync(spawnCts.Token).Forget();
+            var token = gameObject.GetCancellationTokenOnDestroy();
+            SpawnRoutineAsync(token).Forget();
             Debug.Log($"✅ [EnemySpawner]: 정상 가동! (생성 거리: {spawnRadius})");
         }
         else

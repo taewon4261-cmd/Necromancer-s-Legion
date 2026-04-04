@@ -25,15 +25,19 @@ public class EnemyAI : UnitBase
     public float hitCooldown = 0.5f;
 
     [Header("Swarm AI Settings")]
-    public float separationRadius = 0.5f;
+    public float separationRadius = 0.8f;
     public float separationStrength = 5f;
-    public float movementSmoothTime = 0.1f;
+    public float movementSmoothTime = 0.15f;
     private Vector2 currentVelocity;
 
     private Transform targetPlayer;
     private Rigidbody2D rb;
     private float lastHitTime;
     private CancellationTokenSource enrageCts;
+
+    // --- [최적화 변수] ---
+    private int separationOffset;
+    private Vector2 cachedSeparationDir;
 
     // --- [스킬 연동: 상태이상 디버프 변수들] ---
     private float originalMoveSpeed;
@@ -43,6 +47,12 @@ public class EnemyAI : UnitBase
     {
         base.Awake();
         rb = GetComponent<Rigidbody2D>();
+        
+        // [STABILITY] 스치기 불사 및 터널링 방지: 고속 이동 시 정확한 판정을 위해 연속 충돌 감지 활성화
+        if (rb != null) rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+        // [OPTIMIZATION] 모든 적이 동시에 연산하지 않도록 확정적 오프셋 부여 (1/10 확률 분산)
+        separationOffset = Mathf.Abs(gameObject.GetInstanceID()) % 10;
     }
 
     protected override void OnEnable()
@@ -62,11 +72,8 @@ public class EnemyAI : UnitBase
             targetPlayer = GameManager.Instance.playerTransform;
         }
 
-        // [ENRAGE] 스폰 20초 후 광폭화 루틴 시작
-        enrageCts?.Cancel();
-        enrageCts?.Dispose();
-        enrageCts = new CancellationTokenSource();
-        EnrageAfterDelayAsync(enrageCts.Token).Forget();
+        // [ENRAGE] 스폰 20초 후 광폭화 루틴 시작 (오브젝트 파괴 시 즉시 중단)
+        EnrageAfterDelayAsync(gameObject.GetCancellationTokenOnDestroy()).Forget();
     }
 
     protected virtual void OnDisable()
@@ -202,45 +209,64 @@ public class EnemyAI : UnitBase
         if (targetPlayer == null) return;
 
         Vector2 stalkDir = (targetPlayer.position - transform.position).normalized;
-        Vector2 separationDir = Vector2.zero;
-        int neighborCount = 0;
-        
-        if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
+        Vector2 separationDir = cachedSeparationDir;
+
+        // [OPTIMIZATION] 분산 로직(N^2) 부하를 1/10로 감소
+        // 각 유닛마다 다른 프레임에 계산하도록 dither 연산 적용
+        if ((Time.frameCount + separationOffset) % 10 == 0)
         {
-            var enemies = GameManager.Instance.waveManager.activeEnemies;
-            float sqrSeparationRadius = separationRadius * separationRadius;
-
-            // sqrMagnitude 사용으로 성능 최적화
-            for (int i = 0; i < enemies.Count; i++)
+            separationDir = Vector2.zero;
+            int neighborCount = 0;
+            
+            if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
             {
-                EnemyAI neighbor = enemies[i];
-                if (neighbor == null || neighbor == this) continue;
+                var enemies = GameManager.Instance.waveManager.activeEnemies;
+                float sqrRadius = separationRadius * separationRadius;
 
-                Vector2 diff = (Vector2)transform.position - (Vector2)neighbor.transform.position;
-                float sqrDist = diff.sqrMagnitude;
-
-                if (sqrDist < sqrSeparationRadius && sqrDist > 0.0001f)
+                for (int i = 0; i < enemies.Count; i++)
                 {
-                    separationDir += diff.normalized / Mathf.Sqrt(sqrDist);
-                    neighborCount++;
+                    EnemyAI neighbor = enemies[i];
+                    if (neighbor == null || neighbor == this) continue;
+
+                    Vector2 diff = (Vector2)transform.position - (Vector2)neighbor.transform.position;
+                    float sqrDist = diff.sqrMagnitude;
+
+                    if (sqrDist < sqrRadius && sqrDist > 0.0001f)
+                    {
+                        separationDir += diff.normalized / Mathf.Sqrt(sqrDist);
+                        neighborCount++;
+                    }
                 }
             }
+            if (neighborCount > 0) separationDir /= neighborCount;
+            cachedSeparationDir = separationDir;
         }
 
-        Vector2 targetDir = stalkDir;
-        if (neighborCount > 0)
-        {
-            separationDir /= neighborCount;
-            targetDir = (stalkDir + separationDir * separationStrength).normalized;
-        }
-
+        Vector2 targetDir = (stalkDir + separationDir * separationStrength).normalized;
         Vector2 targetVelocity = targetDir * moveSpeed;
         rb.velocity = Vector2.SmoothDamp(rb.velocity, targetVelocity, ref currentVelocity, movementSmoothTime);
     }
 
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        // [STABILITY] 스치기 불사 해결: 처음 닿는 순간에는 프레임 필터링 없이 무조건 타격 시도
+        TryAttack(collision, true);
+    }
+
     private void OnTriggerStay2D(Collider2D collision)
     {
+        // 머물러 있는 동안에는 성능을 위해 5프레임마다 한 번씩만 데미지 시도
+        TryAttack(collision, false);
+    }
+
+    private void TryAttack(Collider2D collision, bool isInitialContact)
+    {
         if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) return;
+        
+        // [OPTIMIZATION] 첫 타격이 아닐 때만 5프레임 최적화 적용
+        // 디버깅 로그는 유지하되, 프레임 필터링은 다시 복구하여 성능 확보
+        if (!isInitialContact && Time.frameCount % 5 != 0) return;
+        
         if (Time.time < lastHitTime + hitCooldown) return;
 
         if (collision.CompareTag("Player"))
@@ -251,7 +277,9 @@ public class EnemyAI : UnitBase
                 if (animator != null) animator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
                 targetUnit.TakeDamage(attackDamage);
                 lastHitTime = Time.time;
-                Debug.Log($"[EnemyAI] Attacking Player via Trigger! Damage: {attackDamage}");
+                
+                // 디버그 로그 (성공 시만 출력하여 가독성 확보)
+                Debug.Log($"[HitSuccess] {gameObject.name} -> {collision.name} (isInitial: {isInitialContact}, Damage: {attackDamage})");
             }
         }
     }

@@ -39,6 +39,9 @@ public class MinionAI : UnitBase
     {
         base.Awake();
         rb = GetComponent<Rigidbody2D>();
+        
+        // [STABILITY] 고속 이동 시 판정 누락 방지를 위해 연속 충돌 감지 활성화
+        if (rb != null) rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
     }
 
     protected override void OnEnable()
@@ -56,13 +59,8 @@ public class MinionAI : UnitBase
         // 플레이어 위치 캐싱
         if (GameManager.Instance != null) playerTransform = GameManager.Instance.playerTransform;
         
-        // 기존 토큰 초기화
-        scanCts?.Cancel();
-        scanCts?.Dispose();
-        scanCts = new CancellationTokenSource();
-        
-        // 스폰 즉시 주변 적 탐색 UniTask 가동
-        ScanForTargetAsync(scanCts.Token).Forget();
+        // [STABILITY] 오브젝트 파괴 시 즉시 중단되도록 CancellationTokenOnDestroy 연결
+        ScanForTargetAsync(gameObject.GetCancellationTokenOnDestroy()).Forget();
     }
 
     private void ApplyGlobalBuffs()
@@ -206,9 +204,24 @@ public class MinionAI : UnitBase
     /// <summary>
     /// 트리거 충돌 판정 (적 타격 로직) - 뱀서류 군집 AI 최적화
     /// </summary>
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        // [STABILITY] 스치기 불사 해결: 처음 닿는 순간에는 프레임 필터링 없이 무조건 타격 시도
+        TryAttack(collision, true);
+    }
+
     private void OnTriggerStay2D(Collider2D collision)
     {
+        // 머물러 있을 때만 프레임 최적화 적용
+        TryAttack(collision, false);
+    }
+
+    private void TryAttack(Collider2D collision, bool isInitialContact)
+    {
         if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) return;
+
+        // [OPTIMIZATION] 첫 타격이 아닐 때만 1/5 프레임 최적화
+        if (!isInitialContact && Time.frameCount % 5 != 0) return;
         if (Time.time < lastHitTime + hitCooldown) return;
 
         // 상대방이 적인지 태그로 확인
@@ -220,16 +233,7 @@ public class MinionAI : UnitBase
                 SkillManager sManager = GameManager.Instance.skillManager;
                 float finalDamage = attackDamage;
 
-                if (sManager != null)
-                {
-                    if (sManager.hasGiantHunter && targetUnit.maxHp >= 200f) 
-                    {
-                        finalDamage *= 1.3f;
-                    }
-                }
-
                 if (animator != null) animator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
-
                 targetUnit.TakeDamage(finalDamage);
                 lastHitTime = Time.time;
                 
@@ -241,16 +245,6 @@ public class MinionAI : UnitBase
                         if (sManager.hasToxicBlade) enemyScript.ApplyPoison(3f, 2f);
                         if (sManager.hasFrostWeapon) enemyScript.ApplyFrost(2f, 0.3f);
                         if (sManager.hasCursedStigma) enemyScript.AddStigmaStack();
-                    }
-
-                    if (sManager.vampiricChance > 0f && Random.value <= sManager.vampiricChance)
-                    {
-                        PlayerController player = GameManager.Instance.playerTransform.GetComponent<PlayerController>();
-                        if (player != null && player.currentHp < player.maxHp)
-                        {
-                            player.currentHp += 1f;
-                            player.currentHp = Mathf.Clamp(player.currentHp, 0, player.maxHp);
-                        }
                     }
                 }
             }

@@ -119,6 +119,7 @@ namespace Necromancer
                     break;
                 case SkillType.SoulMagnet:
                     GameManager.Instance.magnetRadius *= 1.2f;
+                    isPlayerUpdateNeeded = true;
                     break;
                 case SkillType.LightStep:
                     if (player != null) player.moveSpeed *= 1.1f;

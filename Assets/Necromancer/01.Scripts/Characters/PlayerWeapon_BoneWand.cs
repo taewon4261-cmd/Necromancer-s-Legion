@@ -52,11 +52,8 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
         
         isShooting = true;
         
-        fireCts?.Cancel();
-        fireCts?.Dispose();
-        fireCts = new CancellationTokenSource();
-
-        AutoFireRoutineAsync(fireCts.Token).Forget();
+        var token = gameObject.GetCancellationTokenOnDestroy();
+        AutoFireRoutineAsync(token).Forget();
     }
 
     public void StopShooting()

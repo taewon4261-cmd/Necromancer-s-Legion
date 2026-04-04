@@ -3237,6 +3237,36 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 3109314625104592819, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: pools.Array.data[1].size
+      value: 600
+      objectReference: {fileID: 0}
+    - target: {fileID: 3109314625104592819, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: pools.Array.data[3].size
+      value: 700
+      objectReference: {fileID: 0}
+    - target: {fileID: 3109314625104592819, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: pools.Array.data[4].size
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 3109314625104592819, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: pools.Array.data[1].batchSize
+      value: 50
+      objectReference: {fileID: 0}
+    - target: {fileID: 3109314625104592819, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: pools.Array.data[3].batchSize
+      value: 100
+      objectReference: {fileID: 0}
+    - target: {fileID: 3109314625104592819, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: pools.Array.data[4].batchSize
+      value: 30
+      objectReference: {fileID: 0}
     - target: {fileID: 5222022597978494407, guid: d076dd6845f5ca84eb94326ecd47b265,
         type: 3}
       propertyPath: inGameUIPrefab

@@ -7,6 +7,7 @@ TagManager:
   - Enemy
   - Minion
   - Interactable
+  - MagnetArea
   layers:
   - Default
   - TransparentFX
