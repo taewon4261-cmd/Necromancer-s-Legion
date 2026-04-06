@@ -9,15 +9,15 @@ namespace Necromancer.UI
     public class UpgradeItemUI : MonoBehaviour
     {
         [Header("UI Elements")]
-        public Image iconImage;
-        public Image iconFrame;
-        public Image backgroundImage; // [UI.md] Red Flash 연출용
-        public TextMeshProUGUI nameText;
-        public TextMeshProUGUI levelText;
-        public TextMeshProUGUI descriptionText;
-        public TextMeshProUGUI costText;
-        public Button upgradeButton;
-        public Slider levelSlider;
+        [SerializeField] private Image iconImage;
+        [SerializeField] private Image iconFrame;
+        [SerializeField] private Image backgroundImage; // [UI.md] Red Flash 연출용
+        [SerializeField] private TextMeshProUGUI nameText;
+        [SerializeField] private TextMeshProUGUI levelText;
+        [SerializeField] private TextMeshProUGUI descriptionText;
+        [SerializeField] private TextMeshProUGUI costText;
+        [SerializeField] private Button upgradeButton;
+        [SerializeField] private Slider levelSlider;
 
         private LobbyUpgradeSO data;
         private UpgradeUI owner;
@@ -25,22 +25,10 @@ namespace Necromancer.UI
 
         private void Awake()
         {
-            if (iconFrame == null) iconFrame = transform.Find("Icon_Frame")?.GetComponent<Image>();
-            if (iconImage == null) iconImage = iconFrame?.transform.Find("Icon")?.GetComponent<Image>() ?? transform.Find("Icon")?.GetComponent<Image>();
-            if (backgroundImage == null) backgroundImage = GetComponent<Image>();
-            if (originalBgColor == default) originalBgColor = backgroundImage != null ? backgroundImage.color : Color.white;
-
-            Transform infoGroup = transform.Find("Info_Vertical_Group");
-            if (infoGroup != null)
+            if (backgroundImage != null) 
             {
-                if (nameText == null) nameText = infoGroup.Find("Text_Name")?.GetComponent<TextMeshProUGUI>();
-                if (descriptionText == null) descriptionText = infoGroup.Find("Text_Description")?.GetComponent<TextMeshProUGUI>();
-                if (levelText == null) levelText = infoGroup.Find("Text_Level")?.GetComponent<TextMeshProUGUI>();
+                originalBgColor = backgroundImage.color;
             }
-            
-            if (upgradeButton == null) upgradeButton = transform.Find("Button_Upgrade")?.GetComponent<Button>();
-            if (costText == null) costText = upgradeButton?.transform.Find("Text_Cost")?.GetComponent<TextMeshProUGUI>();
-            if (levelSlider == null) levelSlider = GetComponentInChildren<Slider>();
         }
 
         public void Setup(LobbyUpgradeSO upgradeData, UpgradeUI uiOwner)
@@ -61,7 +49,21 @@ namespace Necromancer.UI
             if (data == null) return;
             bool unlocked = data.IsUnlocked();
             
-            if (iconImage != null) { iconImage.sprite = data.icon; iconImage.color = unlocked ? Color.white : Color.gray; }
+            if (iconImage != null) 
+            {
+                if (data.icon != null)
+                {
+                    iconImage.gameObject.SetActive(true);
+                    iconImage.sprite = data.icon; 
+                    iconImage.color = unlocked ? Color.white : Color.gray;
+                }
+                else
+                {
+                    // [방어 로직] 아이콘 유실 시 하얀 사각형 대신 투명화 처리하거나 로그 출력
+                    iconImage.gameObject.SetActive(false);
+                    Debug.LogWarning($"[UI Warning] Upgrade '{data.upgradeName}' is missing its icon asset!");
+                }
+            }
             if (nameText != null) nameText.text = unlocked ? data.upgradeName : "??? (잠금됨)";
             if (levelText != null) levelText.text = unlocked ? $"Lv. {data.currentLevel} / {data.maxLevel}" : "";
             
@@ -102,8 +104,13 @@ namespace Necromancer.UI
             if (owner.TryPurchase(cost))
             {
                 data.currentLevel++;
-                PlayerPrefs.SetInt(data.saveKey, data.currentLevel);
-                PlayerPrefs.Save();
+                
+                // [DATA.md] 중앙 저장 시스템을 통해 데이터 갱신 (더 이상 UI가 직접 PlayerPrefs를 건드리지 않음)
+                if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
+                {
+                    GameManager.Instance.SaveData.SetUpgradeLevel(data.saveKey, data.currentLevel);
+                }
+
                 transform.DOPunchScale(Vector3.one * 0.05f, 0.2f);
                 UpdateVisuals();
                 owner.UpdateAllSlotVisuals();
@@ -118,5 +125,13 @@ namespace Necromancer.UI
                 }
             }
         }
+
+#if UNITY_EDITOR
+        [ContextMenu("Auto Bind UI")]
+        private void AutoBind()
+        {
+            UIAutoBinder.BindUpgradeItemUI(this);
+        }
+#endif
     }
 }

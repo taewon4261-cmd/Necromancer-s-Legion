@@ -37,7 +37,7 @@ namespace Necromancer
         public LobbyUpgradeSO requiredUpgrade;
         public int requiredLevel = 0;
 
-        [Header("Level & Cost")]
+        [Header("Runtime State (Don't Edit in Inspector)")]
         public int currentLevel = 0;
         public int maxLevel = 10;
 
@@ -86,7 +86,12 @@ namespace Necromancer
             {
                 saveKey = $"Upgrade_{statType}_Lv"; // 기본값 자동 생성
             }
-            currentLevel = PlayerPrefs.GetInt(saveKey, 0);
+
+            // [LobbyUpgradeSO] PlayerPrefs를 직접 사용하지 않고 중앙 매니저를 통해 로드
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
+            {
+                currentLevel = GameManager.Instance.SaveData.GetUpgradeLevel(saveKey);
+            }
         }
     }
 }

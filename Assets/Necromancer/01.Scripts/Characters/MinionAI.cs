@@ -28,19 +28,26 @@ public class MinionAI : UnitBase
     public float hitCooldown = 0.5f;
 
 
-    private Rigidbody2D rb;
+    [Header("Inspector References (Zero-Search)")]
+    [SerializeField] private Rigidbody2D rb;
+
     private Transform currentTarget;
     private float lastHitTime;
     private float spawnTime;
-    private CancellationTokenSource scanCts;
     private Transform playerTransform;
+    private CancellationTokenSource lifetimeCts;
+    
+    // [OPTIMIZATION] 물리 쿼리용 버퍼 및 레이어 마스크
+    private static readonly Collider2D[] scanBuffer = new Collider2D[10];
+    private static readonly Collider2D[] explosionBuffer = new Collider2D[20];
+    [SerializeField] private LayerMask enemyLayer;
 
     protected override void Awake()
     {
+        // [Pure Inspector] 모든 참조를 미리 인스펙터에서 연결했으므로 런타임 검색 비용 0ms
+        // [UnitBase] 부모의 Awake(currentHp 초기화 등)만 호출
         base.Awake();
-        rb = GetComponent<Rigidbody2D>();
         
-        // [STABILITY] 고속 이동 시 판정 누락 방지를 위해 연속 충돌 감지 활성화
         if (rb != null) rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
     }
 
@@ -55,12 +62,13 @@ public class MinionAI : UnitBase
         
         spawnTime = Time.time;
         currentTarget = null;
+        lifetimeCts = new CancellationTokenSource();
 
         // 플레이어 위치 캐싱
         if (GameManager.Instance != null) playerTransform = GameManager.Instance.playerTransform;
         
-        // [STABILITY] 오브젝트 파괴 시 즉시 중단되도록 CancellationTokenOnDestroy 연결
-        ScanForTargetAsync(gameObject.GetCancellationTokenOnDestroy()).Forget();
+        // [STABILITY] 오브젝트 비활성화 시 즉시 중단되도록 lifetimeCts.Token 연결
+        ScanForTargetAsync(lifetimeCts.Token).Forget();
     }
 
     private void ApplyGlobalBuffs()
@@ -77,10 +85,11 @@ public class MinionAI : UnitBase
     private void OnDisable()
     {
         SkillManager.OnMinionStatsChanged -= ApplyGlobalBuffs;
+        currentTarget = null; // [STABILITY] 참조 초기화
 
-        scanCts?.Cancel();
-        scanCts?.Dispose();
-        scanCts = null;
+        lifetimeCts?.Cancel();
+        lifetimeCts?.Dispose();
+        lifetimeCts = null;
     }
 
     protected override void Update()
@@ -96,8 +105,8 @@ public class MinionAI : UnitBase
 
         if (playerTransform != null)
         {
-            float distToPlayer = Vector2.Distance(transform.position, playerTransform.position);
-            if (distToPlayer > 18.0f)
+            float sqrDistToPlayer = (playerTransform.position - transform.position).sqrMagnitude;
+            if (sqrDistToPlayer > 144.0f) // 12.0f * 12.0f (18m -> 12m 단축)
             {
                 transform.position = playerTransform.position + (Vector3)Random.insideUnitCircle * 2f;
             }
@@ -111,13 +120,13 @@ public class MinionAI : UnitBase
 
     private void UpdateAnimation()
     {
-        if (animator == null) return;
+        if (unitAnimator == null) return;
         
         bool isMoving = rb.velocity.sqrMagnitude > 0.01f;
-        animator.SetBool(Necromancer.Systems.UIConstants.AnimParam_IsMoving, isMoving);
+        unitAnimator.SetBool(Necromancer.Systems.UIConstants.AnimParam_IsMoving, isMoving);
 
-        if (rb.velocity.x > 0.01f) spriteRenderer.flipX = false;
-        else if (rb.velocity.x < -0.01f) spriteRenderer.flipX = true;
+        if (rb.velocity.x > 0.01f) unitSprite.flipX = false;
+        else if (rb.velocity.x < -0.01f) unitSprite.flipX = true;
     }
 
     private void FixedUpdate()
@@ -133,14 +142,18 @@ public class MinionAI : UnitBase
 
     private async UniTaskVoid ScanForTargetAsync(CancellationToken token)
     {
+        // [JITTERING] 모든 미니언이 동시에 스캔하지 않도록 초기 대기 시간에 무작위 오프셋 부여
+        await UniTask.Delay(System.TimeSpan.FromSeconds(Random.Range(0f, targetScanRate)), cancellationToken: token);
+
         while (!isDead && !token.IsCancellationRequested)
         {
             if (GameManager.Instance != null && GameManager.Instance.IsGameOver) break;
 
+            // 1. 플레이어와 너무 멀어지면 타겟팅 중단 (복귀 우선)
             if (playerTransform != null)
             {
-                float distToPlayer = Vector2.Distance(transform.position, playerTransform.position);
-                if (distToPlayer > 10.0f)
+                float sqrDistToPlayer = (playerTransform.position - transform.position).sqrMagnitude;
+                if (sqrDistToPlayer > 64.0f) // 8m (10m -> 8m 응집력 강화)
                 {
                     currentTarget = null;
                     await UniTask.Delay(System.TimeSpan.FromSeconds(targetScanRate), cancellationToken: token);
@@ -148,33 +161,43 @@ public class MinionAI : UnitBase
                 }
             }
 
-            if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
+            // 2. [OPTIMIZATION] Physics2D.OverlapCircleNonAlloc 도입 (O(N*M) -> O(Nearby))
+            // 스캔 범위를 12f -> 8f로 조정하여 마스터의 시야 범위(Cohesion)를 유지합니다.
+            int count = Physics2D.OverlapCircleNonAlloc(transform.position, 8.0f, scanBuffer, enemyLayer);
+            
+            float minSqrDist = Mathf.Infinity;
+            Transform bestTarget = null;
+
+            for (int i = 0; i < count; i++)
             {
-                List<EnemyAI> enemies = GameManager.Instance.waveManager.activeEnemies;
-                
-                float minDistance = Mathf.Infinity;
-                Transform bestTarget = null;
+                Collider2D col = scanBuffer[i];
+                if (col == null) continue;
 
-                for (int i = 0; i < enemies.Count; i++)
+                if (col.TryGetComponent(out IDamageable enemy))
                 {
-                    EnemyAI enemy = enemies[i];
-                    if (enemy == null || !enemy.gameObject.activeInHierarchy || enemy.IsDead) continue;
+                    if (enemy.IsDead) continue;
 
-                    float distFromPlayer = Vector2.Distance(playerTransform.position, enemy.transform.position);
-                    if (distFromPlayer > 8.0f) continue;
-
-                    float distance = Vector2.Distance(transform.position, enemy.transform.position);
-                    if (distance < minDistance)
+                    // [Cohesion] 플레이어로부터 너무 멀리 떨어진(8m 이상) 적은 타겟팅에서 제외
+                    if (playerTransform != null)
                     {
-                        minDistance = distance;
-                        bestTarget = enemy.transform;
+                        float sqrDistFromPlayer = (playerTransform.position - col.transform.position).sqrMagnitude;
+                        if (sqrDistFromPlayer > 64.0f) continue;
+                    }
+
+                    float sqrDist = (transform.position - col.transform.position).sqrMagnitude;
+                    if (sqrDist < minSqrDist)
+                    {
+                        minSqrDist = sqrDist;
+                        bestTarget = col.transform;
                     }
                 }
-                
-                currentTarget = bestTarget;
             }
+            
+            currentTarget = bestTarget;
 
-            await UniTask.Delay(System.TimeSpan.FromSeconds(targetScanRate), cancellationToken: token);
+            // [JITTERING] 스캔 주기에 미세한 변동을 주어 CPU 부하를 더욱 분산시킵니다.
+            float jitteredRate = targetScanRate * Random.Range(0.9f, 1.1f);
+            await UniTask.Delay(System.TimeSpan.FromSeconds(jitteredRate), cancellationToken: token);
         }
     }
 
@@ -184,8 +207,8 @@ public class MinionAI : UnitBase
         {
             if (playerTransform != null)
             {
-                float distToPlayer = Vector2.Distance(transform.position, playerTransform.position);
-                if (distToPlayer > 2.0f)
+                float sqrDistToPlayer = (playerTransform.position - transform.position).sqrMagnitude;
+                if (sqrDistToPlayer > 4.0f) // 2.0f * 2.0f
                 {
                     Vector2 returnDir = (playerTransform.position - transform.position).normalized;
                     rb.velocity = returnDir * moveSpeed;
@@ -227,19 +250,20 @@ public class MinionAI : UnitBase
         // 상대방이 적인지 태그로 확인
         if (collision.CompareTag("Enemy"))
         {
-            UnitBase targetUnit = collision.GetComponent<UnitBase>();
-            if (targetUnit != null)
+            // [Zero-Search] GetComponent<UnitBase> 대신 인터페이스 레이어 사용 (성능 최적화)
+            if (collision.TryGetComponent(out IDamageable targetUnit))
             {
                 SkillManager sManager = GameManager.Instance.skillManager;
                 float finalDamage = attackDamage;
 
-                if (animator != null) animator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
-                targetUnit.TakeDamage(finalDamage);
+                if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
+                targetUnit.ApplyDamage(finalDamage);
                 lastHitTime = Time.time;
                 
                 if (sManager != null)
                 {
-                    EnemyAI enemyScript = targetUnit as EnemyAI;
+                    // [Refactoring] UnitBase에서 EnemyAI로 캐스팅 대신 데이터 기반 접근 권장
+                    EnemyAI enemyScript = targetUnit.Unit as EnemyAI;
                     if (enemyScript != null)
                     {
                         if (sManager.hasToxicBlade) enemyScript.ApplyPoison(3f, 2f);
@@ -259,13 +283,20 @@ public class MinionAI : UnitBase
         SkillManager sManager = GameManager.Instance.skillManager;
         if (sManager != null && sManager.minionExplosionDamage > 0f)
         {
-            Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, 2f);
-            foreach (var h in hits)
+            // [GC-FIX] OverlapCircleAll 대신 NonAlloc 사용
+            int count = Physics2D.OverlapCircleNonAlloc(transform.position, 2f, explosionBuffer);
+            for (int i = 0; i < count; i++)
             {
+                Collider2D h = explosionBuffer[i];
+                if (h == null) continue;
+
                 if (h.CompareTag("Enemy"))
                 {
-                    UnitBase enemyObj = h.GetComponent<UnitBase>();
-                    if (enemyObj != null) enemyObj.TakeDamage(sManager.minionExplosionDamage);
+                    // [Zero-Search] 대규모 폭발 시 루프 내 검색 비용 제거
+                    if (h.TryGetComponent(out IDamageable targetUnit))
+                    {
+                        targetUnit.ApplyDamage(sManager.minionExplosionDamage);
+                    }
                 }
             }
         }

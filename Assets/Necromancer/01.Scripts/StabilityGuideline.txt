@@ -1,0 +1,87 @@
+# ⚖️ 군단 안정성 가이드라인 (Stability Guideline: Async & Animation)
+
+본 문서는 **Necromancer's Legion** 프로젝트의 비동기 로직과 애니메이션 시스템이 씬 전환 또는 오브젝트 파괴 시 발생시킬 수 있는 메모리 누수 및 좀비 프로세스를 방지하기 위한 표준 지침을 정의합니다.
+
+---
+
+## 1. 비동기 로직 (UniTask & Async)
+
+모든 비동기 로직(`async UniTaskVoid`, `async UniTask`)은 반드시 호출 객체의 생명주기와 결합되어야 합니다.
+
+### 🔴 금지 사항
+*   `CancellationToken` 없이 `UniTask.Delay` 또는 `UniTask.WaitUntil` 등을 사용하는 행위.
+*   연속적인 루프나 연출을 `Forget()`으로 실행하면서 중단 로직을 구현하지 않는 행위.
+
+### 🟢 표준 패턴
+#### A. MonoBehaviour 기반 객체 (추천)
+객체가 파괴될 때 자동으로 취소되는 `GetCancellationTokenOnDestroy()`를 사용합니다.
+```csharp
+private async UniTaskVoid MyAsyncLogic()
+{
+    // gameObject가 파괴되면 이 task도 즉시 중단됩니다.
+    await UniTask.Delay(TimeSpan.FromSeconds(1), cancellationToken: gameObject.GetCancellationTokenOnDestroy());
+}
+```
+
+#### B. 로컬 취소 제어 (CancellationTokenSource)
+명시적 취소가 필요한 경우 사용합니다.
+```csharp
+private CancellationTokenSource cts;
+
+private void OnEnable()
+{
+    cts?.Cancel();
+    cts?.Dispose();
+    cts = new CancellationTokenSource();
+    DoSomething(cts.Token).Forget();
+}
+
+private void OnDisable()
+{
+    cts?.Cancel();
+    cts?.Dispose();
+    cts = null;
+}
+```
+
+---
+
+## 2. 애니메이션 (DOTween)
+
+모든 트윈 애니메이션은 객체가 파괴될 때 함께 소멸되어야 합니다.
+
+### 🔴 금지 사항
+*   `SetLoops(-1)`(무한 루프) 트윈을 생성하면서 파괴 시 중단 로직을 생략하는 행위.
+*   씬 전환 시 파괴되는 UI 요소의 트윈에 `.SetLink()`를 적용하지 않는 행위.
+
+### 🟢 표준 패턴
+#### A. SetLink 사용 (강력 권장)
+트윈의 생명주기를 특정 GameObject나 Component에 명시적으로 결합합니다.
+```csharp
+transform.DOMoveY(10, 1f)
+    .SetEase(Ease.OutBack)
+    .SetLink(gameObject); // gameObject가 파괴되면 트윈이 자동 Kill 됩니다.
+```
+
+#### B. 시간 정지(Time.timeScale = 0) 대응
+결과창이나 설정창 UI의 경우, 게임이 정지된 상태에서도 애니메이션이 작동해야 하므로 `SetUpdate(true)`를 병행합니다.
+```csharp
+canvasGroup.DOFade(1f, 0.5f)
+    .SetUpdate(true)
+    .SetLink(gameObject);
+```
+
+---
+
+## 3. 전수 조사 결과 및 조치 완료 명단
+
+*   **PlayerController**: 비동기 로직 안정화 완료.
+*   **DamageText**: 오브젝트 풀링 및 취소 로직 최적화 완료.
+*   **ResultUI**: 모든 연출에 SetLink 및 SetUpdate 적용 완료.
+*   **TitleUIController**: 무한 루프 애니메이션 누수 차단 완료.
+*   **WaveManager / EnemySpawner**: 전체 루프 안정성 확보.
+
+---
+
+마지막 업데이트: 2026-04-06
+부서: 군단 아키텍처 사령부

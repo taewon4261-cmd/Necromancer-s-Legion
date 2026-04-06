@@ -18,7 +18,8 @@ public class PlayerController : UnitBase
     [SerializeField] private float invincibilityDuration = 0.2f;
     private bool isInvincible = false;
 
-    private Rigidbody2D rb;
+    [Header("Inspector References (Zero-Search)")]
+    [SerializeField] private Rigidbody2D rb;
     private Vector2 movement;
 
     [Header("Input Setup")]
@@ -50,7 +51,7 @@ public class PlayerController : UnitBase
     {
         if (GameManager.Instance != null) GameManager.Instance.playerTransform = transform;
         base.Awake();
-        rb = GetComponent<Rigidbody2D>();
+        // [Pure Inspector] rb는 인스펙터에서 사전에 할당되었습니다.
 
         // [STABILITY] 고속 이동 시 적/아이템 판정 누락 방지를 위해 연속 충돌 감지 활성화
         if (rb != null)
@@ -66,8 +67,9 @@ public class PlayerController : UnitBase
         }
     }
 
-    private void OnEnable()
+    protected override void OnEnable()
     {
+        base.OnEnable(); // UnitBase의 HP 초기화 로직 보존
         SkillManager.OnPlayerStatsChanged += UpdateMagnetRadius;
     }
 
@@ -158,11 +160,11 @@ public class PlayerController : UnitBase
     private async UniTaskVoid InvincibilityAsync()
     {
         isInvincible = true;
-        if (spriteRenderer != null) spriteRenderer.color = new Color(1, 1, 1, 0.5f);
+        if (unitSprite != null) unitSprite.color = new Color(1, 1, 1, 0.5f);
         
         await UniTask.Delay(System.TimeSpan.FromSeconds(invincibilityDuration), cancellationToken: gameObject.GetCancellationTokenOnDestroy());
         
-        if (spriteRenderer != null) spriteRenderer.color = Color.white;
+        if (unitSprite != null) unitSprite.color = Color.white;
         isInvincible = false;
     }
 
@@ -199,13 +201,13 @@ public class PlayerController : UnitBase
 
     private void UpdateAnimation()
     {
-        if (animator == null || rb == null) return;
+        if (unitAnimator == null || rb == null) return;
         
         bool isMoving = rb.velocity.sqrMagnitude > 0.01f;
-        animator.SetBool(Necromancer.Systems.UIConstants.AnimParam_IsMoving, isMoving);
+        unitAnimator.SetBool(Necromancer.Systems.UIConstants.AnimParam_IsMoving, isMoving);
 
-        if (rb.velocity.x > 0.01f) spriteRenderer.flipX = false;
-        else if (rb.velocity.x < -0.01f) spriteRenderer.flipX = true;
+        if (rb.velocity.x > 0.01f) unitSprite.flipX = false;
+        else if (rb.velocity.x < -0.01f) unitSprite.flipX = true;
     }
 
     private void HandleInput()
@@ -241,10 +243,10 @@ public class PlayerController : UnitBase
 
         if (collision.CompareTag("Enemy"))
         {
-            UnitBase enemyObj = collision.GetComponent<UnitBase>();
-            if (enemyObj != null)
+            // [Zero-Search] GetComponent<UnitBase> 대신 인터페이스 레이어 사용 (TryGetComponent는 훨씬 빠름)
+            if (collision.TryGetComponent(out IDamageable target))
             {
-                enemyObj.TakeDamage(bodySlamDamage);
+                target.ApplyDamage(bodySlamDamage);
                 lastSlamTime = Time.time;
             }
         }
@@ -253,9 +255,9 @@ public class PlayerController : UnitBase
     protected override void Die()
     {
         base.Die();
-        if (animator != null)
+        if (unitAnimator != null)
         {
-            animator.updateMode = AnimatorUpdateMode.UnscaledTime;
+            unitAnimator.updateMode = AnimatorUpdateMode.UnscaledTime;
         }
 
         rb.velocity = Vector2.zero;

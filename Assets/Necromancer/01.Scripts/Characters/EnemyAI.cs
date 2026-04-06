@@ -30,25 +30,27 @@ public class EnemyAI : UnitBase
     public float movementSmoothTime = 0.15f;
     private Vector2 currentVelocity;
 
+    [Header("Inspector References (Zero-Search)")]
+    [SerializeField] private Rigidbody2D rb;
     private Transform targetPlayer;
-    private Rigidbody2D rb;
     private float lastHitTime;
-    private CancellationTokenSource enrageCts;
+    private CancellationTokenSource lifetimeCts;
 
     // --- [최적화 변수] ---
     private int separationOffset;
     private Vector2 cachedSeparationDir;
+    [SerializeField] private LayerMask enemyLayer;
+    private static readonly Collider2D[] separationBuffer = new Collider2D[16];
 
     // --- [스킬 연동: 상태이상 디버프 변수들] ---
     private float originalMoveSpeed;
     private int stigmaStacks = 0;
+    private bool hasCountedDeath = false; // [NEW] 카운트 중복 방지용 가드
 
     protected override void Awake()
     {
         base.Awake();
-        rb = GetComponent<Rigidbody2D>();
-        
-        // [STABILITY] 스치기 불사 및 터널링 방지: 고속 이동 시 정확한 판정을 위해 연속 충돌 감지 활성화
+        // [Pure Inspector] rb는 인스펙터에서 사전에 할당되었습니다.
         if (rb != null) rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
         // [OPTIMIZATION] 모든 적이 동시에 연산하지 않도록 확정적 오프셋 부여 (1/10 확률 분산)
@@ -60,33 +62,32 @@ public class EnemyAI : UnitBase
         base.OnEnable();
         
         stigmaStacks = 0;
-
-        // WaveManager에 실시간 적 목록 등록 (성능 최적화용)
-        if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
-        {
-            GameManager.Instance.waveManager.activeEnemies.Add(this);
-        }
+        hasCountedDeath = false; // [NEW] 가드 초기화
+        lifetimeCts = new CancellationTokenSource();
         
         if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
         {
             targetPlayer = GameManager.Instance.playerTransform;
         }
 
-        // [ENRAGE] 스폰 20초 후 광폭화 루틴 시작 (오브젝트 파괴 시 즉시 중단)
-        EnrageAfterDelayAsync(gameObject.GetCancellationTokenOnDestroy()).Forget();
+        // [ENRAGE] 스폰 20초 후 광폭화 루틴 시작 (오브젝트 비활성화 시 즉시 중단)
+        EnrageAfterDelayAsync(lifetimeCts.Token).Forget();
     }
 
     protected virtual void OnDisable()
     {
-        // WaveManager에서 목록 제거 (성능 최적화용)
-        if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
+        // [OPTIMIZATION] O(N) 리스트 제거 대신 O(1) 카운트 감소
+        if (!hasCountedDeath && GameManager.Instance != null && GameManager.Instance.waveManager != null)
         {
-            GameManager.Instance.waveManager.activeEnemies.Remove(this);
+            GameManager.Instance.waveManager.OnEnemyDied();
+            hasCountedDeath = true; // 가드 활성화
         }
 
-        enrageCts?.Cancel();
-        enrageCts?.Dispose();
-        enrageCts = null;
+        targetPlayer = null; // [STABILITY] 참조 초기화
+        
+        lifetimeCts?.Cancel();
+        lifetimeCts?.Dispose();
+        lifetimeCts = null;
     }
 
     public void Setup(EnemyData enemyData)
@@ -110,9 +111,10 @@ public class EnemyAI : UnitBase
 
         this.currentHp = maxHp;
         this.isDead = false;
+        this.hasCountedDeath = false; // [NEW] 셋업 시 가드 리셋
         this.lastHitTime = 0f;
 
-        if (spriteRenderer != null) spriteRenderer.color = Color.white;
+        if (unitSprite != null) unitSprite.color = Color.white;
     }
 
     private async UniTaskVoid EnrageAfterDelayAsync(CancellationToken token)
@@ -124,9 +126,9 @@ public class EnemyAI : UnitBase
             moveSpeed *= 1.5f;
             hitCooldown *= 0.7f;
 
-            if (spriteRenderer != null)
+            if (unitSprite != null)
             {
-                spriteRenderer.color = Color.red;
+                unitSprite.color = Color.red;
             }
 
             Debug.Log($"<color=red>[EnemyAI]</color> {gameObject.name} ENRAGED! (20s reached)");
@@ -136,8 +138,8 @@ public class EnemyAI : UnitBase
     // --- [스킬 연동 로직 시작] ---
     public void ApplyPoison(float duration, float tickDamage)
     {
-        if (!gameObject.activeInHierarchy || isDead) return;
-        PoisonAsync(duration, tickDamage, gameObject.GetCancellationTokenOnDestroy()).Forget();
+        if (!gameObject.activeInHierarchy || isDead || lifetimeCts == null) return;
+        PoisonAsync(duration, tickDamage, lifetimeCts.Token).Forget();
     }
 
     private async UniTaskVoid PoisonAsync(float duration, float tickDamage, CancellationToken token)
@@ -154,8 +156,8 @@ public class EnemyAI : UnitBase
 
     public void ApplyFrost(float duration, float slowdownRatio)
     {
-        if (!gameObject.activeInHierarchy || isDead) return;
-        FrostAsync(duration, slowdownRatio, gameObject.GetCancellationTokenOnDestroy()).Forget();
+        if (!gameObject.activeInHierarchy || isDead || lifetimeCts == null) return;
+        FrostAsync(duration, slowdownRatio, lifetimeCts.Token).Forget();
     }
 
     private async UniTaskVoid FrostAsync(float duration, float slowdownRatio, CancellationToken token)
@@ -184,13 +186,13 @@ public class EnemyAI : UnitBase
 
     private void UpdateAnimation()
     {
-        if (animator == null) return;
+        if (unitAnimator == null) return;
         
         bool isMoving = rb.velocity.sqrMagnitude > 0.01f;
-        animator.SetBool(Necromancer.Systems.UIConstants.AnimParam_IsMoving, isMoving);
+        unitAnimator.SetBool(Necromancer.Systems.UIConstants.AnimParam_IsMoving, isMoving);
 
-        if (rb.velocity.x > 0.01f) spriteRenderer.flipX = false;
-        else if (rb.velocity.x < -0.01f) spriteRenderer.flipX = true;
+        if (rb.velocity.x > 0.01f) unitSprite.flipX = false;
+        else if (rb.velocity.x < -0.01f) unitSprite.flipX = true;
     }
 
     private void FixedUpdate()
@@ -212,32 +214,32 @@ public class EnemyAI : UnitBase
         Vector2 separationDir = cachedSeparationDir;
 
         // [OPTIMIZATION] 분산 로직(N^2) 부하를 1/10로 감소
-        // 각 유닛마다 다른 프레임에 계산하도록 dither 연산 적용
+        // 물리 쿼리(OverlapCircle)를 도입하여 주변 적만 선별적으로 검출합니다.
         if ((Time.frameCount + separationOffset) % 10 == 0)
         {
             separationDir = Vector2.zero;
             int neighborCount = 0;
-            
-            if (GameManager.Instance != null && GameManager.Instance.waveManager != null)
+            float sqrRadius = separationRadius * separationRadius;
+
+            // Physics2D.OverlapCircleNonAlloc은 리스트 순회보다 압도적으로 빠릅니다.
+            int count = Physics2D.OverlapCircleNonAlloc(transform.position, separationRadius, separationBuffer, enemyLayer);
+
+            for (int i = 0; i < count; i++)
             {
-                var enemies = GameManager.Instance.waveManager.activeEnemies;
-                float sqrRadius = separationRadius * separationRadius;
+                Collider2D neighbor = separationBuffer[i];
+                if (neighbor == null || neighbor.gameObject == gameObject) continue;
 
-                for (int i = 0; i < enemies.Count; i++)
+                Vector2 diff = (Vector2)transform.position - (Vector2)neighbor.transform.position;
+                float sqrDist = diff.sqrMagnitude;
+
+                // [sqrMagnitude] 제곱근 연산 제거로 CPU 부하 최소화
+                if (sqrDist < sqrRadius && sqrDist > 0.0001f)
                 {
-                    EnemyAI neighbor = enemies[i];
-                    if (neighbor == null || neighbor == this) continue;
-
-                    Vector2 diff = (Vector2)transform.position - (Vector2)neighbor.transform.position;
-                    float sqrDist = diff.sqrMagnitude;
-
-                    if (sqrDist < sqrRadius && sqrDist > 0.0001f)
-                    {
-                        separationDir += diff.normalized / Mathf.Sqrt(sqrDist);
-                        neighborCount++;
-                    }
+                    separationDir += diff.normalized / Mathf.Sqrt(sqrDist);
+                    neighborCount++;
                 }
             }
+            
             if (neighborCount > 0) separationDir /= neighborCount;
             cachedSeparationDir = separationDir;
         }
@@ -271,11 +273,11 @@ public class EnemyAI : UnitBase
 
         if (collision.CompareTag("Player"))
         {
-            UnitBase targetUnit = collision.GetComponent<UnitBase>();
-            if (targetUnit != null)
+            // [Zero-Search] GetComponent<UnitBase> 대신 인터페이스 레이어 사용 (O(1) 접근)
+            if (collision.TryGetComponent(out IDamageable targetUnit))
             {
-                if (animator != null) animator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
-                targetUnit.TakeDamage(attackDamage);
+                if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
+                targetUnit.ApplyDamage(attackDamage);
                 lastHitTime = Time.time;
                 
                 // 디버그 로그 (성공 시만 출력하여 가독성 확보)

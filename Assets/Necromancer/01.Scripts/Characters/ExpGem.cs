@@ -16,17 +16,25 @@ public class ExpGem : MonoBehaviour
     public float expAmount = 10f;
     public float flySpeed = 15f;
 
+    public static HashSet<ExpGem> ActiveGems = new HashSet<ExpGem>();
+
     private bool isFollowing = false;
     private Transform playerTransform;
 
     private void OnEnable()
     {
+        ActiveGems.Add(this);
         isFollowing = false;
         
         if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
         {
             playerTransform = GameManager.Instance.playerTransform;
         }
+    }
+
+    private void OnDisable()
+    {
+        ActiveGems.Remove(this);
     }
 
     private void Update()

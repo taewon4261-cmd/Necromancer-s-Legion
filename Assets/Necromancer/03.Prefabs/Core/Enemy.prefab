@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 4933562704745481721}
   - component: {fileID: 7063953439979360031}
   - component: {fileID: -4724947027001510696}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Enemy
   m_TagString: Enemy
   m_Icon: {fileID: 0}
@@ -132,8 +132,8 @@ MonoBehaviour:
   maxHp: 50
   currentHp: 0
   moveSpeed: 2
-  animator: {fileID: 0}
-  spriteRenderer: {fileID: 0}
+  unitAnimator: {fileID: -4724947027001510696}
+  unitSprite: {fileID: 7993786871015807553}
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitDuration: 0.1
   data: {fileID: 0}
@@ -142,6 +142,10 @@ MonoBehaviour:
   separationRadius: 0.8
   separationStrength: 5
   movementSmoothTime: 0.15
+  rb: {fileID: 5022943668355311835}
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 0
 --- !u!58 &7063953439979360031
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -206,6 +210,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 8573550540859391572}
     m_Modifications:
+    - target: {fileID: 149185688472727254, guid: 5fe0bdb0768f29948bf1d5630402d206,
+        type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 3292525649727084255, guid: 5fe0bdb0768f29948bf1d5630402d206,
         type: 3}
       propertyPath: m_Pivot.x
@@ -306,10 +315,20 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3889624399166813084, guid: 5fe0bdb0768f29948bf1d5630402d206,
+        type: 3}
+      propertyPath: m_Layer
+      value: 6
+      objectReference: {fileID: 0}
     - target: {fileID: 7701114420295547870, guid: 5fe0bdb0768f29948bf1d5630402d206,
         type: 3}
       propertyPath: m_Name
       value: EnemyHpCanvas
+      objectReference: {fileID: 0}
+    - target: {fileID: 7701114420295547870, guid: 5fe0bdb0768f29948bf1d5630402d206,
+        type: 3}
+      propertyPath: m_Layer
+      value: 6
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

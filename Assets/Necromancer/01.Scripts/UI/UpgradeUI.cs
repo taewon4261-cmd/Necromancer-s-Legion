@@ -15,7 +15,20 @@ namespace Necromancer.UI
     public class UpgradeUI : MonoBehaviour
     {
         [Header("Data Slots")]
-        public List<LobbyUpgradeSO> upgradeList;
+        [SerializeField] private List<LobbyUpgradeSO> upgradeList = new List<LobbyUpgradeSO>();
+        [ContextMenu("Sync Upgrade Data")]
+        public void SyncUpgradeData()
+        {
+#if UNITY_EDITOR
+            string[] guids = AssetDatabase.FindAssets("t:LobbyUpgradeSO", new[] { "Assets/Necromancer/02.Data/Upgrades" });
+            upgradeList = guids.Select(guid => AssetDatabase.LoadAssetAtPath<LobbyUpgradeSO>(AssetDatabase.GUIDToAssetPath(guid)))
+                               .OrderBy(x => x.name.Split('_')[0]) // 숫자로 정렬할 수 있도록 보완
+                               .ToList();
+            
+            EditorUtility.SetDirty(this);
+            Debug.Log($"[SUCCESS] {upgradeList.Count} upgrades synced to list.");
+#endif
+        }
         
         [Header("UI References (Assign in Inspector)")]
         public Transform contentRoot;
@@ -29,23 +42,37 @@ namespace Necromancer.UI
 
         private void OnEnable()
         {
-            UpdateSoulUI(true);
+            // [DATA-SAFETY] 상점 진입 시 최신 상태를 강제 로드하여 초기화 지연 및 데이터 불일치 해소
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
+            {
+                GameManager.Instance.SaveData.Load();
+                if (GameManager.Instance.Resources != null)
+                {
+                    // ResourceManager의 휘발성 데이터도 최신 파일 데이터로 덮어쓰기
+                    GameManager.Instance.Resources.currentSoul = GameManager.Instance.SaveData.Data.currentSoul;
+                }
+            }
+
+            // [STABILITY] 이벤트 구독보다 UI 업데이트를 먼저 수행하여 이전 데이터 노출 차단
+            UpdateSoulUI(true); 
             RefreshUI();
+            
+            GameManager.OnSoulChanged += HandleSoulChanged;
+        }
+
+        private void OnDisable()
+        {
+            GameManager.OnSoulChanged -= HandleSoulChanged;
+        }
+
+        private void HandleSoulChanged(int amount)
+        {
+            UpdateSoulUI(false);
         }
 
         public void RefreshUI()
         {
-            if (contentRoot == null)
-            {
-                Debug.LogError($"[CRITICAL ERROR] UpgradeUI is missing 'contentRoot'!");
-                return;
-            }
-
-            if (slotPrefab == null)
-            {
-                Debug.LogError($"[CRITICAL ERROR] UpgradeUI is missing 'slotPrefab'!");
-                return;
-            }
+            if (contentRoot == null || slotPrefab == null) return;
 
             var vlg = contentRoot.GetComponent<VerticalLayoutGroup>();
             if (vlg != null)
@@ -54,7 +81,7 @@ namespace Necromancer.UI
                 vlg.spacing = 30;
             }
 
-            LoadUpgradeData();
+            // [Zero-Search] 런타임 데이터 로드 로직 제거. 미리 인스펙터에 구워진 리스트를 사용.
             foreach (var data in upgradeList)
             {
                 if (data != null) data.LoadLevel();
@@ -62,7 +89,7 @@ namespace Necromancer.UI
 
             UpdateSoulUI(true);
 
-            if (upgradeList != null)
+            if (upgradeList != null && upgradeList.Count > 0)
             {
                 for (int i = 0; i < upgradeList.Count; i++)
                 {
@@ -85,7 +112,6 @@ namespace Necromancer.UI
 
                     if (slot != null)
                     {
-                        // [지시사항] 코드에서 사이즈를 강제하지 않고 프리팹 설정을 따름
                         slot.Setup(data, this);
                     }
                 }
@@ -95,27 +121,14 @@ namespace Necromancer.UI
                     if (activeSlots[i] != null) activeSlots[i].gameObject.SetActive(false);
                 }
             }
+            else
+            {
+                 Debug.LogWarning("[UpgradeUI] Upgrade list is empty! Please right-click component and select 'Sync Upgrade Data' in editor.");
+            }
 
             Canvas.ForceUpdateCanvases();
             if (contentRoot is RectTransform contentRT) 
                 LayoutRebuilder.ForceRebuildLayoutImmediate(contentRT);
-        }
-
-        private void LoadUpgradeData()
-        {
-            var resourcesData = Resources.LoadAll<LobbyUpgradeSO>("Upgrades");
-            if (resourcesData.Length > 0)
-            {
-                upgradeList = resourcesData.OrderBy(x => x.name).ToList();
-                return;
-            }
-
-#if UNITY_EDITOR
-            string[] guids = AssetDatabase.FindAssets("t:LobbyUpgradeSO", new[] { "Assets/Necromancer/02.Data/Upgrades" });
-            upgradeList = guids.Select(guid => AssetDatabase.LoadAssetAtPath<LobbyUpgradeSO>(AssetDatabase.GUIDToAssetPath(guid)))
-                               .OrderBy(x => x.name)
-                               .ToList();
-#endif
         }
 
         public void UpdateSoulUI(bool immediate = false)

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using DG.Tweening;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -78,20 +78,21 @@ namespace Necromancer.UI
             {
                 logoTransform.DOAnchorPosY(logoTransform.anchoredPosition.y + floatingAmount, floatingDuration) 
                     .SetEase(Ease.InOutSine)
-                    .SetLoops(-1, LoopType.Yoyo);
+                    .SetLoops(-1, LoopType.Yoyo)
+                    .SetLink(gameObject);
             }
 
             if (mainButtonPanel != null)
             {
                 mainButtonPanel.alpha = 0;
-                mainButtonPanel.DOFade(1, fadeDuration).SetDelay(0.3f);
+                mainButtonPanel.DOFade(1, fadeDuration).SetDelay(0.3f).SetLink(gameObject);
 
                 for (int i = 0; i < mainButtonPanel.transform.childCount; i++)
                 {
                     RectTransform childRT = mainButtonPanel.transform.GetChild(i) as RectTransform;
                     if (childRT == null) continue;
                     childRT.localScale = Vector3.one * 0.95f;
-                    childRT.DOScale(1f, fadeDuration).SetEase(Ease.OutCubic).SetDelay(0.4f + (i * staggerDelay));
+                    childRT.DOScale(1f, fadeDuration).SetEase(Ease.OutCubic).SetDelay(0.4f + (i * staggerDelay)).SetLink(gameObject);
                 }
             }
         }
@@ -117,8 +118,8 @@ namespace Necromancer.UI
             string btnName = btn.name.ToLower();
 
             EventTrigger trigger = btn.gameObject.GetComponent<EventTrigger>() ?? btn.gameObject.AddComponent<EventTrigger>();
-            AddEvent(trigger, EventTriggerType.PointerEnter, (d) => { if (!isTransitioning) rt.DOScale(1.05f, 0.2f); });
-            AddEvent(trigger, EventTriggerType.PointerExit, (d) => { if (rt != null) rt.DOScale(1f, 0.2f); });  
+            AddEvent(trigger, EventTriggerType.PointerEnter, (d) => { if (!isTransitioning) rt.DOScale(1.05f, 0.2f).SetLink(btn.gameObject); });
+            AddEvent(trigger, EventTriggerType.PointerExit, (d) => { if (rt != null) rt.DOScale(1f, 0.2f).SetLink(btn.gameObject); });  
 
             if (btnName.Contains("start")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Start Button Clicked"); ShowPanel(stageSelectPanel); });
             else if (btnName.Contains("upgrade")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Upgrade Button Clicked"); ShowPanel(upgradePanel); });
@@ -142,12 +143,12 @@ namespace Necromancer.UI
             {
                 mainButtonPanel.interactable = false;
                 mainButtonPanel.blocksRaycasts = false;
-                mainButtonPanel.DOFade(0, 0.2f).OnComplete(() => mainButtonPanel.gameObject.SetActive(false));  
+                mainButtonPanel.DOFade(0, 0.2f).SetLink(gameObject).OnComplete(() => mainButtonPanel.gameObject.SetActive(false));  
             }
 
             targetPanel.gameObject.SetActive(true);
             targetPanel.alpha = 0f;
-            targetPanel.DOFade(1f, 0.3f).OnComplete(() => {
+            targetPanel.DOFade(1f, 0.3f).SetLink(gameObject).OnComplete(() => {
                 targetPanel.interactable = true;
                 targetPanel.blocksRaycasts = true;
                 isTransitioning = false;
@@ -179,7 +180,7 @@ namespace Necromancer.UI
                 {
                     panel.interactable = false;
                     panel.blocksRaycasts = false;
-                    panel.DOFade(0, 0.2f).OnComplete(() => panel.gameObject.SetActive(false));
+                    panel.DOFade(0, 0.2f).SetLink(gameObject).OnComplete(() => panel.gameObject.SetActive(false));
                 }
             }
 
@@ -189,7 +190,7 @@ namespace Necromancer.UI
                 mainButtonPanel.alpha = 0f; // [QA] 페이드 시작 전 알파 초기화
                 mainButtonPanel.interactable = true; // [QA] 버튼 상호작용 복구
                 mainButtonPanel.blocksRaycasts = true; 
-                mainButtonPanel.DOFade(1, 0.3f).OnComplete(() => {
+                mainButtonPanel.DOFade(1, 0.3f).SetLink(gameObject).OnComplete(() => {
                     isTransitioning = false;
                     Debug.Log("<color=green>[TitleUI]</color> Main Menu Panel restored and interactable.");
                 });

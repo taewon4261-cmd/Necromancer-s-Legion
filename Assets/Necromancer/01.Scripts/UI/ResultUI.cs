@@ -36,11 +36,11 @@ namespace Necromancer.UI
             if (canvasGroup != null)
             {
                 canvasGroup.alpha = 0f;
-                canvasGroup.DOFade(1f, 0.5f).SetUpdate(true);
+                canvasGroup.DOFade(1f, 0.5f).SetUpdate(true).SetLink(gameObject);
             }
             
             transform.localScale = Vector3.one * 0.8f;
-            transform.DOScale(1f, 0.5f).SetEase(Ease.OutBack).SetUpdate(true);
+            transform.DOScale(1f, 0.5f).SetEase(Ease.OutBack).SetUpdate(true).SetLink(gameObject);
 
             if (tmpTitle != null)
             {

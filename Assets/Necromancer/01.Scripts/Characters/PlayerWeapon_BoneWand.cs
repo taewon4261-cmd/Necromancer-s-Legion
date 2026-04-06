@@ -21,8 +21,11 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     [Tooltip("한 방당 데미지")]
     public float baseDamage = 20f;
     
-    [Tooltip("적 탐색 반경 (기획: 화면 중앙에서 2/3 지점인 5.5f로 하향)")]
-    public float detectionRadius = 5.5f;
+    [Tooltip("적 탐색 반경 (기획: 화면 중앙 집중형 교전을 위해 4.0f로 추가 하향)")]
+    public float detectionRadius = 4.0f;
+
+    // [OPTIMIZATION] 가비지 컬렉션 방지를 위한 정적 버퍼
+    private static readonly Collider2D[] scanBuffer = new Collider2D[16];
 
     [Tooltip("풀매니저에서 꺼내올 투사체 이름")]
     public string projectileTag = "BoneProjectile";
@@ -91,20 +94,24 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     /// </summary>
     private Transform FindClosestEnemy()
     {
-        // Physics2D.OverlapCircleAll은 타겟팅 시 FindGameObjectsWithTag보다 충돌체 기반이라 퍼포먼스가 월등히 좋습니다.
-        Collider2D[] hitColliders = Physics2D.OverlapCircleAll(transform.position, detectionRadius);
+        // [GC-FIX] OverlapCircleAll 대신 NonAlloc 사용으로 매 발사 시 발생하는 힙 할당 제거
+        int count = Physics2D.OverlapCircleNonAlloc(transform.position, detectionRadius, scanBuffer);
         
-        float closestDistance = Mathf.Infinity;
+        float closestSqrDistance = Mathf.Infinity;
         Transform closestEnemy = null;
 
-        foreach (var hit in hitColliders)
+        for (int i = 0; i < count; i++)
         {
+            Collider2D hit = scanBuffer[i];
+            if (hit == null) continue;
+
             if (hit.CompareTag("Enemy"))
             {
-                float distance = Vector2.Distance(transform.position, hit.transform.position);
-                if (distance < closestDistance)
+                // [sqrMagnitude] 제곱근 연산 제거로 매 프레임 타겟팅 부하 최소화
+                float sqrDistance = (transform.position - hit.transform.position).sqrMagnitude;
+                if (sqrDistance < closestSqrDistance)
                 {
-                    closestDistance = distance;
+                    closestSqrDistance = sqrDistance;
                     closestEnemy = hit.transform;
                 }
             }

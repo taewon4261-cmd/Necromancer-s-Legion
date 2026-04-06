@@ -80,9 +80,8 @@ namespace Necromancer.UI
                     else
                     {
                         costText.text = $"{cost:N0}";
-                        // 실제 재화 체크는 ResourceManager를 통하도록 설계됨 (UpgradeUI에서 제어)
-                        // 임시로 버튼의 interactable만 간단히 체크
-                        int currentSoul = PlayerPrefs.GetInt(Systems.UIConstants.Key_TotalSoul, 0);
+                        // [OPTIMIZATION] PlayerPrefs 대신 중앙 리소스 매니저에서 영혼 잔액 확인
+                        int currentSoul = GameManager.Instance != null && GameManager.Instance.Resources != null ? GameManager.Instance.Resources.currentSoul : 0;
                         if (upgradeButton != null) upgradeButton.interactable = currentSoul >= cost;
                     }
                 }
@@ -103,9 +102,12 @@ namespace Necromancer.UI
             if (owner.TryPurchase(cost))
             {
                 data.currentLevel++;
-                // [QA] 데이터 저장 로직은 LobbyUpgradeSO의 saveKey를 사용하도록 ResourceManager/UpgradeUI에서 일원화 권장
-                PlayerPrefs.SetInt(data.saveKey, data.currentLevel);
-                PlayerPrefs.Save();
+                
+                // [DATA.md] 중앙 저장 시스템을 통해 데이터 갱신 (더 이상 UI가 직접 PlayerPrefs를 건드리지 않음)
+                if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
+                {
+                    GameManager.Instance.SaveData.SetUpgradeLevel(data.saveKey, data.currentLevel);
+                }
 
                 UpdateVisuals();
                 owner.RefreshUI();

@@ -22,7 +22,10 @@ namespace Necromancer
         private Transform playerTransform;
         private CancellationTokenSource waveCts;
 
-        public List<EnemyAI> activeEnemies = new List<EnemyAI>();
+        public int activeEnemyCount { get; private set; } = 0;
+        
+        public void OnEnemySpawned() => activeEnemyCount++;
+        public void OnEnemyDied() => activeEnemyCount = Mathf.Max(0, activeEnemyCount - 1);
 
         public void Init()
         {
@@ -49,7 +52,7 @@ namespace Necromancer
             {
                 gameTime = 0f;
                 currentWaveIndex = 0;
-                activeEnemies.Clear();
+                // [OPTIMIZATION] 리스트 대신 정수 카운터로 정화되었습니다.
                 isSpawning = true;
 
                 var token = gameObject.GetCancellationTokenOnDestroy();
@@ -96,8 +99,8 @@ namespace Necromancer
             // 1. [웨이브 가속 시스템] 필드의 적이 0마리이면 즉시 시간 점프
             if (currentWaveIndex < waveDatabase.waveList.Count - 1)
             {
-                // activeEnemies.Count 체크는 이제 0.2초마다 실행되어 부하가 적습니다.
-                if (activeEnemies.Count == 0 && isSpawning)
+                // [OPTIMIZATION] 리스트 카운트 대신 O(1) 정수 카운트를 사용합니다.
+                if (activeEnemyCount == 0 && isSpawning)
                 {
                     float nextStartTime = waveDatabase.waveList[currentWaveIndex + 1].startTime;
                     if (gameTime < nextStartTime)
@@ -122,8 +125,8 @@ namespace Necromancer
                 }
             }
 
-            // 3. 스테이지 클리어 조건
-            if (!isSpawning && currentWaveIndex == waveDatabase.waveList.Count - 1 && activeEnemies.Count == 0)
+            // 3. 스테이지 클리어 조건 (O(1) 체크)
+            if (!isSpawning && currentWaveIndex == waveDatabase.waveList.Count - 1 && activeEnemyCount == 0)
             {
                 GameManager.Instance.OnStageClear();
             }
@@ -158,7 +161,11 @@ namespace Necromancer
             if (enemyObj != null)
             {
                 EnemyAI ai = enemyObj.GetComponent<EnemyAI>();
-                if (ai != null) ai.Setup(selectedEnemyData);
+                if (ai != null)
+                {
+                    ai.Setup(selectedEnemyData);
+                    OnEnemySpawned(); // [NEW] 카운트 증가
+                }
             }
         }
 

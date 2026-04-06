@@ -9,16 +9,21 @@ namespace Necromancer
 /// 게임 내 모든 유닛(플레이어, 적, 미니언)의 공통 기반 속성 및 행위 정의
 /// 추후 Entity 패턴 등의 확장성을 고려하여 추상 클래스로 설계
 /// </summary>
-    public abstract class UnitBase : MonoBehaviour
+    public abstract class UnitBase : MonoBehaviour, IDamageable
     {
+        // [IDamageable Implementation]
+        public UnitBase Unit => this;
+        public void ApplyDamage(float damage) => TakeDamage(damage);
+
         [Header("Base Stats")]
         public float maxHp = 50f;
         public float currentHp;
         public float moveSpeed = 3f;
         
         [Header("Visual Components")]
-        public Animator animator;
-        public SpriteRenderer spriteRenderer;
+        [Header("Visual Components (Assign in Inspector)")]
+        [SerializeField] protected Animator unitAnimator;
+        [SerializeField] protected SpriteRenderer unitSprite;
 
         [Header("Hit Effect Settings")]
         public Color hitColor = Color.red;
@@ -32,22 +37,20 @@ namespace Necromancer
 
         protected virtual void Awake()
         {
+            // [Pure Inspector] 모든 핵심 참조는 인스펙터에서 사전에 완료되었습니다. (Zero-Search)
             currentHp = maxHp;
-            // 자식 오브젝트나 본인에게서 컴포넌트를 자동으로 찾음
-            if (animator == null) animator = GetComponentInChildren<Animator>();
-            if (spriteRenderer == null) spriteRenderer = GetComponentInChildren<SpriteRenderer>();
         }
         
         protected virtual void OnEnable()
         {
             isDead = false;
             currentHp = maxHp;
-            if (spriteRenderer != null) spriteRenderer.color = Color.white;
+            if (unitSprite != null) unitSprite.color = Color.white;
             
-            if (animator != null)
+            if (unitAnimator != null)
             {
-                animator.updateMode = AnimatorUpdateMode.Normal;
-                animator.SetBool(Necromancer.Systems.UIConstants.AnimParam_Die, false);
+                unitAnimator.updateMode = AnimatorUpdateMode.Normal;
+                unitAnimator.SetBool(Necromancer.Systems.UIConstants.AnimParam_Die, false);
             }
             
             OnHealthChanged?.Invoke(currentHp, maxHp);
@@ -84,20 +87,20 @@ namespace Necromancer
 
         private IEnumerator HitFlashRoutine()
         {
-            if (spriteRenderer == null) yield break;
+            if (unitSprite == null) yield break;
 
-            spriteRenderer.color = hitColor;
+            unitSprite.color = hitColor;
             yield return new WaitForSeconds(hitDuration);
-            spriteRenderer.color = Color.white;
+            unitSprite.color = Color.white;
             hitFlashCoroutine = null;
         }
 
         protected virtual void Die()
         {
             isDead = true;
-            if (animator != null)
+            if (unitAnimator != null)
             {
-                animator.SetBool(Necromancer.Systems.UIConstants.AnimParam_Die, true);
+                unitAnimator.SetBool(Necromancer.Systems.UIConstants.AnimParam_Die, true);
             }
         }
     }

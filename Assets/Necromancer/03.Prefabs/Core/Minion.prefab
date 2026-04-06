@@ -132,14 +132,18 @@ MonoBehaviour:
   maxHp: 50
   currentHp: 0
   moveSpeed: 3
-  animator: {fileID: 0}
-  spriteRenderer: {fileID: 0}
+  unitAnimator: {fileID: -7976805141765022599}
+  unitSprite: {fileID: 7700725062239094365}
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitDuration: 0.1
   attackDamage: 15
   lifeTime: 10
   targetScanRate: 0.5
   hitCooldown: 0.5
+  rb: {fileID: 7181023609370401053}
+  enemyLayer:
+    serializedVersion: 2
+    m_Bits: 64
 --- !u!58 &-894118040432091259
 CircleCollider2D:
   m_ObjectHideFlags: 0

@@ -201,11 +201,12 @@ MonoBehaviour:
   maxHp: 9999
   currentHp: 0
   moveSpeed: 5
-  animator: {fileID: 3753098680063395050}
-  spriteRenderer: {fileID: 597876393243237135}
+  unitAnimator: {fileID: 3753098680063395050}
+  unitSprite: {fileID: 597876393243237135}
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitDuration: 0.1
   invincibilityDuration: 0.2
+  rb: {fileID: 4526610042873829610}
   virtualJoystick: {fileID: 0}
   bodySlamDamage: 0
   slamCooldown: 0.5

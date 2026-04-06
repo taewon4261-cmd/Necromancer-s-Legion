@@ -21,7 +21,7 @@ MonoBehaviour:
     +2%"
   requiredUpgrade: {fileID: 0}
   requiredLevel: 0
-  currentLevel: 0
+  currentLevel: 1
   maxLevel: 15
   baseCost: 1500
   costIncreaseFactor: 1

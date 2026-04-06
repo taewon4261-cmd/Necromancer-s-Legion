@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using DG.Tweening;
 using Necromancer.Core;
@@ -137,6 +138,12 @@ namespace Necromancer
                     Debug.LogWarning("[GameManager] TitleUIController reference is missing in TitleScene.");
                 }
 
+                // [DATA INTEGRITY] 씬 전환 시(타이틀 복귀 등) 정산되지 않은 소울이 있다면 지갑에 반영
+                if (Resources != null && Resources.currentSessionSoul > 0)
+                {
+                    Resources.CommitSessionSoul();
+                }
+
                 if (uiManager != null) uiManager.Clear();
                 if (waveManager != null) waveManager.StopSpawning();
                 
@@ -147,7 +154,7 @@ namespace Necromancer
                 currentLevel = 1;
                 Time.timeScale = 1f;
                 if (Resources != null) Resources.currentSessionSoul = 0;
-                Debug.Log("<color=cyan><b>[GameManager]</b> Session data cleared for TitleScene.</color>");
+                Debug.Log("<color=cyan><b>[GameManager]</b> Session data committed and cleared for TitleScene.</color>");
             }
         }
 
@@ -228,8 +235,11 @@ namespace Necromancer
         private IEnumerator StageClearSequence()
         {
             // 1. 맵에 흩어진 모든 영혼 진공 흡수 (애니메이션)
-            ExpGem[] gems = GameObject.FindObjectsOfType<ExpGem>();
-            foreach (var gem in gems) gem.StartVacuum();
+            var gems = ExpGem.ActiveGems.ToList();
+            foreach (var gem in gems) 
+            {
+                if (gem != null) gem.StartVacuum();
+            }
 
             // 2. 흡수 완료 시점까지 대기 (약 1.5초)
             yield return new WaitForSeconds(1.5f);

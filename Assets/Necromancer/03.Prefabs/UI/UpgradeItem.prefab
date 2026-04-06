@@ -1,4 +1,4 @@
-﻿%YAML 1.1
+%YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
 --- !u!1 &314816227214439001
 GameObject:
@@ -852,7 +852,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   iconImage: {fileID: 2928155199821940960}
   iconFrame: {fileID: 0}
-  backgroundImage: {fileID: 0}
+  backgroundImage: {fileID: 6968560387868369233}
   nameText: {fileID: 1254441001768051938}
   levelText: {fileID: 2746231592903500066}
   descriptionText: {fileID: 4924890788189880437}
