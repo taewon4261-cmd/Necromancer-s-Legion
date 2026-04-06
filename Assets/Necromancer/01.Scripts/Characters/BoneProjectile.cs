@@ -10,11 +10,11 @@ namespace Necromancer
 
 /// <summary>
 /// 네크로맨서가 쏘는 기본 뼈다귀 투사체 마법
-/// PoolManager에 의해 관리되며, 활성화 시 타겟을 향해 날아가고 부딪히면 데미지를 주고 소멸(반납)합니다.
+/// [ARCHITECT] UnitBase를 상속받아 UnitManager의 중앙 업데이트 시스템에 편입되었습니다.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
 [RequireComponent(typeof(BoxCollider2D))]
-public class BoneProjectile : MonoBehaviour
+public class BoneProjectile : UnitBase
 {
     [Header("Projectile Stats")]
     public float damage = 20f;
@@ -22,31 +22,33 @@ public class BoneProjectile : MonoBehaviour
     public float lifeTime = 3f;
 
     private Rigidbody2D rb;
-    private CancellationTokenSource lifeCts;
+    private CancellationTokenSource projectileCts;
 
-    private void Awake()
+    protected override void Awake()
     {
+        // UnitBase의 기본 스탯 설정 (투사체는 HP가 의미 없으므로 최소화)
+        maxHp = 1f;
+        base.Awake();
         rb = GetComponent<Rigidbody2D>();
     }
 
-    private void OnEnable()
+    protected override void OnEnable()
     {
-        // 1. 발사될 때마다 수류탄 핀 뽑듯 수명 타이머 작동
-        lifeCts?.Cancel();
-        lifeCts?.Dispose();
-        lifeCts = new CancellationTokenSource();
+        base.OnEnable(); // UnitManager 등록 포함
         
-        AutoReleaseAfterTimeAsync(lifeCts.Token).Forget();
+        projectileCts = new CancellationTokenSource();
+        AutoReleaseAfterTimeAsync(projectileCts.Token).Forget();
     }
 
-    private void OnDisable()
+    protected override void OnDisable()
     {
-        lifeCts?.Cancel();
-        lifeCts?.Dispose();
-        lifeCts = null;
+        base.OnDisable(); // UnitManager 해제 포함
         
-        // 회수 시 물리력 0으로 리셋 (다음 발사 때 궤도 꼬임 방지)
-        rb.velocity = Vector2.zero; 
+        if (rb != null) rb.velocity = Vector2.zero; 
+        
+        projectileCts?.Cancel();
+        projectileCts?.Dispose();
+        projectileCts = null;
     }
 
     /// <summary>
@@ -54,44 +56,53 @@ public class BoneProjectile : MonoBehaviour
     /// </summary>
     public void Fire(Vector2 direction, float currentDamage)
     {
-        damage = currentDamage; // 레벨업 시 공격력 증가 반영
+        damage = currentDamage;
         rb.velocity = direction.normalized * speed;
         
-        // 투사체가 날아가는 방향으로 쳐다보게 각도 회전 (매직 미사일 형태에 최적화)
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
-        // [수정] 이미지가 기본적으로 왼쪽(←)을 보고 있으므로, 180도를 더해 진행 방향을 바라보게 합니다.
         transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
     }
 
     /// <summary>
-    /// 적과 충돌 시 데미지를 입히고 사라짐
-    /// Trigger 모드로 콜라이더를 세팅해야 적을 통과하며 때리지 않고 폭파됩니다.
+    /// [CENTRALIZED] UnitManager에서 호출하는 수동 업데이트.
+    /// 투사체 특화 로직이 필요할 경우 여기에 작성합니다. (현재는 물리 엔진에 의존)
     /// </summary>
+    public override void ManualUpdate(float deltaTime)
+    {
+        base.ManualUpdate(deltaTime);
+        // [FUTURE] 수동 이동 로직(transform.Translate 등)이 필요하면 여기서 처리 가능
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         if (collision.CompareTag("Enemy"))
         {
-            UnitBase enemy = collision.GetComponent<UnitBase>();
-            if (enemy != null)
+            if (collision.TryGetComponent<IDamageable>(out var enemy))
             {
-                enemy.TakeDamage(damage);
-                // TODO: 뼈 타격 파티클 호출
+                enemy.ApplyDamage(damage);
+                
+                if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
+                {
+                    // UnitBase 유닛인 경우 스킬 효과 전파
+                    if (enemy.Unit != null)
+                        GameManager.Instance.skillManager.ApplyAttackEffects(enemy.Unit);
+                }
             }
 
-            // 맞았으므로 스스로를 창고로 반납
             ReleaseToPool();
         }
     }
 
-    /// <summary>
-    /// 허공으로 날아간 탄환을 수명(lifeTime) 뒤에 강제 회수
-    /// </summary>
     private async UniTaskVoid AutoReleaseAfterTimeAsync(CancellationToken token)
     {
-        // Cancel 발생 전까지 정상 대기했다면 true 반환
-        bool isCancelled = await UniTask.Delay(System.TimeSpan.FromSeconds(lifeTime), cancellationToken: token).SuppressCancellationThrow();
+        float startTime = Time.time;
+        while (Time.time < startTime + lifeTime && !token.IsCancellationRequested)
+        {
+            if (!gameObject.activeInHierarchy) return;
+            await UniTask.Delay(100, cancellationToken: token).SuppressCancellationThrow();
+        }
         
-        if (!isCancelled)
+        if (gameObject.activeInHierarchy)
         {
             ReleaseToPool();
         }
@@ -99,8 +110,6 @@ public class BoneProjectile : MonoBehaviour
 
     private void ReleaseToPool()
     {
-        lifeCts?.Cancel(); // 타이머 중지
-        
         if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
         {
             GameManager.Instance.poolManager.Release("BoneProjectile", gameObject);
@@ -110,5 +119,9 @@ public class BoneProjectile : MonoBehaviour
             Destroy(gameObject);
         }
     }
+
+    // 투사체는 데미지를 입지 않거나 즉시 파괴되도록 오버라이드
+    public override void TakeDamage(float damage) { /* 투사체는 무적 또는 무시 */ }
+    protected override void Die() { ReleaseToPool(); }
 }
 }

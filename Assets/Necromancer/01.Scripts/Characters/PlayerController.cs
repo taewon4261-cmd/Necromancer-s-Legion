@@ -49,7 +49,11 @@ public class PlayerController : UnitBase
 
     protected override void Awake()
     {
-        if (GameManager.Instance != null) GameManager.Instance.playerTransform = transform;
+        if (GameManager.Instance != null) 
+        {
+            GameManager.Instance.playerTransform = transform;
+            GameManager.Instance.playerController = this;
+        }
         base.Awake();
         // [Pure Inspector] rb는 인스펙터에서 사전에 할당되었습니다.
 
@@ -73,8 +77,9 @@ public class PlayerController : UnitBase
         SkillManager.OnPlayerStatsChanged += UpdateMagnetRadius;
     }
 
-    private void OnDisable()
+    protected override void OnDisable()
     {
+        base.OnDisable();
         SkillManager.OnPlayerStatsChanged -= UpdateMagnetRadius;
     }
 
@@ -116,16 +121,16 @@ public class PlayerController : UnitBase
         }
     }
 
-    protected override void Update()
+    public override void ManualUpdate(float deltaTime)
     {
-        base.Update();
+        base.ManualUpdate(deltaTime);
         if (isDead) return;
         
         HandleInput();
         UpdateAnimation();
     }
 
-    private void FixedUpdate()
+    public override void ManualFixedUpdate(float fixedDeltaTime)
     {
         if (isDead) return;
         Move();
@@ -243,10 +248,16 @@ public class PlayerController : UnitBase
 
         if (collision.CompareTag("Enemy"))
         {
-            // [Zero-Search] GetComponent<UnitBase> 대신 인터페이스 레이어 사용 (TryGetComponent는 훨씬 빠름)
             if (collision.TryGetComponent(out IDamageable target))
             {
                 target.ApplyDamage(bodySlamDamage);
+                
+                // [REGISTRY PATTERN] 본체 몸통 박치기 시에도 스킬 효과 적용
+                if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
+                {
+                    GameManager.Instance.skillManager.ApplyAttackEffects(target.Unit);
+                }
+                
                 lastSlamTime = Time.time;
             }
         }

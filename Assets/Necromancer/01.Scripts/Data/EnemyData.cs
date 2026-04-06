@@ -29,7 +29,13 @@ namespace Necromancer
         [Tooltip("원거리 몬스터인지 여부 (정규군 검사/농부=false, 궁수=true)")]
         public bool isRanged = false;
         
+        [Tooltip("오직 플레이어만 추적하는 저격형/보스 몹 여부")]
+        public bool isSniper = false;
+        
         [Tooltip("보스 또는 엘리트 몹 등급 여부 (거인사냥꾼 스킬 대응용)")]
         public bool isElite = false;
+
+        [Tooltip("궁수형 유닛 여부 (기존 isRanged와 별개로 기획용 태그)")]
+        public bool isArcher = false;
     }
 }

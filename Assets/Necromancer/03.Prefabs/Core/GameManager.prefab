@@ -191,7 +191,6 @@ MonoBehaviour:
   waveDatabase: {fileID: 11400000, guid: 9d75b168f11d14a4e9917c1b8a8037e3, type: 2}
   spawnRadius: 15
   gameTime: 0
-  activeEnemies: []
 --- !u!1 &2086205799551222942
 GameObject:
   m_ObjectHideFlags: 0
@@ -420,6 +419,7 @@ Transform:
   - {fileID: 5483191595472288980}
   - {fileID: 3162407116119011667}
   - {fileID: 8018101737780525631}
+  - {fileID: 1467022184761548460}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2435100814045926009
@@ -445,7 +445,9 @@ MonoBehaviour:
   _feedbackManager: {fileID: 1245988202303158569}
   _uiManager: {fileID: 5222022597978494407}
   _titleUI: {fileID: 0}
+  _unitManager: {fileID: 877591509518821255}
   playerTransform: {fileID: 0}
+  playerController: {fileID: 0}
   magnetRadius: 3
   baseReviveChance: 30
   minionTag: Minion
@@ -501,6 +503,51 @@ MonoBehaviour:
   damageTextPoolTag: DamageText
   normalDamageColor: {r: 1, g: 1, b: 1, a: 1}
   eliteDamageColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+--- !u!1 &8356975326296596734
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1467022184761548460}
+  - component: {fileID: 877591509518821255}
+  m_Layer: 0
+  m_Name: UnitManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1467022184761548460
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8356975326296596734}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5521724465700664552}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &877591509518821255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8356975326296596734}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5a309f71077041488c7dcffe01eb714, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gridCellSize: 2
 --- !u!1 &8652080521656894664
 GameObject:
   m_ObjectHideFlags: 0
@@ -546,17 +593,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   skillDB: {fileID: 11400000, guid: 5480528291a1d3b4a958525e7ee9fbda, type: 2}
-  hasToxicBlade: 0
-  hasFrostWeapon: 0
-  hasBloodFrenzy: 0
-  hasCursedStigma: 0
-  hasGiantHunter: 0
   globalMinionHpBonusRatio: 1
   globalMinionDamageBonusRatio: 1
   globalMinionSpeedBonusRatio: 1
   currentMaxMinions: 50
   vampiricChance: 0
   minionExplosionDamage: 0
+  playerWeaponLevel: 1
+  globalPlayerWeaponDamageRatio: 1
+  globalPlayerWeaponFireRateRatio: 1
 --- !u!1 &9030157400765955922
 GameObject:
   m_ObjectHideFlags: 0

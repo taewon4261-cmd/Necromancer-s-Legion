@@ -1,4 +1,5 @@
 
+using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
@@ -32,7 +33,6 @@ public class EnemyAI : UnitBase
 
     [Header("Inspector References (Zero-Search)")]
     [SerializeField] private Rigidbody2D rb;
-    private Transform targetPlayer;
     private float lastHitTime;
     private CancellationTokenSource lifetimeCts;
 
@@ -40,12 +40,15 @@ public class EnemyAI : UnitBase
     private int separationOffset;
     private Vector2 cachedSeparationDir;
     [SerializeField] private LayerMask enemyLayer;
-    private static readonly Collider2D[] separationBuffer = new Collider2D[16];
 
-    // --- [스킬 연동: 상태이상 디버프 변수들] ---
-    private float originalMoveSpeed;
-    private int stigmaStacks = 0;
-    private bool hasCountedDeath = false; // [NEW] 카운트 중복 방지용 가드
+    [Header("Targeting Settings")]
+    private UnitBase currentTarget; // 실질적인 추격/공격 대상
+    private const float MINION_SCAN_RANGE = 4.0f; // 일반 몹이 한눈 팔 범위
+    private List<UnitBase> nearbyBuffer = new List<UnitBase>(16);
+    private int stigmaStacks;
+    private bool hasCountedDeath;
+
+    // --- [스킬 연동: Modifier 패턴으로 대체됨] ---
 
     protected override void Awake()
     {
@@ -65,17 +68,21 @@ public class EnemyAI : UnitBase
         hasCountedDeath = false; // [NEW] 가드 초기화
         lifetimeCts = new CancellationTokenSource();
         
-        if (GameManager.Instance != null && GameManager.Instance.playerTransform != null)
+        if (GameManager.Instance != null && GameManager.Instance.playerController != null)
         {
-            targetPlayer = GameManager.Instance.playerTransform;
+            currentTarget = (UnitBase)GameManager.Instance.playerController; // 초기화
         }
 
         // [ENRAGE] 스폰 20초 후 광폭화 루틴 시작 (오브젝트 비활성화 시 즉시 중단)
         EnrageAfterDelayAsync(lifetimeCts.Token).Forget();
+        
+        // [HYBRID TARGETING] 타겟 스캔 루프 시작
+        ScanForTargetAsync(lifetimeCts.Token).Forget();
     }
 
-    protected virtual void OnDisable()
+    protected override void OnDisable()
     {
+        base.OnDisable();
         // [OPTIMIZATION] O(N) 리스트 제거 대신 O(1) 카운트 감소
         if (!hasCountedDeath && GameManager.Instance != null && GameManager.Instance.waveManager != null)
         {
@@ -83,7 +90,7 @@ public class EnemyAI : UnitBase
             hasCountedDeath = true; // 가드 활성화
         }
 
-        targetPlayer = null; // [STABILITY] 참조 초기화
+        currentTarget = null; // [STABILITY] 참조 초기화
         
         lifetimeCts?.Cancel();
         lifetimeCts?.Dispose();
@@ -107,7 +114,6 @@ public class EnemyAI : UnitBase
         this.maxHp = data.maxHp * hpMult;
         this.attackDamage = data.attackDamage * dmgMult;
         this.moveSpeed = data.moveSpeed;
-        this.originalMoveSpeed = moveSpeed;
 
         this.currentHp = maxHp;
         this.isDead = false;
@@ -135,52 +141,15 @@ public class EnemyAI : UnitBase
         }
     }
 
-    // --- [스킬 연동 로직 시작] ---
-    public void ApplyPoison(float duration, float tickDamage)
-    {
-        if (!gameObject.activeInHierarchy || isDead || lifetimeCts == null) return;
-        PoisonAsync(duration, tickDamage, lifetimeCts.Token).Forget();
-    }
+    // [MODIFIER PATTERN] 기존 비동기 스킬 로직은 PoisonModifier 등으로 이관될 예정이므로 제거 가능하나
+    // 현재 호환성을 위해 유지하거나 Modifier 주입 방식으로 리팩토링합니다.
+    // (지시서에 따라 UnitBase.AddModifier를 사용하는 방향으로 선회)
 
-    private async UniTaskVoid PoisonAsync(float duration, float tickDamage, CancellationToken token)
+    public override void ManualUpdate(float deltaTime)
     {
-        float timer = 0f;
-        while (timer < duration && !isDead && !token.IsCancellationRequested)
-        {
-            TakeDamage(tickDamage);
-            timer += 1f;
-            bool isCancelled = await UniTask.Delay(System.TimeSpan.FromSeconds(1f), cancellationToken: token).SuppressCancellationThrow();
-            if (isCancelled) return;
-        }
-    }
-
-    public void ApplyFrost(float duration, float slowdownRatio)
-    {
-        if (!gameObject.activeInHierarchy || isDead || lifetimeCts == null) return;
-        FrostAsync(duration, slowdownRatio, lifetimeCts.Token).Forget();
-    }
-
-    private async UniTaskVoid FrostAsync(float duration, float slowdownRatio, CancellationToken token)
-    {
-        moveSpeed = originalMoveSpeed * (1f - slowdownRatio);
-        bool isCancelled = await UniTask.Delay(System.TimeSpan.FromSeconds(duration), cancellationToken: token).SuppressCancellationThrow();
-        if (!isCancelled && !isDead) moveSpeed = originalMoveSpeed;
-    }
-
-    public void AddStigmaStack()
-    {
-        stigmaStacks++;
-        if (stigmaStacks >= 10)
-        {
-            stigmaStacks = 0; 
-            TakeDamage(maxHp * 0.2f); 
-        }
-    }
-
-    protected override void Update()
-    {
-        base.Update();
+        base.ManualUpdate(deltaTime);
         if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) return;
+        
         UpdateAnimation();
     }
 
@@ -195,7 +164,7 @@ public class EnemyAI : UnitBase
         else if (rb.velocity.x < -0.01f) unitSprite.flipX = true;
     }
 
-    private void FixedUpdate()
+    public override void ManualFixedUpdate(float fixedDeltaTime)
     {
         if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) 
         {
@@ -208,31 +177,33 @@ public class EnemyAI : UnitBase
 
     private void MoveWithSeparation()
     {
-        if (targetPlayer == null) return;
+        if (currentTarget == null || currentTarget.transform == null) return;
 
-        Vector2 stalkDir = (targetPlayer.position - transform.position).normalized;
+        Vector2 stalkDir = ((Vector2)currentTarget.transform.position - (Vector2)transform.position).normalized;
         Vector2 separationDir = cachedSeparationDir;
 
-        // [OPTIMIZATION] 분산 로직(N^2) 부하를 1/10로 감소
-        // 물리 쿼리(OverlapCircle)를 도입하여 주변 적만 선별적으로 검출합니다.
+        // [OPTIMIZATION] Grid Spatial Partitioning 사용 (OverlapCircleNonAlloc 대체)
         if ((Time.frameCount + separationOffset) % 10 == 0)
         {
             separationDir = Vector2.zero;
             int neighborCount = 0;
             float sqrRadius = separationRadius * separationRadius;
 
-            // Physics2D.OverlapCircleNonAlloc은 리스트 순회보다 압도적으로 빠릅니다.
-            int count = Physics2D.OverlapCircleNonAlloc(transform.position, separationRadius, separationBuffer, enemyLayer);
-
-            for (int i = 0; i < count; i++)
+            // UnitManager의 격자 시스템으로 주변 유닛만 O(1)에 가깝게 추출 (GC Free)
+            if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
             {
-                Collider2D neighbor = separationBuffer[i];
-                if (neighbor == null || neighbor.gameObject == gameObject) continue;
+                GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, separationRadius, nearbyBuffer);
+            }
+            var neighbors = nearbyBuffer;
+
+            for (int i = 0; i < neighbors.Count; i++)
+            {
+                var neighbor = neighbors[i];
+                if (neighbor == null || neighbor == this || neighbor is PlayerController) continue;
 
                 Vector2 diff = (Vector2)transform.position - (Vector2)neighbor.transform.position;
                 float sqrDist = diff.sqrMagnitude;
 
-                // [sqrMagnitude] 제곱근 연산 제거로 CPU 부하 최소화
                 if (sqrDist < sqrRadius && sqrDist > 0.0001f)
                 {
                     separationDir += diff.normalized / Mathf.Sqrt(sqrDist);
@@ -271,7 +242,7 @@ public class EnemyAI : UnitBase
         
         if (Time.time < lastHitTime + hitCooldown) return;
 
-        if (collision.CompareTag("Player"))
+        if (collision.CompareTag("Player") || collision.CompareTag("Minion"))
         {
             // [Zero-Search] GetComponent<UnitBase> 대신 인터페이스 레이어 사용 (O(1) 접근)
             if (collision.TryGetComponent(out IDamageable targetUnit))
@@ -320,6 +291,56 @@ public class EnemyAI : UnitBase
         else
         {
             Destroy(gameObject);
+        }
+    }
+
+    /// <summary>
+    /// [HYBRID TARGETING] 주변 미니언 유무에 따라 타겟을 결정하는 비동기 루프
+    /// </summary>
+    private async UniTaskVoid ScanForTargetAsync(CancellationToken token)
+    {
+        // 초기 지터링 부여 (CPU 부하 분산)
+        await UniTask.Delay(System.TimeSpan.FromSeconds(Random.Range(0f, 0.5f)), cancellationToken: token).SuppressCancellationThrow();
+
+        while (!isDead && !token.IsCancellationRequested)
+        {
+            // 1. 스나이퍼형 또는 보스는 무조건 플레이어 고정
+            if (data != null && (data.isSniper || data.isElite))
+            {
+                currentTarget = (UnitBase)GameManager.Instance.playerController;
+            }
+            else
+            {
+                // 2. 일반형: UnitManager 격자 시스템 활용 (O(1)에 가까운 탐색)
+                if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
+                {
+                    GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, MINION_SCAN_RANGE, nearbyBuffer);
+                }
+
+                UnitBase closestMinion = null;
+                float minSqrDist = Mathf.Infinity;
+
+                for (int i = 0; i < nearbyBuffer.Count; i++)
+                {
+                    // [IMPORTANT] MinionAI 타입만 타겟팅 (동료 Enemy는 제외)
+                    if (nearbyBuffer[i] is MinionAI minion && !minion.IsDead)
+                    {
+                        float sqrDist = ((Vector2)transform.position - (Vector2)minion.transform.position).sqrMagnitude;
+                        if (sqrDist < minSqrDist)
+                        {
+                            minSqrDist = sqrDist;
+                            closestMinion = minion;
+                        }
+                    }
+                }
+                
+                // 미니언 있으면 미니언, 없으면 플레이어
+                currentTarget = closestMinion ?? (UnitBase)GameManager.Instance.playerController;
+            }
+
+            // 0.4초 간격으로 스캔 (성능 확보)
+            bool isCancelled = await UniTask.Delay(System.TimeSpan.FromSeconds(0.4f), cancellationToken: token).SuppressCancellationThrow();
+            if (isCancelled) break;
         }
     }
 }

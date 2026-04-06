@@ -18,13 +18,33 @@ namespace Necromancer
         public static System.Action OnMinionStatsChanged;
         public static System.Action OnPlayerStatsChanged;
 
-        public bool hasToxicBlade = false;
-        public bool hasFrostWeapon = false;
-        public bool hasBloodFrenzy = false;
-        public bool hasCursedStigma = false;
-        public bool hasGiantHunter = false;
+        // --- [공격 효과 레지스트리 (Attack Effect Registry)] ---
+        // 모든 스킬 플래그를 삭제하고, 공격 시 적에게 부여할 모디파이어 설계도들을 관리합니다.
+        public List<IUnitModifierTemplate> activeAttackModifiers = new List<IUnitModifierTemplate>();
 
-        [Header("Global Stats")]
+        private void RegisterAttackModifier(IUnitModifierTemplate template)
+        {
+            // 중복 방지 (같은 아이디면 덮어쓰거나 무시)
+            for (int i = 0; i < activeAttackModifiers.Count; i++)
+            {
+                if (activeAttackModifiers[i].ModifierId == template.ModifierId)
+                {
+                    // 수치 강화 로직 (선택적)
+                    activeAttackModifiers[i] = template;
+                    return;
+                }
+            }
+            activeAttackModifiers.Add(template);
+        }
+
+        public void ApplyAttackEffects(UnitBase target)
+        {
+            if (target == null || target.IsDead) return;
+            for (int i = 0; i < activeAttackModifiers.Count; i++)
+            {
+                target.AddModifier(activeAttackModifiers[i].CreateModifier());
+            }
+        }
         public float globalMinionHpBonusRatio = 1f;
         public float globalMinionDamageBonusRatio = 1f;
         public float globalMinionSpeedBonusRatio = 1f;
@@ -32,11 +52,19 @@ namespace Necromancer
         public float vampiricChance = 0f;
         public float minionExplosionDamage = 0f;
 
+        [Header("Player Weapon Stats")]
+        public int playerWeaponLevel = 1;
+        public float globalPlayerWeaponDamageRatio = 1f;
+        public float globalPlayerWeaponFireRateRatio = 1f;
+
         /// <summary>
         /// 안전하게 초기화용으로 비워둡니다.
         /// </summary>
         public void Init()
         {
+            // [STABILITY] 씬 재시작 시 이전 판의 스킬 효과가 중첩되는 것을 방지
+            activeAttackModifiers.Clear();
+
             if (skillDB == null || skillDB.allSkills.Count == 0)
             {
                 Debug.LogWarning("[SkillManager] 통합 스킬 DB가 연결되지 않았거나, 내부 스킬 목록이 비어있습니다!");
@@ -115,6 +143,8 @@ namespace Necromancer
             {
                 // --- [본체 생존 및 유틸 계열] ---
                 case SkillType.ScytheUpgrade:
+                    playerWeaponLevel++;
+                    globalPlayerWeaponDamageRatio += 0.2f; // [BALANCE] 레벨당 복리 대신 20% 합연산 증가
                     isPlayerUpdateNeeded = true; 
                     break;
                 case SkillType.SoulMagnet:
@@ -179,27 +209,25 @@ namespace Necromancer
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.ToxicBlade:
-                    hasToxicBlade = true;
+                    RegisterAttackModifier(new PoisonModifierTemplate(3f, 2f));
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.FrostDippedWeapon:
-                    hasFrostWeapon = true;
+                    RegisterAttackModifier(new FrostModifierTemplate(2f, 0.3f));
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.BloodFrenzy:
-                    hasBloodFrenzy = true;
-                    isMinionUpdateNeeded = true;
-                    break;
-                case SkillType.PiercingBone:
-                    // 궁수 발사체 관통 +1 (전용 플래그 설정)
+                    // [REGISTRY] 흡혈 효과 등으로 전환 가능 (Bleeding 예시로 대체하거나 모디파이어 추가)
+                    RegisterAttackModifier(new BleedingModifierTemplate());
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.CursedStigma:
-                    hasCursedStigma = true;
+                    RegisterAttackModifier(new StigmaModifierTemplate());
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.GiantHunter:
-                    hasGiantHunter = true;
+                    // [REGISTRY] 보스 추가 피해 등을 위한 전용 모디파이어 등록
+                    RegisterAttackModifier(new StunModifierTemplate()); // 실험용으로 Stun 등록
                     isMinionUpdateNeeded = true;
                     break;
                     

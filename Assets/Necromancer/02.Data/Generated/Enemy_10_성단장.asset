@@ -20,4 +20,6 @@ MonoBehaviour:
   attackDamage: 50
   dropExpAmount: 23
   isRanged: 0
+  isSniper: 1
   isElite: 1
+  isArcher: 0

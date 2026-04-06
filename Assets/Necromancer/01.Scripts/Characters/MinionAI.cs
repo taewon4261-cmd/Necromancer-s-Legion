@@ -76,37 +76,45 @@ public class MinionAI : UnitBase
         if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
         {
             SkillManager sManager = GameManager.Instance.skillManager;
+            
+            // [DATA INTEGRITY] HP Ratio Preservation (전역 버프 적용 시 비율 유지)
+            float oldMaxHp = maxHp;
+            float hpRatio = (oldMaxHp > 0) ? currentHp / oldMaxHp : 1f;
+
             this.maxHp = 50f * sManager.globalMinionHpBonusRatio;
             this.moveSpeed = 3f * sManager.globalMinionSpeedBonusRatio;
             this.attackDamage = 15f * sManager.globalMinionDamageBonusRatio;
+
+            // 새로운 최대 체력에 맞춰 현재 체력 보정
+            this.currentHp = maxHp * hpRatio;
         }
     }
 
-    private void OnDisable()
+    protected override void OnDisable()
     {
+        base.OnDisable();
         SkillManager.OnMinionStatsChanged -= ApplyGlobalBuffs;
-        currentTarget = null; // [STABILITY] 참조 초기화
-
+        
         lifetimeCts?.Cancel();
         lifetimeCts?.Dispose();
         lifetimeCts = null;
     }
 
-    protected override void Update()
+    public override void ManualUpdate(float deltaTime)
     {
+        base.ManualUpdate(deltaTime);
         if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) 
         {
             if (rb != null) rb.velocity = Vector2.zero;
             return;
         }
 
-        base.Update();
         UpdateAnimation();
 
         if (playerTransform != null)
         {
             float sqrDistToPlayer = (playerTransform.position - transform.position).sqrMagnitude;
-            if (sqrDistToPlayer > 144.0f) // 12.0f * 12.0f (18m -> 12m 단축)
+            if (sqrDistToPlayer > 144.0f) // 12.0f * 12.0f
             {
                 transform.position = playerTransform.position + (Vector3)Random.insideUnitCircle * 2f;
             }
@@ -118,6 +126,17 @@ public class MinionAI : UnitBase
         }
     }
 
+    public override void ManualFixedUpdate(float fixedDeltaTime)
+    {
+        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) 
+        {
+             if (rb != null) rb.velocity = Vector2.zero;
+             return;
+        }
+        
+        ChaseTarget();
+    }
+
     private void UpdateAnimation()
     {
         if (unitAnimator == null) return;
@@ -127,17 +146,6 @@ public class MinionAI : UnitBase
 
         if (rb.velocity.x > 0.01f) unitSprite.flipX = false;
         else if (rb.velocity.x < -0.01f) unitSprite.flipX = true;
-    }
-
-    private void FixedUpdate()
-    {
-        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) 
-        {
-             if (rb != null) rb.velocity = Vector2.zero;
-             return;
-        }
-        
-        ChaseTarget();
     }
 
     private async UniTaskVoid ScanForTargetAsync(CancellationToken token)
@@ -161,35 +169,33 @@ public class MinionAI : UnitBase
                 }
             }
 
-            // 2. [OPTIMIZATION] Physics2D.OverlapCircleNonAlloc 도입 (O(N*M) -> O(Nearby))
-            // 스캔 범위를 12f -> 8f로 조정하여 마스터의 시야 범위(Cohesion)를 유지합니다.
-            int count = Physics2D.OverlapCircleNonAlloc(transform.position, 8.0f, scanBuffer, enemyLayer);
+            // [OPTIMIZATION] Grid Spatial Partitioning 도입 (Physics2D.OverlapCircleNonAlloc 대체)
+            var nearbyUnits = (GameManager.Instance != null && GameManager.Instance.unitManager != null) 
+                ? GameManager.Instance.unitManager.GetNearbyUnits(transform.position, 8.0f)
+                : new List<UnitBase>();
             
             float minSqrDist = Mathf.Infinity;
             Transform bestTarget = null;
 
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < nearbyUnits.Count; i++)
             {
-                Collider2D col = scanBuffer[i];
-                if (col == null) continue;
+                var unit = nearbyUnits[i];
+                if (unit == null || unit is PlayerController || unit is MinionAI) continue;
 
-                if (col.TryGetComponent(out IDamageable enemy))
+                if (unit.IsDead) continue;
+
+                // [Cohesion] 플레이어로부터 너무 멀리 떨어진 적은 타겟팅에서 제외
+                if (playerTransform != null)
                 {
-                    if (enemy.IsDead) continue;
+                    float sqrDistFromPlayer = (playerTransform.position - unit.transform.position).sqrMagnitude;
+                    if (sqrDistFromPlayer > 64.0f) continue;
+                }
 
-                    // [Cohesion] 플레이어로부터 너무 멀리 떨어진(8m 이상) 적은 타겟팅에서 제외
-                    if (playerTransform != null)
-                    {
-                        float sqrDistFromPlayer = (playerTransform.position - col.transform.position).sqrMagnitude;
-                        if (sqrDistFromPlayer > 64.0f) continue;
-                    }
-
-                    float sqrDist = (transform.position - col.transform.position).sqrMagnitude;
-                    if (sqrDist < minSqrDist)
-                    {
-                        minSqrDist = sqrDist;
-                        bestTarget = col.transform;
-                    }
+                float sqrDist = (transform.position - unit.transform.position).sqrMagnitude;
+                if (sqrDist < minSqrDist)
+                {
+                    minSqrDist = sqrDist;
+                    bestTarget = unit.transform;
                 }
             }
             
@@ -260,17 +266,9 @@ public class MinionAI : UnitBase
                 targetUnit.ApplyDamage(finalDamage);
                 lastHitTime = Time.time;
                 
-                if (sManager != null)
-                {
-                    // [Refactoring] UnitBase에서 EnemyAI로 캐스팅 대신 데이터 기반 접근 권장
-                    EnemyAI enemyScript = targetUnit.Unit as EnemyAI;
-                    if (enemyScript != null)
-                    {
-                        if (sManager.hasToxicBlade) enemyScript.ApplyPoison(3f, 2f);
-                        if (sManager.hasFrostWeapon) enemyScript.ApplyFrost(2f, 0.3f);
-                        if (sManager.hasCursedStigma) enemyScript.AddStigmaStack();
-                    }
-                }
+                // [REGISTRY PATTERN] AI는 구체적인 스킬 효과를 몰라도 되며, 
+                // SkillManager가 등록된 모든 공격 효과를 일괄적으로 적용합니다 (Agnostic).
+                if (sManager != null) sManager.ApplyAttackEffects(targetUnit.Unit);
             }
         }
     }

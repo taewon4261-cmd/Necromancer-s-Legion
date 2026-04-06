@@ -28,6 +28,7 @@ namespace Necromancer
         [SerializeField] private FeedbackManager _feedbackManager;
         [SerializeField] private UIManager _uiManager;
         [SerializeField] private TitleUIController _titleUI;
+        [SerializeField] private UnitManager _unitManager;
 
         // --- [Direct Access Properties] ---
         public SaveDataManager SaveData => _saveData;
@@ -42,6 +43,7 @@ namespace Necromancer
         public FeedbackManager feedbackManager => _feedbackManager;
         public UIManager uiManager => _uiManager;
         public TitleUIController titleUI => _titleUI;
+        public UnitManager unitManager => _unitManager;
 
 
 
@@ -58,6 +60,7 @@ namespace Necromancer
         public static void BroadcastSoul(int amount) => OnSoulChanged?.Invoke(amount);
 
         public Transform playerTransform;
+        public PlayerController playerController;
         public float magnetRadius = 3f;
         public float baseReviveChance = 30f;
         public string minionTag = "Minion";
@@ -160,16 +163,14 @@ namespace Necromancer
 
         private void InitAllManagers()
         {
-            // 모든 매니저를 GameManager 하위로 강제 정렬 (프리팹 구조 유지)
-            foreach(Transform child in transform)
-            {
-                // 특수한 경우가 아니면 자식으로 유지
-            }
-
             if (SaveData != null) SaveData.Init();
             if (Resources != null) Resources.Init();
             if (Combat != null) Combat.Init();
             if (Sound != null) Sound.Init();
+            
+            // [ARCHITECT] 모든 매니저는 인스펙터에서 사전에 할당되어야 함
+            if (_poolManager == null) Debug.LogWarning("[GameManager] PoolManager is not assigned in Inspector!");
+            if (_unitManager == null) Debug.LogWarning("[GameManager] UnitManager is not assigned in Inspector!");
             
             Debug.Log("<color=cyan><b>[GameManager]</b> Global Managers initialization complete.</color>");
         }

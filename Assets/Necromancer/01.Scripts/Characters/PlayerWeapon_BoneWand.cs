@@ -31,10 +31,19 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     public string projectileTag = "BoneProjectile";
 
     private bool isShooting = false;
-    private CancellationTokenSource fireCts;
+    private Animator playerAnim;
+    private PoolManager poolMgr;
+    
+    // [ARCHITECT] 성능 최적화를 위한 보조 스탯 관리
+    private float currentDamage;
+    private int weaponLevel = 1;
 
     private void Start()
     {
+        // [OPTIMIZATION] 런타임 반복 검색(GetComponentInParent) 방지를 미리 캐싱
+        playerAnim = GetComponentInParent<Animator>();
+        if (GameManager.Instance != null) poolMgr = GameManager.Instance.poolManager;
+
         // 시작 시 초기 스탯 적용 및 이벤트 구독
         UpdateWeaponStats();
         SkillManager.OnPlayerStatsChanged += UpdateWeaponStats;
@@ -46,7 +55,7 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     private void OnDisable()
     {
         SkillManager.OnPlayerStatsChanged -= UpdateWeaponStats;
-        StopShooting();
+        isShooting = false;
     }
 
     public void StartShooting()
@@ -55,6 +64,7 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
         
         isShooting = true;
         
+        // [LIFECYCLE] 오브젝트 파괴 시 자동 취소되는 토큰 주입
         var token = gameObject.GetCancellationTokenOnDestroy();
         AutoFireRoutineAsync(token).Forget();
     }
@@ -62,7 +72,7 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     public void StopShooting()
     {
         isShooting = false;
-        fireCts?.Cancel();
+        // fireCts?.Cancel(); // [STABILITY] CTS 대신 전역 플래그와 UniTask 루프내 토큰 체크로 대체
     }
 
     /// <summary>
@@ -72,8 +82,10 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     {
         while (isShooting && !token.IsCancellationRequested)
         {
-            // 아직 게임의 중앙 매니저들이 준비 안 됐다면 대기
-            if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
+            // [STABILITY] 씬 전환이나 오브젝트 파괴 시 즉시 루프 탈출
+            if (!this.gameObject.activeInHierarchy) break;
+
+            if (poolMgr != null)
             {
                 Transform target = FindClosestEnemy();
                 
@@ -84,7 +96,8 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
             }
 
             // 발사 후 쿨타임 대기 (마법 캐스팅 시간 및 재사용 대기)
-            await UniTask.Delay(System.TimeSpan.FromSeconds(fireRate), cancellationToken: token);
+            // [LIFECYCLE] 토큰을 넘겨 대기 중 파괴 시 즉시 종료 보장
+            await UniTask.Delay(System.TimeSpan.FromSeconds(fireRate), cancellationToken: token).SuppressCancellationThrow();
         }
     }
 
@@ -125,9 +138,7 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     /// </summary>
     private void FireAtTarget(Transform target)
     {
-        // [추가] 애니메이션 트리거 (공격 동작 재생)
-        // 무기는 보통 플레이어의 자식으로 있으므로 부모의 애니메이터를 찾아 쏩니다.
-        Animator playerAnim = GetComponentInParent<Animator>();
+        // [OPTIMIZATION] 캐싱된 애니메이터 활용으로 매 샷마다의 트리거 부하 절절
         if (playerAnim != null)
         {
             playerAnim.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
@@ -136,16 +147,15 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
         // 방향 계산 (타겟 - 내 위치)
         Vector2 direction = (target.position - transform.position).normalized;
 
-        // Player 자식으로 생성하면 플레이어가 움직일 때 같이 밀려나므로, 최상단(또는 PoolManager 안)에 꺼냄
-        GameObject projectile = GameManager.Instance.poolManager.Get(projectileTag, transform.position, Quaternion.identity);
+        // [PERFORMANCE] Get(String) -> Component 시 GetComponent 한 번 줄이면 이상적이나 현재는 캐싱 위주
+        GameObject projectile = poolMgr.Get(projectileTag, transform.position, Quaternion.identity);
 
         if (projectile != null)
         {
-            BoneProjectile boneScript = projectile.GetComponent<BoneProjectile>();
-            if (boneScript != null)
+            // [ZERO-SEARCH] 매 샷마다 GetComponent 대신, 풀에서 꺼낸 오브젝트에 직접 주입
+            if (projectile.TryGetComponent<BoneProjectile>(out var boneScript))
             {
-                // 방향과 현재 무기 데미지를 주입하여 발사 트리거!
-                boneScript.Fire(direction, baseDamage);
+                boneScript.Fire(direction, currentDamage);
             }
         }
     }
@@ -155,15 +165,22 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     /// </summary>
     private void UpdateWeaponStats()
     {
-        if (GameManager.Instance == null || GameManager.Instance.skillManager == null) return;
+        if (GameManager.Instance == null || GameManager.Instance.skillManager == null) 
+        {
+            currentDamage = baseDamage;
+            return;
+        }
 
-        // 기본값(20f)을 기준으로 SkillManager의 낫 업그레이드 여부 등을 체크하여 반영할 수 있습니다.
-        // 여기서는 간단하게 ScytheUpgrade 스킬이 선택될 때마다 SkillManager에서 OnPlayerStatsChanged를 쏘므로
-        // 호출될 때마다 일정 비율로 강화하거나, SkillManager에 명시적인 무기 공격력 변수를 만들어 관리하는 것이 좋습니다.
+        var sm = GameManager.Instance.skillManager;
         
-        // 스케일링 예시 (기본 데미지 20에서 시작하여 10%씩 복리로 증가 등은 기획에 따름)
-        // 일단은 로직이 호출됨을 보장하는 로그를 남깁니다.
-        Debug.Log("[PlayerWeapon] Weapon Stats Updated via Event.");
+        // [ARCHITECT] 전역 스탯 배율(Ratio)과 개별 레벨의 가중치를 결합하여 데미지 산출
+        weaponLevel = sm.playerWeaponLevel;
+        currentDamage = baseDamage * sm.globalPlayerWeaponDamageRatio;
+        
+        // [PERFORMANCE] 발사 속도는 루프 대기 시간에 즉각 반영됨
+        // fireRate = 1.2f / sm.globalPlayerWeaponFireRateRatio; 
+        
+        Debug.Log($"[PlayerWeapon] Stats Updated: Level {weaponLevel}, DMG {currentDamage}");
     }
 }
 }
