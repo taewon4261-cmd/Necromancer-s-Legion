@@ -57,6 +57,11 @@ namespace Necromancer.UI
                 bool isCurrentUnlocked = GameManager.Instance.Resources.IsStageUnlocked(stageList[currentIndex].stageID);
                 if (!isCurrentUnlocked)
                 {
+                    // [SOUND] 잠겨서 이동 불가 효과음
+                    if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                        GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
+                    }
+
                     // 진동 피드백 (잠금 영역을 더 파고들려고 시도할 때)
 #if UNITY_ANDROID || UNITY_IOS
                     Handheld.Vibrate();
@@ -121,10 +126,17 @@ namespace Necromancer.UI
                 stageThumbnail.color = isUnlocked ? Color.white : Color.black; // 잠기면 검게
             }
             
-            // 3. 잠금 UI 처리 (lockOverlay 관련 코드 제거됨)
+            // 3. 잠금 UI 처리
             if (startButton != null) 
             {
-                startButton.interactable = isUnlocked;
+                // [STABILITY] 소리 피드백을 위해 버튼은 항상 켜둡니다! 
+                // 대신 잠긴 스테이지일 경우 버튼의 색깔을 어둡게 하거나 텍스트를 바꿉니다.
+                startButton.interactable = true; 
+                var img = startButton.GetComponent<Image>();
+                if (img != null) img.color = isUnlocked ? Color.white : new Color(0.6f, 0.6f, 0.6f, 1f);
+                
+                var btnText = startButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (btnText != null) btnText.text = isUnlocked ? "STAGE START" : "LOCKED";
             }
 
             if (!isUnlocked)
@@ -139,6 +151,21 @@ namespace Necromancer.UI
         private void OnStartButtonClicked()
         {
             if (selectedStage == null) return;
+
+            // [STABILITY] 버튼클릭 시점에 다시 한 번 잠금 여부 확인 (소리 피드백을 위해)
+            bool isUnlocked = GameManager.Instance.Resources.IsStageUnlocked(selectedStage.stageID);
+            if (!isUnlocked)
+            {
+                // [SOUND] 잠긴 스테이지 시작 시도 효과음
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
+                }
+                
+#if UNITY_ANDROID || UNITY_IOS
+                Handheld.Vibrate();
+#endif
+                return;
+            }
 
             Debug.Log($"<color=cyan>[StageSelectUI]</color> Starting Game with Stage: {selectedStage.stageName}");
             

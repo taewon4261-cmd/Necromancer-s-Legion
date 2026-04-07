@@ -5,7 +5,7 @@ using Necromancer;
 
 namespace Necromancer.Editor
 {
-    [InitializeOnLoad]
+    // [InitializeOnLoad]
     public class LobbyUpgradeDataGenerator
     {
         private const string SAVE_PATH = "Assets/Necromancer/02.Data/Upgrades/";

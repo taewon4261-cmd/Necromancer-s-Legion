@@ -19,7 +19,8 @@ namespace Necromancer
         [SerializeField] private ResourceManager _resources;
         [SerializeField] private CombatManager _combat;
         [SerializeField] private SoundManager _sound;
-        [SerializeField] private DebugConsole _debugConsole;
+        [SerializeField] private DebugConsole _debugConsole;        [SerializeField] private Necromancer.Systems.AdManager _adManager;
+
 
         [Header("Scene Managers")]
         [SerializeField] private PoolManager _poolManager;
@@ -35,7 +36,8 @@ namespace Necromancer
         public ResourceManager Resources => _resources;
         public CombatManager Combat => _combat;
         public SoundManager Sound => _sound;
-        public DebugConsole DebugConsole => _debugConsole;
+        public DebugConsole DebugConsole => _debugConsole;        public Necromancer.Systems.AdManager AdManager => _adManager;
+
 
         public PoolManager poolManager => _poolManager;
         public WaveManager waveManager => _waveManager;
@@ -44,8 +46,6 @@ namespace Necromancer
         public UIManager uiManager => _uiManager;
         public TitleUIController titleUI => _titleUI;
         public UnitManager unitManager => _unitManager;
-
-
 
         public static event Action<float, float> OnExpChanged;
         public static event Action<List<SkillData>> OnLevelUp;
@@ -64,6 +64,8 @@ namespace Necromancer
         public float magnetRadius = 3f;
         public float baseReviveChance = 30f;
         public string minionTag = "Minion";
+        private List<string> unlockedMinionTags = new List<string>(); // [NEW] 해금된 미니언 풀 (랜덤 소환용)
+
         public float currentGameSpeed = 1f;
         public StageDataSO currentStage;
         public bool IsGameOver { get; private set; }
@@ -80,7 +82,6 @@ namespace Necromancer
                 transform.SetParent(null);
                 DontDestroyOnLoad(gameObject);
                 
-                // [ARCHITECTURAL PURITY] 강제 할당 체크: 에디터에서 연결하지 않으면 즉시 에러 발생
                 if (_poolManager == null || _waveManager == null || _uiManager == null)
                 {
                     Debug.LogError("<color=red>[GameManager]</color> CRITICAL ERROR: Essential managers (Pool, Wave, UI) are NOT assigned in the Inspector!");
@@ -92,74 +93,118 @@ namespace Necromancer
             else Destroy(gameObject);
         }
 
-
+        private void Update()
+        {
+            // [STABILITY] 중앙 집중형 입력 관리 (Single Source of Truth)
+            // 어떤 UI가 꺼져 있거나 파편화된 상황에서도 GameManager는 항상 ESC/Back 버튼을 감시합니다.
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                if (uiManager != null)
+                {
+                    uiManager.ToggleSettings();
+                }
+            }
+        }
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             bool isGameScene = scene.name == "GameScene" || (GameObject.FindObjectOfType<PlayerController>() != null);
             if (isGameScene)
             {
-                // [STABILITY] 게임 시작 시 시간 흐름 보장 (이전 세션의 Pause/GameOver 상태 초기화)
-                Time.timeScale = currentGameSpeed;
+                // [NEW] 새로운 판 시작 전 잔유물 완벽 정리 (Master's Directive)
+                CleanupGameSession();
+                
                 IsGameOver = false;
+                if (Sound != null) Sound.ResumeSFX();
+
                 if (Resources != null) 
                 {
                     Resources.currentSessionSoul = 0;
-                    BroadcastSoul(0); // 인게임 진입 시 HUD 소울 0으로 초기화
+                    BroadcastSoul(0);
                 }
 
-                if (playerTransform == null)
+                // [STABILITY] 플레이어 참조 갱신 및 유닛 매니저 재등록 (Ghost Unit Fix)
+                if (playerTransform == null || playerController == null)
                 {
                     var player = GameObject.FindWithTag("Player");
-                    if (player != null) playerTransform = player.transform;
-                    else playerTransform = GameObject.FindObjectOfType<PlayerController>()?.transform;
+                    if (player != null) 
+                    {
+                        playerTransform = player.transform;
+                        playerController = player.GetComponent<PlayerController>();
+                    }
                 }
 
-                // [ARCHITECTURAL PURITY] 자가 치유(Validate) 제거. 인스펙터 참조를 신뢰함.
-                if (poolManager == null || waveManager == null || uiManager == null)
+                // 클린업으로 인해 비워진 유닛 매니저에 플레이어를 즉시 재등록하여 이동 가능하게 함
+                if (playerController != null && unitManager != null)
                 {
-                    Debug.LogError("<color=red>[GameManager]</color> Required Manager references are NULL in GameScene context!");
-                    return;
+                    unitManager.RegisterUnit(playerController);
                 }
 
                 if (poolManager != null) poolManager.Init();
-                else Debug.LogError("<color=red>[GameManager]</color> PoolManager NOT FOUND in Hierarchy!");
+                UpdateUnlockedMinionPool();
 
                 if (waveManager != null) waveManager.Init();
-                else Debug.LogError("<color=red>[GameManager]</color> WaveManager NOT FOUND in Hierarchy!");
-
                 if (skillManager != null) skillManager.Init();
                 if (uiManager != null) uiManager.Init();
 
+                if (Sound != null && Sound.gameBGM != null) Sound.PlayBGM(Sound.gameBGM);
+
                 OnSpeedChanged?.Invoke(currentGameSpeed);
-                Debug.Log($"<color=cyan><b>[GameManager]</b> In-Game Context Initialized: Pool({poolManager!=null}), Wave({waveManager!=null}), UI({uiManager!=null})</color>");
             }
+            // ... (TitleScene 로직은 동일)
             else if (scene.name == "TitleScene")
             {
-                if (_titleUI == null) 
-                {
-                    Debug.LogWarning("[GameManager] TitleUIController reference is missing in TitleScene.");
-                }
+                CleanupGameSession();
 
-                // [DATA INTEGRITY] 씬 전환 시(타이틀 복귀 등) 정산되지 않은 소울이 있다면 지갑에 반영
                 if (Resources != null && Resources.currentSessionSoul > 0)
                 {
                     Resources.CommitSessionSoul();
                 }
 
                 if (uiManager != null) uiManager.Clear();
-                if (waveManager != null) waveManager.StopSpawning();
                 
                 playerTransform = null;
+                playerController = null;
                 currentStage = null;
                 IsGameOver = false;
                 currentExp = 0f;
                 currentLevel = 1;
-                Time.timeScale = 1f;
+
+                if (Sound != null)
+                {
+                    if (Sound.titleBGM != null) Sound.PlayBGM(Sound.titleBGM);
+                    Sound.ResumeSFX();
+                }
+
                 if (Resources != null) Resources.currentSessionSoul = 0;
-                Debug.Log("<color=cyan><b>[GameManager]</b> Session data committed and cleared for TitleScene.</color>");
             }
         }
+
+        /// <summary>
+        /// [CLEANUP] 이전 판의 모든 데이터와 오브젝트를 완전히 정리합니다.
+        /// 타이틀 복귀나 세션 초기화 시 필수 호출됩니다.
+        /// </summary>
+        public void CleanupGameSession()
+        {
+            // 1. 사운드 셧다운
+            if (Sound != null) Sound.StopAllSFX(true);
+
+            // 2. 물리 오브젝트 회수 (풀링 시스템)
+            if (poolManager != null) poolManager.ClearAllActiveObjects();
+
+            // 3. 논리 유닛 목록 초기화
+            if (unitManager != null) unitManager.ClearAll();
+
+            // 4. 웨이브 로직 중단
+            if (waveManager != null) waveManager.StopSpawning();
+
+            // 5. 트윈 및 시간 복구
+            DOTween.KillAll();
+            Time.timeScale = 1f;
+
+            Debug.Log("<color=red>[GameManager]</color> CRITICAL CLEANUP: All game sessions objects and logic reset.");
+        }
+
 
         private void InitAllManagers()
         {
@@ -167,12 +212,7 @@ namespace Necromancer
             if (Resources != null) Resources.Init();
             if (Combat != null) Combat.Init();
             if (Sound != null) Sound.Init();
-            
-            // [ARCHITECT] 모든 매니저는 인스펙터에서 사전에 할당되어야 함
-            if (_poolManager == null) Debug.LogWarning("[GameManager] PoolManager is not assigned in Inspector!");
-            if (_unitManager == null) Debug.LogWarning("[GameManager] UnitManager is not assigned in Inspector!");
-            
-            Debug.Log("<color=cyan><b>[GameManager]</b> Global Managers initialization complete.</color>");
+            if (AdManager != null) AdManager.Init(); // [NEW] 광고 매니저 초기화
         }
 
         public void StartGame(StageDataSO stage)
@@ -216,8 +256,34 @@ namespace Necromancer
             float bonus = Resources != null ? Resources.GetUpgradeValue(UpgradeStatType.Resurrection) : 0f;     
             if (UnityEngine.Random.Range(0f, 100f) <= Mathf.Min(baseReviveChance + bonus, 90f))
             {
-                if (poolManager != null) poolManager.Get(minionTag, pos, Quaternion.identity);
+                if (poolManager != null)
+                {
+                    string tagToSpawn = minionTag;
+                    if (unlockedMinionTags.Count > 0)
+                    {
+                        tagToSpawn = unlockedMinionTags[UnityEngine.Random.Range(0, unlockedMinionTags.Count)];
+                    }
+
+                    poolManager.Get(tagToSpawn, pos, Quaternion.identity);
+                    
+                    // [SOUND] 미니언 생성 효과음 재생
+                    if (Sound != null) Sound.PlaySFX(Sound.sfxCreateMinion);
+
+                    Debug.Log($"<color=green>[GameManager]</color> Revived as: {tagToSpawn}");
+                }
             }
+        }
+
+        private void UpdateUnlockedMinionPool()
+        {
+            unlockedMinionTags.Clear();
+            unlockedMinionTags.Add(minionTag);
+
+            if (Resources == null) return;
+
+            if (Resources.GetUpgradeLevel("Upgrade_UnlockArcher_Lv") >= 1) unlockedMinionTags.Add("Minion_Archer");
+            if (Resources.GetUpgradeLevel("Upgrade_UnlockMage_Lv") >= 1) unlockedMinionTags.Add("Minion_Mage");
+            if (Resources.GetUpgradeLevel("Upgrade_UnlockGiant_Lv") >= 1) unlockedMinionTags.Add("Minion_Giant");
         }
 
         public void OnStageClear()
@@ -228,27 +294,18 @@ namespace Necromancer
             {
                 Resources.UnlockLevel(currentStage.stageID + 1);
             }
-            
-            // [NEW] 영혼 흡수(Vacuum) 연출 진행 후 최종 저장 및 UI 출력
             StartCoroutine(StageClearSequence());
         }
 
         private IEnumerator StageClearSequence()
         {
-            // 1. 맵에 흩어진 모든 영혼 진공 흡수 (애니메이션)
             var gems = ExpGem.ActiveGems.ToList();
             foreach (var gem in gems) 
             {
                 if (gem != null) gem.StartVacuum();
             }
-
-            // 2. 흡수 완료 시점까지 대기 (약 1.5초)
             yield return new WaitForSeconds(1.5f);
-
-            // 3. [DATA INTEGRITY] 모든 연합이 끝난 시점의 최종 획득량을 저장 (Master's Directive)
             if (Resources != null) Resources.CommitSessionSoul();
-
-            // 4. 결과 UI 출력 알림 (UIManager가 받아 ShowResultPanel 호출)
             OnGameOver?.Invoke(true);
         }
 
@@ -256,13 +313,8 @@ namespace Necromancer
         {
             if (IsGameOver) return;
             IsGameOver = true;
-            
-            // [STABILITY] 즉각적인 게임 정지 (Master's Directive)
             Time.timeScale = 0f;
-
-            // [DATA INTEGRITY] 정지된 시점의 소울 저장 (정합성 0% 편차 보장)
             if (Resources != null) Resources.CommitSessionSoul();
-
             OnGameOver?.Invoke(false);
         }
     }

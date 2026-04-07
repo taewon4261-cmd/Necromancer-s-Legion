@@ -33,7 +33,19 @@ public class UIPrefabFixer : Editor
             le.preferredHeight = 220;
 
             // Icon
-            FixTransform(instance.transform.Find("Icon"), new Vector2(-350, 0), new Vector2(160, 160), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+                        // Icon (Master's Strategy: Force Simple Image Type to prevent slicing artifacts)
+            Transform iconTr = instance.transform.Find("Icon");
+            FixTransform(iconTr, new Vector2(-350, 0), new Vector2(160, 160), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+            if (iconTr != null)
+            {
+                Image iconImg = iconTr.GetComponent<Image>();
+                if (iconImg != null)
+                {
+                    iconImg.type = Image.Type.Simple;
+                    iconImg.preserveAspect = true;
+                }
+            }
+
 
             // Name
             var nameTr = instance.transform.Find("Text_Name");

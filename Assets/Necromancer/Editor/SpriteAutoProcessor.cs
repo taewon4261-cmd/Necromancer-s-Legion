@@ -22,11 +22,10 @@ namespace Necromancer.Editor
             TextureImporter textureImporter = (TextureImporter)assetImporter;
             textureImporter.textureType = TextureImporterType.Sprite;
             
-            // [수정] 특정 키워드가 포함된 경우만 자동으로 Multiple로 설정
+            // [REVISION] "Icons" 폴더는 마스터의 수동 설정을 존중하기 위해 자동 Multiple 대상에서 제외합니다.
             bool shouldAutoMultiple = assetPath.Contains("Move") || 
                                      assetPath.Contains("Attack") || 
                                      assetPath.Contains("Die") || 
-                                     assetPath.Contains("Icons") || 
                                      assetPath.Contains("Sheet");
 
             if (shouldAutoMultiple)
@@ -53,11 +52,10 @@ namespace Necromancer.Editor
         {
             if (!assetPath.Contains("04.Sprites")) return;
             
-            // 자동 슬라이싱은 애니메이션이나 아이콘 격자 파일일 때만 실행
+            // [REVISION] 단일 아이콘이 조각나는 참극을 방지하기 위해 "Icons"를 자동 슬라이싱 대상에서 제외합니다.
             bool isAutoSliceTarget = assetPath.Contains("Move") || 
                                      assetPath.Contains("Attack") || 
-                                     assetPath.Contains("Die") || 
-                                     assetPath.Contains("Icons");
+                                     assetPath.Contains("Die");
                                      
             if (!isAutoSliceTarget) return;
 

@@ -66,7 +66,7 @@ CircleCollider2D:
   m_UsedByComposite: 0
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
-  m_Radius: 0.5
+  m_Radius: 5
 --- !u!1 &7341148971975735256
 GameObject:
   m_ObjectHideFlags: 0
@@ -198,14 +198,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c2822d6e0fb17345b641647c2672828, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHp: 9999
+  CurrentGridPos: {x: -999, y: -999}
+  LastGridUpdatePos: {x: -9999, y: -9999, z: -9999}
+  IsStunned: 0
+  maxHp: 150
   currentHp: 0
-  moveSpeed: 5
+  moveSpeed: 5.5
   unitAnimator: {fileID: 3753098680063395050}
   unitSprite: {fileID: 597876393243237135}
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitDuration: 0.1
-  invincibilityDuration: 0.2
+  invincibilityDuration: 0.25
   rb: {fileID: 4526610042873829610}
   virtualJoystick: {fileID: 0}
   bodySlamDamage: 0

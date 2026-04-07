@@ -37,6 +37,9 @@ namespace Necromancer.UI
         [Header("Result UI")]
         public ResultUI resultUI;
 
+        [Header("Global UI")]
+        public SettingUI settingUI; // [NEW] 이제 ESC를 누르면 이 창이 뜹니다.
+
         [Header("Screen Effects")]
         public CanvasGroup dangerOverlay;
         public float flashFrequency = 2.0f;
@@ -48,6 +51,53 @@ namespace Necromancer.UI
         private void Update()
         {
             HandleLowHPEffect();
+            // [ARCHITECTURAL PURITY] ESC 입력 감지는 이제 GameManager에서 통합 관리합니다.
+        }
+
+        // [ARCHITECTURAL PURITY] 입력 감지는 GameManager로 이관되었습니다.
+
+        public void ToggleSettings()
+        {
+            if (settingUI == null)
+            {
+                // [AUTO-FETCH] 인스펙터 누락 시 현재 씬에서 직접 시도 (Master's Directive)
+                var foundUI = UnityEngine.Object.FindFirstObjectByType<SettingUI>(FindObjectsInactive.Include);
+                if (foundUI != null) settingUI = foundUI;
+
+                if (settingUI == null) 
+                {
+                    Debug.LogWarning("[UIManager] SettingUI Reference is MISSING! ESC logic cancelled.");
+                    return;
+                }
+            }
+
+            bool isOpening = !settingUI.gameObject.activeSelf;
+            
+            if (isOpening)
+            {
+                // 열기: 일시정지
+                Time.timeScale = 0f;
+                settingUI.gameObject.SetActive(true);
+                
+                // [SOUND] 설정창 열기 효과음
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                }
+
+                Debug.Log("<color=cyan>[UIManager]</color> Settings Opened (Paused)");
+            }
+            else
+            {
+                // 닫기: 설정창 내부의 CloseAndSave를 통해 배속 복구 및 저장 진행
+                settingUI.CloseAndSave();
+
+                // [SOUND] 설정창 닫기 효과음
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                }
+
+                Debug.Log("<color=cyan>[UIManager]</color> Settings Closed (Resumed)");
+            }
         }
 
         public void Init()
@@ -90,14 +140,42 @@ namespace Necromancer.UI
                     resultUI = hud.resultUI;
                     rerollButton = hud.rerollButton;
                     textSpeedToggle = hud.textSpeedToggle;
+                    settingUI = hud.settingUI; // [NEW] 브릿지 연결
+                    if (settingUI != null) settingUI.gameObject.SetActive(false);
+
+                    // [STABILITY] 설정창 버튼 바인딩 (HUD Button Binding)
+                    if (hud.settingsButton != null)
+                    {
+                        hud.settingsButton.onClick.RemoveAllListeners();
+                        hud.settingsButton.onClick.AddListener(ToggleSettings);
+                        Debug.Log("<color=green>[UIManager]</color> Settings Button Binded successfully.");
+                    }
+
+                    // [STABILITY] 만약 프리팹 연결이 누락되었다면, 씬에서 자동으로 찾아봅니다.
+                    if (settingUI == null)
+                    {
+                        settingUI = Object.FindFirstObjectByType<SettingUI>(FindObjectsInactive.Include);
+                        if (settingUI != null) Debug.Log("<color=cyan>[UIManager]</color> SettingUI found automatically in scene.");
+                    }
 
                     // 스킬 카드 UI 연결
-                    for (int i = 0; i < 3; i++)
+                    // [ARCHITECT] InGameHUD의 배열 정합성 체크
+                    if (hud.skillCardButtons != null && hud.skillCardIcons != null)
                     {
-                        if (i < hud.skillCardButtons.Length) skillCardButtons[i] = hud.skillCardButtons[i];
-                        if (i < hud.skillCardIcons.Length) skillCardIcons[i] = hud.skillCardIcons[i];
-                        if (i < hud.skillCardNames.Length) skillCardNames[i] = hud.skillCardNames[i];
-                        if (i < hud.skillCardDescriptions.Length) skillCardDescriptions[i] = hud.skillCardDescriptions[i];
+                        for (int i = 0; i < 3; i++)
+                        {
+                            if (i < hud.skillCardButtons.Length) skillCardButtons[i] = hud.skillCardButtons[i];
+                            if (i < hud.skillCardIcons.Length) skillCardIcons[i] = hud.skillCardIcons[i];
+                            if (i < hud.skillCardNames.Length) skillCardNames[i] = hud.skillCardNames[i];
+                            if (i < hud.skillCardDescriptions.Length) skillCardDescriptions[i] = hud.skillCardDescriptions[i];
+                            
+                            // [STABILITY] 누락된 참조 사전에 경고
+                            if (skillCardIcons[i] == null) Debug.LogWarning($"<color=yellow>[UIManager]</color> SkillCardIcon[{i}] is NULL in HUD prefab!");
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogError("<color=red>[UIManager]</color> HUD Prefab arrays (Buttons/Icons) are MISSING!");
                     }
 
                     Debug.Log("<color=green>[UIManager]</color> UI References Mapped via InGameHUD component.");
@@ -275,7 +353,23 @@ namespace Necromancer.UI
                     int index = i;
                     skillCardButtons[i].gameObject.SetActive(true);
                     
-                    if (skillCardIcons[i] != null) skillCardIcons[i].sprite = currentOptions[i].skillIcon;
+                    // [STABILITY] 아이콘 누락 시 투명화 방지 및 로그 출력
+                    if (skillCardIcons[i] != null)
+                    {
+                        if (currentOptions[i].skillIcon != null)
+                        {
+                            skillCardIcons[i].sprite = currentOptions[i].skillIcon;
+                            skillCardIcons[i].color = Color.white;
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"<color=yellow>[UIManager]</color> Skill '{currentOptions[i].skillName}' (index {i}) has NO ICON assigned!");
+                            // 아이콘이 없으면 기본적으로 렌더링되지 않거나 투명해질 수 있으므로, 색상 조절로 피드백 제공
+                            skillCardIcons[i].sprite = null; 
+                            skillCardIcons[i].color = new Color(1, 1, 1, 0.2f); 
+                        }
+                    }
+
                     if (skillCardNames[i] != null) skillCardNames[i].SetText(currentOptions[i].skillName);
                     if (skillCardDescriptions[i] != null) skillCardDescriptions[i].SetText(currentOptions[i].skillDescription);
 
@@ -300,6 +394,11 @@ namespace Necromancer.UI
                 GameManager.Instance.skillManager.LearnSkill(selectedSkill);
             }
 
+            // [SOUND] 스킬 선택 효과음
+            if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+            }
+
             if (levelUpPanel != null) levelUpPanel.SetActive(false);
 
             if (GameManager.Instance != null)
@@ -318,24 +417,73 @@ namespace Necromancer.UI
             // [STABILITY] 결과창 출력 즉시 세계 정지 (Master's Directive)
             resultUI.Open(isVictory, souls);
             Time.timeScale = 0f;
+
+            // [SOUND] 승리/패배 효과음 재생
+            if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                var sfx = isVictory ? GameManager.Instance.Sound.sfxWin : GameManager.Instance.Sound.sfxLose;
+                GameManager.Instance.Sound.PlaySFX(sfx);
+            }
         }
 
         public void OnClick_BackToTitle()
         {
-            Time.timeScale = 1f;
-            DOTween.KillAll();
+            // [CLEANUP] 이전 세션의 모든 논리/물리/사운드 강제 종료
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.CleanupGameSession();
+            }
+
+            // [SOUND] 버튼 클릭 효과음 (클린업 이후에 들리도록 Resume 후 재생)
+            if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                GameManager.Instance.Sound.ResumeSFX();
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+            }
+
             SceneManager.LoadScene("TitleScene");
         }
 
+        /// <summary>
+        /// 광고 시청 후 스킬 리롤 (Reward Flow)
+        /// </summary>
         public void OnClick_RerollWithAds()
         {
-            Debug.Log("<color=cyan>[ADS]</color> 광고 시청 완료 - 스킬 카드 리롤을 시도합니다.");
+            if (GameManager.Instance == null || GameManager.Instance.AdManager == null) return;
 
+            // [SOUND] 버튼 클릭 효과음
+            if (GameManager.Instance.Sound != null) GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+
+            // [ADS] 보상형 광고 호출
+            GameManager.Instance.AdManager.ShowRewardedAd(
+                () => {
+                    // 1. 광고 시청 완료 콜백 (OnAdCompleted)
+                    ExecuteReroll();
+                },
+                () => {
+                    // 2. 광고 로드 실패 또는 네트워크 문제
+                    ShowAdErrorPopup("광고를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.");
+                }
+            );
+        }
+
+        private void ExecuteReroll()
+        {
             if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
             {
                 var newOptions = GameManager.Instance.skillManager.GetRandomSkillsForLevelUp(3);
                 RefreshSkillCards(newOptions);
+                Debug.Log("<color=green>[ADS]</color> Reroll Complete via Ad Reward.");
             }
         }
+
+        private void ShowAdErrorPopup(string message)
+        {
+            // [STABILITY] 현재는 로그로 대체하며, 향후 마스터께서 전용 팝업 UI를 연결하시면 됩니다.
+            Debug.LogWarning($"<color=red>[UIManager]</color> AD ERROR: {message}");
+            
+            // TODO: 실제 UI 팝업 창이 있다면 이곳에서 활성화 (예: errorPopup.Show(message))
+        }
+
+
+
     }
 }

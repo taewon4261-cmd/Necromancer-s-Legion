@@ -19,6 +19,7 @@ namespace Necromancer.UI
         public Button privacyBtn;
         public Button backBtn;
         public Button quitBtn;
+        public Button mainMenuBtn; // [NEW] 메인으로 가기 버튼
 
         [Header("Texts")]
         public TMPro.TextMeshProUGUI loginTxt;
@@ -36,6 +37,17 @@ namespace Necromancer.UI
             if (privacyBtn != null) privacyBtn.onClick.AddListener(OpenPrivacyPolicy);
             if (backBtn != null) backBtn.onClick.AddListener(CloseAndSave);
             if (quitBtn != null) quitBtn.onClick.AddListener(QuitGame);
+            if (mainMenuBtn != null) mainMenuBtn.onClick.AddListener(OnClick_MainMenu);
+        }
+
+        private void OnEnable()
+        {
+            // [UI-CONTEXT] 인게임 씬에서만 '메인으로' 버튼 노출
+            if (mainMenuBtn != null)
+            {
+                bool isGameScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "GameScene";
+                mainMenuBtn.gameObject.SetActive(isGameScene);
+            }
         }
 
         private void Start()
@@ -102,10 +114,10 @@ namespace Necromancer.UI
 
         public void OpenPrivacyPolicy()
         {
-            // 사용자가 링크를 넣을 수 있도록 가이드 제공
-            string url = "https://your-privacy-policy-link.com"; 
+            // [ARCHITECT] 마스터가 제공한 최종 개인정보 처리방침 링크로 업데이트
+            string url = "https://gist.githubusercontent.com/taewon4261-cmd/a4af2e183162369226c3a8cb83245b07/raw/c89eddb98753bc125f8d968a19d299edaa695568/gistfile1.txt"; 
             Application.OpenURL(url);
-            Debug.Log($"[SettingUI] Open URL: {url}");
+            Debug.Log($"<color=cyan>[SettingUI]</color> Redirecting to Privacy Policy: {url}");
         }
 
         public void QuitGame()
@@ -119,11 +131,33 @@ namespace Necromancer.UI
 
         public void CloseAndSave()
         {
+            // [STABILITY] 버튼이 비활성화되는 시점에 배속 복구 보장
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.ResumeGameSpeed();
+            }
+
             if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
             {
                 GameManager.Instance.SaveData.Save();
             }
-            gameObject.SetActive(false); // 패널 닫기
+
+            gameObject.SetActive(false); 
+        }
+
+        public void OnClick_MainMenu()
+        {
+            // [DATA-SAFETY] 나가기 전 현재까지 얻은 소울 강제 커밋 & 저장
+            if (GameManager.Instance != null && GameManager.Instance.Resources != null)
+            {
+                GameManager.Instance.Resources.CommitSessionSoul();
+            }
+
+            // DOTween 등 모든 트윈 정지 및 씬 이동
+            DG.Tweening.DOTween.KillAll();
+            Time.timeScale = 1f;
+            UnityEngine.SceneManagement.SceneManager.LoadScene("TitleScene");
+            Debug.Log("<color=green>[SettingUI]</color> Intermediate Save and Redirecting to TitleScene.");
         }
     }
 }

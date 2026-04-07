@@ -71,6 +71,7 @@ MonoBehaviour:
   rerollButton: {fileID: 0}
   textSpeedToggle: {fileID: 0}
   resultUI: {fileID: 0}
+  settingUI: {fileID: 0}
   dangerOverlay: {fileID: 0}
   flashFrequency: 2
   maxAlpha: 0.4
@@ -189,7 +190,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   waveDatabase: {fileID: 11400000, guid: 9d75b168f11d14a4e9917c1b8a8037e3, type: 2}
-  spawnRadius: 15
+  spawnRadius: 10
+  despawnRadius: 22
+  maxEnemyCount: 150
   gameTime: 0
 --- !u!1 &2086205799551222942
 GameObject:
@@ -329,6 +332,51 @@ MonoBehaviour:
   consolePanel: {fileID: 0}
   commandInput: {fileID: 0}
   logText: {fileID: 0}
+--- !u!1 &5235657059598219491
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4931748953969048509}
+  - component: {fileID: 8491276329709891338}
+  m_Layer: 0
+  m_Name: AdManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4931748953969048509
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5235657059598219491}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5521724465700664552}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8491276329709891338
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5235657059598219491}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b7246ccb3a847349bb040dd0b67b53b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  testMode: 1
 --- !u!1 &5882722558533653139
 GameObject:
   m_ObjectHideFlags: 0
@@ -358,7 +406,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 6302008665873775639}
   m_Father: {fileID: 5521724465700664552}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2663693136703229708
@@ -373,7 +422,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b46bd3dadd93a64ea40cd541d1affa8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bgmSource: {fileID: 0}
+  bgmSource: {fileID: 4120480303135771045}
+  titleBGM: {fileID: 8300000, guid: c5518e3a87d76454e9c22ff0ef19e487, type: 3}
+  gameBGM: {fileID: 0}
+  sfxBow: {fileID: 0}
+  sfxCreateMinion: {fileID: 0}
+  sfxFailBtn: {fileID: 0}
+  sfxLose: {fileID: 0}
+  sfxNormalAttackCraw: {fileID: 0}
+  sfxPlayerAttack: {fileID: 0}
+  sfxSelectBtn: {fileID: 0}
+  sfxSoulGain: {fileID: 0}
+  sfxUpgrade: {fileID: 0}
+  sfxWin: {fileID: 0}
   sfxSourcePrefab: {fileID: 0}
   initialSfxPoolSize: 10
   masterVolume: 1
@@ -389,6 +450,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5521724465700664552}
   - component: {fileID: 2435100814045926009}
+  - component: {fileID: 1951357893337763916}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -420,6 +482,7 @@ Transform:
   - {fileID: 3162407116119011667}
   - {fileID: 8018101737780525631}
   - {fileID: 1467022184761548460}
+  - {fileID: 4931748953969048509}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2435100814045926009
@@ -439,6 +502,7 @@ MonoBehaviour:
   _combat: {fileID: 7196186523764453570}
   _sound: {fileID: 2663693136703229708}
   _debugConsole: {fileID: 293355105053137642}
+  _adManager: {fileID: 8491276329709891338}
   _poolManager: {fileID: 3109314625104592819}
   _waveManager: {fileID: 5443290973572342523}
   _skillManager: {fileID: 1496586085822398089}
@@ -448,14 +512,156 @@ MonoBehaviour:
   _unitManager: {fileID: 877591509518821255}
   playerTransform: {fileID: 0}
   playerController: {fileID: 0}
-  magnetRadius: 3
-  baseReviveChance: 30
+  magnetRadius: 5
+  baseReviveChance: 40
   minionTag: Minion
   currentGameSpeed: 1
   currentStage: {fileID: 0}
   currentLevel: 1
   currentExp: 0
   maxExp: 100
+--- !u!114 &1951357893337763916
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6178726164652871663}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c675a3946e4f0404cbdf5c63d737581a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  settingPanel: {fileID: 3895624759034320344, guid: 194c693b5880ca6499e6e90daf2788b2,
+    type: 3}
+--- !u!1 &7372399540021196730
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6302008665873775639}
+  - component: {fileID: 4120480303135771045}
+  m_Layer: 0
+  m_Name: BGM_Source
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6302008665873775639
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7372399540021196730}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3579985090561685359}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!82 &4120480303135771045
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7372399540021196730}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 0}
+  m_audioClip: {fileID: 0}
+  m_PlayOnAwake: 0
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 1
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
 --- !u!1 &8188729343294353411
 GameObject:
   m_ObjectHideFlags: 0
@@ -547,6 +753,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f5a309f71077041488c7dcffe01eb714, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  allUnits: []
   gridCellSize: 2
 --- !u!1 &8652080521656894664
 GameObject:

@@ -61,6 +61,12 @@ public class BoneProjectile : UnitBase
         
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
+
+        // [SOUND] 발사 시 플레이어 공격 효과음 재생
+        if (GameManager.Instance != null && GameManager.Instance.Sound != null)
+        {
+            GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxPlayerAttack);
+        }
     }
 
     /// <summary>
@@ -98,11 +104,12 @@ public class BoneProjectile : UnitBase
         float startTime = Time.time;
         while (Time.time < startTime + lifeTime && !token.IsCancellationRequested)
         {
-            if (!gameObject.activeInHierarchy) return;
+            // [STABILITY] 오브젝트가 이미 파괴되었거나 꺼졌다면 즉시 중단
+            if (this == null || !gameObject.activeInHierarchy) return;
             await UniTask.Delay(100, cancellationToken: token).SuppressCancellationThrow();
         }
         
-        if (gameObject.activeInHierarchy)
+        if (this != null && gameObject.activeInHierarchy)
         {
             ReleaseToPool();
         }
@@ -121,7 +128,7 @@ public class BoneProjectile : UnitBase
     }
 
     // 투사체는 데미지를 입지 않거나 즉시 파괴되도록 오버라이드
-    public override void TakeDamage(float damage) { /* 투사체는 무적 또는 무시 */ }
+    public override void TakeDamage(float damage, UnitBase attacker = null) { /* 투사체는 무적 또는 무시 */ }
     protected override void Die() { ReleaseToPool(); }
 }
 }

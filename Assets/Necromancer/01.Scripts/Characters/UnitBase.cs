@@ -13,12 +13,13 @@ namespace Necromancer
     {
         // [ARCHITECT] 중앙 집중형 업데이트 매니저 및 격자 분할을 위한 보조 데이터
         [HideInInspector] public Vector2Int CurrentGridPos = new Vector2Int(-999, -999);
+        [HideInInspector] public Vector3 LastGridUpdatePos = new Vector3(-9999, -9999, -9999);
         [HideInInspector] public bool IsStunned = false;
         
         protected List<IUnitModifier> activeModifiers = new List<IUnitModifier>();
         // [IDamageable Implementation]
         public UnitBase Unit => this;
-        public void ApplyDamage(float damage) => TakeDamage(damage);
+        public virtual void ApplyDamage(float damage, UnitBase attacker = null) => TakeDamage(damage, attacker);
 
         [Header("Base Stats")]
         public float maxHp = 50f;
@@ -103,7 +104,10 @@ namespace Necromancer
         {
         }
 
-        public virtual void TakeDamage(float damage)
+        /// <summary>
+        /// [IDAMAGEABLE] 데미지 스택 및 사망 연출 (attacker: 넉백 방향 등에 활용)
+        /// </summary>
+        public virtual void TakeDamage(float damage, UnitBase attacker = null)
         {
             if (isDead) return;
 

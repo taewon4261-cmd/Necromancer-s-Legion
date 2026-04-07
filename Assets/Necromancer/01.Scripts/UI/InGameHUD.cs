@@ -25,7 +25,9 @@ namespace Necromancer.UI
         public Button speedButton;
         public Button backToTitleButton;
         public Button rerollButton;
+        public Button settingsButton; // [NEW] 설정창 토글 버튼
         public TextMeshProUGUI textSpeedToggle;
+        public SettingUI settingUI; // [NEW] 설정창 패널 직접 연결용
         
         [Header("Skill Selection (Part of LevelUp Panel)")]
         public Button[] skillCardButtons = new Button[3];

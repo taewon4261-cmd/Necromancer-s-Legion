@@ -42,7 +42,10 @@ public class MinionAI : UnitBase
     private static readonly Collider2D[] explosionBuffer = new Collider2D[20];
     [SerializeField] private LayerMask enemyLayer;
 
-    protected override void Awake()
+        // [OPTIMIZATION] 타겟팅용 버퍼
+    private float scanRange = 5.0f;
+    private List<UnitBase> nearbyBuffer = new List<UnitBase>(16);
+protected override void Awake()
     {
         // [Pure Inspector] 모든 참조를 미리 인스펙터에서 연결했으므로 런타임 검색 비용 0ms
         // [UnitBase] 부모의 Awake(currentHp 초기화 등)만 호출
@@ -150,60 +153,38 @@ public class MinionAI : UnitBase
 
     private async UniTaskVoid ScanForTargetAsync(CancellationToken token)
     {
-        // [JITTERING] 모든 미니언이 동시에 스캔하지 않도록 초기 대기 시간에 무작위 오프셋 부여
-        await UniTask.Delay(System.TimeSpan.FromSeconds(Random.Range(0f, targetScanRate)), cancellationToken: token);
-
-        while (!isDead && !token.IsCancellationRequested)
+        while (!token.IsCancellationRequested)
         {
-            if (GameManager.Instance != null && GameManager.Instance.IsGameOver) break;
+            if (isDead) break;
 
-            // 1. 플레이어와 너무 멀어지면 타겟팅 중단 (복귀 우선)
-            if (playerTransform != null)
+            // [GC-FREE] GetNearbyUnitsNonAlloc을 활용하여 힙 할당 없이 주변 유닛 스캔
+            if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
             {
-                float sqrDistToPlayer = (playerTransform.position - transform.position).sqrMagnitude;
-                if (sqrDistToPlayer > 64.0f) // 8m (10m -> 8m 응집력 강화)
-                {
-                    currentTarget = null;
-                    await UniTask.Delay(System.TimeSpan.FromSeconds(targetScanRate), cancellationToken: token);
-                    continue;
-                }
+                GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, scanRange, nearbyBuffer);
             }
 
-            // [OPTIMIZATION] Grid Spatial Partitioning 도입 (Physics2D.OverlapCircleNonAlloc 대체)
-            var nearbyUnits = (GameManager.Instance != null && GameManager.Instance.unitManager != null) 
-                ? GameManager.Instance.unitManager.GetNearbyUnits(transform.position, 8.0f)
-                : new List<UnitBase>();
-            
-            float minSqrDist = Mathf.Infinity;
-            Transform bestTarget = null;
+            float closestSqrDist = scanRange * scanRange;
+            UnitBase newTarget = null;
 
-            for (int i = 0; i < nearbyUnits.Count; i++)
+            for (int i = 0; i < nearbyBuffer.Count; i++)
             {
-                var unit = nearbyUnits[i];
-                if (unit == null || unit is PlayerController || unit is MinionAI) continue;
-
-                if (unit.IsDead) continue;
-
-                // [Cohesion] 플레이어로부터 너무 멀리 떨어진 적은 타겟팅에서 제외
-                if (playerTransform != null)
-                {
-                    float sqrDistFromPlayer = (playerTransform.position - unit.transform.position).sqrMagnitude;
-                    if (sqrDistFromPlayer > 64.0f) continue;
-                }
+                var unit = nearbyBuffer[i];
+                // 미니언 자신이나 플레이어/동료 미니언을 제외한 '적'만 타겟팅 (is PlayerController check)
+                if (unit == null || unit.IsDead || unit is MinionAI || unit is PlayerController) continue;
 
                 float sqrDist = (transform.position - unit.transform.position).sqrMagnitude;
-                if (sqrDist < minSqrDist)
+                if (sqrDist < closestSqrDist)
                 {
-                    minSqrDist = sqrDist;
-                    bestTarget = unit.transform;
+                    closestSqrDist = sqrDist;
+                    newTarget = unit;
                 }
             }
-            
-            currentTarget = bestTarget;
 
-            // [JITTERING] 스캔 주기에 미세한 변동을 주어 CPU 부하를 더욱 분산시킵니다.
-            float jitteredRate = targetScanRate * Random.Range(0.9f, 1.1f);
-            await UniTask.Delay(System.TimeSpan.FromSeconds(jitteredRate), cancellationToken: token);
+            // [STABILITY] Transform 조준을 위해 UnitBase에서 transform 추출
+            currentTarget = (newTarget != null) ? newTarget.transform : null;
+
+            // 성능 부하 분산을 위한 대기
+            await UniTask.Delay(300, cancellationToken: token).SuppressCancellationThrow();
         }
     }
 
@@ -228,6 +209,12 @@ public class MinionAI : UnitBase
 
         Vector2 direction = (currentTarget.position - transform.position).normalized;
         rb.velocity = direction * moveSpeed;
+    }
+
+    public void AddLifeTime(float amount)
+    {
+        // 생존 시간을 연장하기 위해 스폰 시점을 과거로 밉니다.
+        spawnTime += amount;
     }
 
     /// <summary>
@@ -263,7 +250,21 @@ public class MinionAI : UnitBase
                 float finalDamage = attackDamage;
 
                 if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
-                targetUnit.ApplyDamage(finalDamage);
+                targetUnit.ApplyDamage(finalDamage, this);
+
+                // [SOUND] 일반 공격(미니언 공격) 효과음 재생
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null)
+                {
+                    // [IMPORTANT] 현재는 근접 공격 미니언 로직이므로 NormalAttackCraw 재생
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxNormalAttackCraw);
+                }
+                
+                // [Kill-to-Live] 적의 남은 체력을 체크하여 처치 시 수명 회복 (0.2s)
+                if (targetUnit.IsDead)
+                {
+                    AddLifeTime(0.2f);
+                }
+
                 lastHitTime = Time.time;
                 
                 // [REGISTRY PATTERN] AI는 구체적인 스킬 효과를 몰라도 되며, 
@@ -293,7 +294,7 @@ public class MinionAI : UnitBase
                     // [Zero-Search] 대규모 폭발 시 루프 내 검색 비용 제거
                     if (h.TryGetComponent(out IDamageable targetUnit))
                     {
-                        targetUnit.ApplyDamage(sManager.minionExplosionDamage);
+                        targetUnit.ApplyDamage(sManager.minionExplosionDamage, this);
                     }
                 }
             }

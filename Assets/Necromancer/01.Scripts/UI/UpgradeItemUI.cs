@@ -31,6 +31,11 @@ namespace Necromancer.UI
             }
         }
 
+        private void OnEnable()
+        {
+            UpdateVisuals();
+        }
+
         public void Setup(LobbyUpgradeSO upgradeData, UpgradeUI uiOwner)
         {
             data = upgradeData;
@@ -59,7 +64,6 @@ namespace Necromancer.UI
                 }
                 else
                 {
-                    // [방어 로직] 아이콘 유실 시 하얀 사각형 대신 투명화 처리하거나 로그 출력
                     iconImage.gameObject.SetActive(false);
                     Debug.LogWarning($"[UI Warning] Upgrade '{data.upgradeName}' is missing its icon asset!");
                 }
@@ -81,19 +85,37 @@ namespace Necromancer.UI
                 if (cost < 0 || data.currentLevel >= data.maxLevel)
                 {
                     if (costText != null) costText.text = "MAX";
-                    if (upgradeButton != null) { upgradeButton.interactable = false; var img = upgradeButton.GetComponent<Image>(); if (img != null) img.color = new Color(1f, 0.8f, 0f); }
+                    if (upgradeButton != null) 
+                    { 
+                        upgradeButton.interactable = false; 
+                        var img = upgradeButton.GetComponent<Image>(); 
+                        if (img != null) img.color = new Color(1f, 0.8f, 0f); // 황금색 (MAX)
+                    }
                 }
                 else
                 {
                     if (costText != null) costText.text = $"{cost:N0} Soul";
                     int currentSoul = GameManager.Instance != null && GameManager.Instance.Resources != null ? GameManager.Instance.Resources.currentSoul : 0;
-                    if (upgradeButton != null) upgradeButton.interactable = currentSoul >= cost;
+                    
+                    // [STABILITY] 소울이 부족해도 버튼은 켜둡니다 (피드백 연출을 위해!)
+                    if (upgradeButton != null) 
+                    {
+                        upgradeButton.interactable = true;
+                        var img = upgradeButton.GetComponent<Image>();
+                        if (img != null) 
+                        {
+                            // 소울 부족 시 약간 어둡게 표시하여 시각적 거리둠
+                            img.color = (currentSoul >= cost) ? Color.white : new Color(0.7f, 0.7f, 0.7f, 1f);
+                        }
+                    }
                 }
             }
             else
             {
                 if (descriptionText != null) descriptionText.text = $"{data.requiredUpgrade?.upgradeName} Lv.{data.requiredLevel} 달성 시 해금";
                 if (costText != null) costText.text = "LOCKED";
+                
+                // 해금 자체가 안 된 건 클릭 불가 유지
                 if (upgradeButton != null) upgradeButton.interactable = false;
             }
         }
@@ -122,6 +144,11 @@ namespace Necromancer.UI
                 if (backgroundImage != null)
                 {
                     backgroundImage.DOColor(Color.red, 0.1f).SetLoops(2, LoopType.Yoyo).OnComplete(() => backgroundImage.color = originalBgColor);
+                }
+
+                // [SOUND] 구매 실패 효과음
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
                 }
             }
         }

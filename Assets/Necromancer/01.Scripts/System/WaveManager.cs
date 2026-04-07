@@ -16,6 +16,10 @@ namespace Necromancer
         public WaveDatabase waveDatabase;
         public float spawnRadius = 15f;
 
+        [Header("Survival & Performance")]
+        public float despawnRadius = 22.0f;
+        public int maxEnemyCount = 150; // 기본 최댓값 제한
+
         private int currentWaveIndex = 0;
         private bool isSpawning = false;
         public float gameTime = 0f;
@@ -29,10 +33,24 @@ namespace Necromancer
 
         public void Init()
         {
+            // [STABILITY] 이전 세션의 루프가 있다면 즉시 중단 (Zombie Loop 방지)
+            if (waveCts != null)
+            {
+                waveCts.Cancel();
+                waveCts.Dispose();
+            }
+            waveCts = new CancellationTokenSource();
+
             bool isGameScene = SceneManager.GetActiveScene().name == "GameScene" || (GameObject.FindObjectOfType<PlayerController>() != null);
             if (!isGameScene) return;
 
             if (GameManager.Instance == null) return;
+
+            // [DATA INTEGRITY] 상태값 완전 초기화
+            gameTime = 0f;
+            currentWaveIndex = 0;
+            activeEnemyCount = 0;
+            isSpawning = true;
 
             if (GameManager.Instance.currentStage != null)
             {
@@ -50,16 +68,12 @@ namespace Necromancer
 
             if (playerTransform != null)
             {
-                gameTime = 0f;
-                currentWaveIndex = 0;
-                // [OPTIMIZATION] 리스트 대신 정수 카운터로 정화되었습니다.
-                isSpawning = true;
-
-                var token = gameObject.GetCancellationTokenOnDestroy();
+                // [STABILITY] 새로운 토큰으로 비동기 루프 시작
+                var token = waveCts.Token;
                 SpawnLoopAsync(token).Forget();
-                WaveProcessLoopAsync(token).Forget(); // [NEW] 최적화 주기 루프 시작
+                WaveProcessLoopAsync(token).Forget();
                 
-                Debug.Log($"<color=green>[WaveManager]</color> Optimized Wave Process Loop Started.");
+                Debug.Log($"<color=green>[WaveManager]</color> Session Initialized. Time & Count Reset.");
             }
         }
 
@@ -76,9 +90,6 @@ namespace Necromancer
             }
         }
 
-        /// <summary>
-        /// [OPTIMIZATION] 매 프레임 리스트와 클리어 조건을 체크하는 대신, 0.2초마다 수행합니다.
-        /// </summary>
         private async UniTaskVoid WaveProcessLoopAsync(CancellationToken token)
         {
             while (!token.IsCancellationRequested)
@@ -86,9 +97,34 @@ namespace Necromancer
                 if (GameManager.Instance != null && !GameManager.Instance.IsGameOver)
                 {
                     CheckWaveProgress();
+                    // [NEW] 성능 최적화를 위한 거리 기반 재활용 체크
+                    RecycleDistantEnemies();
                 }
                 
-                await UniTask.Delay(System.TimeSpan.FromSeconds(0.2f), cancellationToken: token);
+                await UniTask.Delay(System.TimeSpan.FromSeconds(0.25f), cancellationToken: token);
+            }
+        }
+
+        private void RecycleDistantEnemies()
+        {
+            if (playerTransform == null || GameManager.Instance.unitManager == null) return;
+
+            var units = GameManager.Instance.unitManager.allUnits;
+            float sqrDespawnRadius = despawnRadius * despawnRadius;
+            Vector3 playerPos = playerTransform.position;
+
+            // [STABILITY] 리스트 순회 중 제거 방지를 위해 역순 처리
+            for (int i = units.Count - 1; i >= 0; i--)
+            {
+                var unit = units[i];
+                if (unit == null || unit is not EnemyAI) continue;
+
+                float sqrDist = (unit.transform.position - playerPos).sqrMagnitude;
+                if (sqrDist > sqrDespawnRadius)
+                {
+                    // 즉시 오브젝트 풀로 회수 (OnDisable에서 카운트 반환됨)
+                    unit.gameObject.SetActive(false);
+                }
             }
         }
 
@@ -138,9 +174,18 @@ namespace Necromancer
             {
                 if (waveDatabase != null && waveDatabase.waveList != null && currentWaveIndex < waveDatabase.waveList.Count)
                 {
-                    WaveData currentWave = waveDatabase.waveList[currentWaveIndex];
-                    SpawnEnemy(currentWave);
-                    await UniTask.Delay(System.TimeSpan.FromSeconds(currentWave.spawnDelay), cancellationToken: token);
+                    // [NEW] 최댓값 제한 체크 (쿼터 초과 시 스폰 지연)
+                    if (activeEnemyCount < maxEnemyCount)
+                    {
+                        WaveData currentWave = waveDatabase.waveList[currentWaveIndex];
+                        SpawnEnemy(currentWave);
+                        await UniTask.Delay(System.TimeSpan.FromSeconds(currentWave.spawnDelay), cancellationToken: token);
+                    }
+                    else
+                    {
+                        // 쿼터가 찼다면 짧게 대기 후 재시도
+                        await UniTask.Delay(500, cancellationToken: token);
+                    }
                 }
                 else
                 {

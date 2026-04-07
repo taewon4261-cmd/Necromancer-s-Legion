@@ -11,6 +11,22 @@ namespace Necromancer.Core
     {
         [Header("Audio Sources")]
         [SerializeField] private AudioSource bgmSource;
+        [Header("Audio Clips")]
+        [SerializeField] public AudioClip titleBGM;
+        [SerializeField] public AudioClip gameBGM;
+
+        [Header("SFX Clips")]
+        public AudioClip sfxBow;
+        public AudioClip sfxCreateMinion;
+        public AudioClip sfxFailBtn;
+        public AudioClip sfxLose;
+        public AudioClip sfxNormalAttackCraw;
+        public AudioClip sfxPlayerAttack;
+        public AudioClip sfxSelectBtn;
+        public AudioClip sfxSoulGain;
+        public AudioClip sfxUpgrade;
+        public AudioClip sfxWin;
+
         [SerializeField] private GameObject sfxSourcePrefab;
         [SerializeField] private int initialSfxPoolSize = 10;
 
@@ -71,14 +87,21 @@ namespace Necromancer.Core
         /// </summary>
         public void PlaySFX(AudioClip clip, float pitchVar = 0.1f)
         {
-            if (clip == null) return;
+            if (isAudioSilenced || clip == null) return; // [STABILITY] 사운드 셧다운 상태면 재생 거부
 
             AudioSource source = GetSfxSource();
+            if (source == null) return;
+
             source.clip = clip;
             source.volume = sfxVolume * masterVolume;
             source.pitch = 1.0f + Random.Range(-pitchVar, pitchVar);
             source.gameObject.SetActive(true);
             source.Play();
+
+            if (activeSfx != null && !activeSfx.Contains(source)) 
+            {
+                activeSfx.Add(source);
+            }
 
             StartCoroutine(ReturnToPoolAfterPlay(source));
         }
@@ -97,9 +120,15 @@ namespace Necromancer.Core
 
         private System.Collections.IEnumerator ReturnToPoolAfterPlay(AudioSource source)
         {
-            yield return new WaitUntil(() => !source.isPlaying);
-            source.gameObject.SetActive(false);
-            sfxPool.Enqueue(source);
+            // [STABILITY] 소스 파괴 여부도 함께 체크
+            yield return new WaitUntil(() => source == null || !source.isPlaying);
+            
+            if (source != null && !sfxPool.Contains(source))
+            {
+                source.gameObject.SetActive(false);
+                if (activeSfx.Contains(source)) activeSfx.Remove(source);
+                sfxPool.Enqueue(source);
+            }
         }
 
         /// <summary>
@@ -162,5 +191,56 @@ namespace Necromancer.Core
         {
             bgmSource.DOFade(0f, 0.5f).OnComplete(() => bgmSource.Stop());
         }
-    }
+
+        /// <summary>
+        /// [CLEANUP] 현재 재생 중인 모든 효과음을 즉시 중지하고 정리합니다.
+        /// 스테이지 탈출이나 씬 전환 시 호출됩니다.
+        /// </summary>
+        /// <summary>
+        /// [CLEANUP] 현재 재생 중인 모든 효과음을 즉시 중지하고 정리합니다.
+        /// silenceNewSounds가 참이면 ResumeSFX() 전까지 새로운 사운드 재생이 차단됩니다.
+        /// </summary>
+        /// <summary>
+        /// [CLEANUP] 현재 재생 중인 모든 효과음을 즉시 중지하고 정리합니다.
+        /// silenceNewSounds가 참이면 ResumeSFX() 전까지 새로운 사운드 재생이 차단됩니다.
+        /// </summary>
+        public void StopAllSFX(bool silenceNewSounds = true)
+        {
+            StopAllCoroutines(); 
+            isAudioSilenced = silenceNewSounds;
+
+            if (activeSfx != null)
+            {
+                foreach (var source in activeSfx)
+                {
+                    if (source != null)
+                    {
+                        source.Stop();
+                        source.gameObject.SetActive(false);
+                        if (!sfxPool.Contains(source))
+                        {
+                            sfxPool.Enqueue(source);
+                        }
+                    }
+                }
+                activeSfx.Clear();
+            }
+            
+            Debug.Log($"<color=orange>[SoundManager]</color> All SFX Stopped. Silenced: {isAudioSilenced}");
+        }
+
+        /// <summary>
+        /// [LIFECYCLE] 씬 로드 완료 시 사운드 재생 잠금을 해제합니다.
+        /// </summary>
+        public void ResumeSFX()
+        {
+            isAudioSilenced = false;
+            Debug.Log("<color=green>[SoundManager]</color> SFX Playback Resumed.");
+        }
+
+
+    
+
+        private bool isAudioSilenced = false; // [STABILITY] 씬 전환 중 새로운 사운드 재생 방지 플래그
+}
 }

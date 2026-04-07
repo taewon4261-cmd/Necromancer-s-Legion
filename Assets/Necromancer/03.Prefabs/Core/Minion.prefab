@@ -129,6 +129,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 89cb968030fbfe94592fd471919f8310, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  CurrentGridPos: {x: -999, y: -999}
+  LastGridUpdatePos: {x: -9999, y: -9999, z: -9999}
+  IsStunned: 0
   maxHp: 50
   currentHp: 0
   moveSpeed: 3
@@ -137,7 +140,7 @@ MonoBehaviour:
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitDuration: 0.1
   attackDamage: 15
-  lifeTime: 10
+  lifeTime: 15
   targetScanRate: 0.5
   hitCooldown: 0.5
   rb: {fileID: 7181023609370401053}

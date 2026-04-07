@@ -16,7 +16,10 @@ namespace Necromancer
         MinionDamage,       // 미니언 공격력
         MinionSpeed,        // 미니언 속도
         CooldownReduction,   // 재사용 대기시간 감소
-        Resurrection
+        Resurrection,
+        UnlockArcher,       // 해골 궁수 해금
+        UnlockMage,         // 해골 마법사 해금
+        UnlockGiant          // 해골 거인 해금
     }
 
     /// <summary>

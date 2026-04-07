@@ -11,7 +11,7 @@ namespace Necromancer
     public class UnitManager : MonoBehaviour
     {
         [Header("Update Optimization")]
-        private List<UnitBase> allUnits = new List<UnitBase>(512);
+        public List<UnitBase> allUnits = new List<UnitBase>(512);
         // [STABILITY] 프레임 중간에 리스트가 수정되어 에러나는 것을 방지하기 위한 버퍼
         private List<UnitBase> pendingRegister = new List<UnitBase>(64);
         private List<UnitBase> pendingUnregister = new List<UnitBase>(64);
@@ -68,7 +68,14 @@ namespace Necromancer
                 if (unit == null || unit.IsDead) continue;
                 
                 unit.ManualUpdate(deltaTime);
-                UpdateGridPosition(unit, false);
+                
+                // [OPTIMIZATION] 격자 갱신 최적화: 유닛이 마지막 갱신 위치에서 0.5m 이상 이동했을 때만 갱신
+                // 정지 상태거나 이동 거리가 짧으면 갱신 연산을 생략하여 CPU 점유율 절감 (Master's Directive)
+                float sqrDist = (unit.transform.position - unit.LastGridUpdatePos).sqrMagnitude;
+                if (sqrDist >= 0.25f) // 0.5f * 0.5f = 0.25f
+                {
+                    UpdateGridPosition(unit, false);
+                }
             }
 
             // 2. [STABILITY] 루프가 끝난 뒤 대기열 처리 (Collection Modified Error 방지)
@@ -112,6 +119,21 @@ namespace Necromancer
             }
         }
 
+        /// <summary>
+        /// [CLEANUP] 현재 등록된 모든 유닛 정보를 초기화합니다.
+        /// 씬 전환 시 강제 호출됩니다.
+        /// </summary>
+        public void ClearAll()
+        {
+            allUnits.Clear();
+            unitGrid.Clear();
+            pendingRegister.Clear();
+            pendingUnregister.Clear();
+            
+            Debug.Log("<color=orange>[UnitManager]</color> All registered unit data cleared.");
+        }
+
+
         #region Spatial Partitioning (Grid)
 
         private Vector2Int WorldToGrid(Vector3 worldPos)
@@ -124,15 +146,22 @@ namespace Necromancer
 
         private void UpdateGridPosition(UnitBase unit, bool forceUpdate)
         {
-            Vector2Int newGridPos = WorldToGrid(unit.transform.position);
+            Vector3 currentPos = unit.transform.position;
+            Vector2Int newGridPos = WorldToGrid(currentPos);
             
-            if (!forceUpdate && unit.CurrentGridPos == newGridPos) return;
+            if (!forceUpdate && unit.CurrentGridPos == newGridPos) 
+            {
+                // 격자 칸이 바뀌지 않았더라도, 마지막 갱신 위치는 현재 위치로 동기화하여 거리 체크 기준점 유지
+                unit.LastGridUpdatePos = currentPos;
+                return;
+            }
 
             // 이전 위치 제거
             RemoveFromGrid(unit);
 
             // 새 위치 등록
             unit.CurrentGridPos = newGridPos;
+            unit.LastGridUpdatePos = currentPos; // [OPTIMIZATION] 갱신 시점의 좌표 기록
             if (!unitGrid.TryGetValue(newGridPos, out var list))
             {
                 list = new List<UnitBase>(16);

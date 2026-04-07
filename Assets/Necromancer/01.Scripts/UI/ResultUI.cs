@@ -57,9 +57,20 @@ namespace Necromancer.UI
         /// <summary>
         /// 확인 버튼 클릭 시 타이틀 씬으로 이동 (시간 복구 포함)
         /// </summary>
+        /// <summary>
+        /// 확인 버튼 클릭 시 타이틀 씬으로 이동 (시간 복구 포함)
+        /// </summary>
+        /// <summary>
+        /// 확인 버튼 클릭 시 타이틀 씬으로 이동 (시간 복구 포함)
+        /// </summary>
         public void OnClick_Confirm()
         {
-            Time.timeScale = 1f;
+            // [CLEANUP] 스테이지 종료 전 모든 사운드 및 물리 상호작용 강제 중지
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.CleanupGameSession();
+            }
+
             SceneManager.LoadScene("TitleScene");
         }
     }

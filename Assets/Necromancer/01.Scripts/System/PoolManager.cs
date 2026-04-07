@@ -32,37 +32,53 @@ public class PoolManager : MonoBehaviour
         if (poolDictionary == null) poolDictionary = new Dictionary<string, Queue<GameObject>>();
         if (poolSettings == null) poolSettings = new Dictionary<string, Pool>();
         
+        // [STABILITY] 씬 전환 시 아직 필드에 남아있는(활성화된) 모든 오브젝트를 강제 회수
+        // (PoolManager가 DontDestroyOnLoad이므로 이전 게임의 자식들이 남아있을 수 있음)
+        ClearAllActiveObjects();
+
         poolDictionary.Clear();
         poolSettings.Clear();
 
         if (pools == null || pools.Count == 0)
         {
-            Debug.LogError("<color=red>[PoolManager]</color> Pools list is empty! Please configure pools in the Inspector.");
+            Debug.LogError("<color=red>[PoolManager]</color> Pools list is empty!");
             return;
         }
 
         foreach (Pool pool in pools)
         {
-            if (pool.prefab == null) 
-            {
-                Debug.LogWarning($"<color=yellow>[PoolManager]</color> Prefab missing for tag: {pool.tag}");
-                continue;
-            }
+            if (pool.prefab == null) continue;
 
-            // 설정 캐싱
             poolSettings[pool.tag] = pool;
-
             Queue<GameObject> objectPool = new Queue<GameObject>();
+            
+            // 기존 오브젝트를 재사용하거나 부족분을 채움
             for (int i = 0; i < pool.size; i++)
             {
                 GameObject obj = CreateNewObject(pool.prefab);
                 objectPool.Enqueue(obj);
             }
             
-            if (!poolDictionary.ContainsKey(pool.tag))
-                poolDictionary.Add(pool.tag, objectPool);
+            poolDictionary[pool.tag] = objectPool;
         }
-        Debug.Log($"<color=green>[PoolManager]</color> Initialized with {poolDictionary.Count} pools.");
+    }
+
+    /// <summary>
+    /// [CLEANUP] 현재 활성화된 모든 오브젝트를 강제로 끄고 풀링 시스템을 초기화 대기 상태로 만듭니다.
+    /// </summary>
+    public void ClearAllActiveObjects()
+    {
+        // 1. 자식들을 직접 순회하여 활성화된 것들을 모두 끔
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+            Transform child = transform.GetChild(i);
+            if (child != null && child.gameObject.activeSelf)
+            {
+                child.gameObject.SetActive(false);
+            }
+        }
+        
+        Debug.Log("<color=orange>[PoolManager]</color> All active objects cleared from the field.");
     }
 
     private GameObject CreateNewObject(GameObject prefab)

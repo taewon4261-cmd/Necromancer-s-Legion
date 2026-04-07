@@ -45,6 +45,11 @@ namespace Necromancer.Core {
             currentSessionSoul += a; 
             currentSoul += a; // [DATA-SAFETY] 이번 판 획득량을 즉시 전체 지갑에 합산
 
+            // [SOUND] 소울 획득 효과음 재생
+            if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSoulGain);
+            }
+
             // 데이터 동합성 유지 (게임 종료 전 비정상 종료 시 피해 최소화)
             if (GameManager.Instance != null && GameManager.Instance.SaveData != null) {
                 GameManager.Instance.SaveData.Data.currentSoul = currentSoul;
@@ -84,12 +89,32 @@ namespace Necromancer.Core {
             if (currentSoul >= a) { 
                 currentSoul -= a; 
                 GameManager.BroadcastSoul(currentSoul);
+
+                // [SOUND] 업그레이드 완료(구매) 효과음 재생
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade);
+                }
+
                 if (GameManager.Instance != null && GameManager.Instance.SaveData != null) {
                     GameManager.Instance.SaveData.Data.currentSoul = currentSoul;
                     GameManager.Instance.SaveData.Save();
                 }
                 return true; 
             } return false; 
+        }
+        /// <summary>
+        /// [NEW] 특정 업그레이드의 현재 레벨을 조회합니다. (GameManager에서 호출)
+        /// </summary>
+        public int GetUpgradeLevel(string saveKey)
+        {
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null)
+            {
+                if (GameManager.Instance.SaveData.Data.upgradeDict.TryGetValue(saveKey, out int level))
+                {
+                    return level;
+                }
+            }
+            return 0;
         }
     }
 }

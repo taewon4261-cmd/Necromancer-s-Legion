@@ -20,9 +20,9 @@ namespace Necromancer
             ownerUnit = owner;
         }
 
-        public void ApplyDamage(float damage)
+        public void ApplyDamage(float damage, UnitBase attacker = null)
         {
-            if (ownerUnit != null) ownerUnit.TakeDamage(damage);
+            if (ownerUnit != null) ownerUnit.TakeDamage(damage, attacker);
         }
 
         public bool IsDead => ownerUnit != null && ownerUnit.IsDead;

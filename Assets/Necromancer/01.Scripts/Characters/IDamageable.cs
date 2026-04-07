@@ -13,9 +13,9 @@ namespace Necromancer
         UnitBase Unit { get; }
 
         /// <summary>
-        /// 데미지 처리 대행 함수
+        /// 데미지 처리 대행 함수 (넉백 및 AI 반응을 위한 공격자 정보 포함)
         /// </summary>
-        void ApplyDamage(float damage);
+        void ApplyDamage(float damage, UnitBase attacker = null);
         
         /// <summary>
         /// 유닛의 사망 여부 (최적화 타겟팅용)

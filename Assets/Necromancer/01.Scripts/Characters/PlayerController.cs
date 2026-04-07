@@ -15,8 +15,9 @@ namespace Necromancer
 public class PlayerController : UnitBase
 {
     [Header("Player Survival")]
-    [SerializeField] private float invincibilityDuration = 0.2f;
+    [SerializeField] private float invincibilityDuration = 0.25f;
     private bool isInvincible = false;
+    private bool isKnockbackActive = false;
 
     [Header("Inspector References (Zero-Search)")]
     [SerializeField] private Rigidbody2D rb;
@@ -138,10 +139,11 @@ public class PlayerController : UnitBase
 
     private void Move()
     {
+        if (isKnockbackActive) return; // 넉백 중에는 입력 이동 무시
         rb.velocity = movement * moveSpeed;
     }
 
-    public override void TakeDamage(float damage)
+    public override void TakeDamage(float damage, UnitBase attacker = null)
     {
         if (isInvincible || isDead) return;
 
@@ -151,10 +153,14 @@ public class PlayerController : UnitBase
             return; 
         }
 
-        base.TakeDamage(damage);
+        base.TakeDamage(damage, attacker);
 
-        // UniTask로 무적 로직 실행
-        InvincibilityAsync().Forget();
+        // [I-Frame & Knockback]
+        if (gameObject.activeInHierarchy)
+        {
+            InvincibilityAsync().Forget();
+            if (attacker != null) ApplyKnockback(attacker.transform.position);
+        }
 
         if (GameManager.Instance != null && GameManager.Instance.feedbackManager != null && gameObject.activeInHierarchy)
         {
@@ -162,13 +168,38 @@ public class PlayerController : UnitBase
         }
     }
 
+    private void ApplyKnockback(Vector3 attackerPos)
+    {
+        KnockbackAsync(attackerPos).Forget();
+    }
+
+    private async UniTaskVoid KnockbackAsync(Vector3 attackerPos)
+    {
+        isKnockbackActive = true;
+        Vector2 knockbackDir = (transform.position - attackerPos).normalized;
+        
+        // 0.1초 동안 강한 힘으로 밀쳐냄
+        rb.velocity = knockbackDir * 8f; 
+        await UniTask.Delay(100, cancellationToken: gameObject.GetCancellationTokenOnDestroy());
+        
+        isKnockbackActive = false;
+    }
+
     private async UniTaskVoid InvincibilityAsync()
     {
         isInvincible = true;
-        if (unitSprite != null) unitSprite.color = new Color(1, 1, 1, 0.5f);
+        float elapsed = 0f;
         
-        await UniTask.Delay(System.TimeSpan.FromSeconds(invincibilityDuration), cancellationToken: gameObject.GetCancellationTokenOnDestroy());
-        
+        // 0.25초 동안 깜빡임 연출
+        while (elapsed < invincibilityDuration)
+        {
+            if (unitSprite != null) unitSprite.color = new Color(1, 1, 1, 0.2f);
+            await UniTask.Delay(50);
+            if (unitSprite != null) unitSprite.color = Color.white;
+            await UniTask.Delay(50);
+            elapsed += 0.1f;
+        }
+
         if (unitSprite != null) unitSprite.color = Color.white;
         isInvincible = false;
     }
@@ -250,7 +281,7 @@ public class PlayerController : UnitBase
         {
             if (collision.TryGetComponent(out IDamageable target))
             {
-                target.ApplyDamage(bodySlamDamage);
+                target.ApplyDamage(bodySlamDamage, this);
                 
                 // [REGISTRY PATTERN] 본체 몸통 박치기 시에도 스킬 효과 적용
                 if (GameManager.Instance != null && GameManager.Instance.skillManager != null)

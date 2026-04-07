@@ -45,7 +45,6 @@ public class EnemyAI : UnitBase
     private UnitBase currentTarget; // 실질적인 추격/공격 대상
     private const float MINION_SCAN_RANGE = 4.0f; // 일반 몹이 한눈 팔 범위
     private List<UnitBase> nearbyBuffer = new List<UnitBase>(16);
-    private int stigmaStacks;
     private bool hasCountedDeath;
 
     // --- [스킬 연동: Modifier 패턴으로 대체됨] ---
@@ -64,7 +63,6 @@ public class EnemyAI : UnitBase
     {
         base.OnEnable();
         
-        stigmaStacks = 0;
         hasCountedDeath = false; // [NEW] 가드 초기화
         lifetimeCts = new CancellationTokenSource();
         
@@ -228,14 +226,14 @@ public class EnemyAI : UnitBase
 
     private void OnTriggerStay2D(Collider2D collision)
     {
-        // 머물러 있는 동안에는 성능을 위해 5프레임마다 한 번씩만 데미지 시도
+        // 머물러 있을 동안에는 성능을 위해 5프레임마다 한 번씩만 데미지 시도
         TryAttack(collision, false);
     }
 
     private void TryAttack(Collider2D collision, bool isInitialContact)
     {
         if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) return;
-        
+
         // [OPTIMIZATION] 첫 타격이 아닐 때만 5프레임 최적화 적용
         // 디버깅 로그는 유지하되, 프레임 필터링은 다시 복구하여 성능 확보
         if (!isInitialContact && Time.frameCount % 5 != 0) return;
@@ -248,8 +246,14 @@ public class EnemyAI : UnitBase
             if (collision.TryGetComponent(out IDamageable targetUnit))
             {
                 if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
-                targetUnit.ApplyDamage(attackDamage);
+                targetUnit.ApplyDamage(attackDamage, this);
                 lastHitTime = Time.time;
+
+                // [SOUND] 일반 공격(적 공격) 효과음 재생
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null)
+                {
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxNormalAttackCraw);
+                }
                 
                 // 디버그 로그 (성공 시만 출력하여 가독성 확보)
                 Debug.Log($"[HitSuccess] {gameObject.name} -> {collision.name} (isInitial: {isInitialContact}, Damage: {attackDamage})");
@@ -257,10 +261,10 @@ public class EnemyAI : UnitBase
         }
     }
 
-    public override void TakeDamage(float damage)
+    public override void TakeDamage(float damage, UnitBase attacker = null)
     {
         if (isDead) return;
-        base.TakeDamage(damage);
+        base.TakeDamage(damage, attacker);
 
         if (GameManager.Instance != null && GameManager.Instance.feedbackManager != null && gameObject.activeInHierarchy)
         {

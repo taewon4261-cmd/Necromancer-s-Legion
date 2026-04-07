@@ -56,16 +56,39 @@ namespace Necromancer.Core
 
     public class SaveDataManager : MonoBehaviour
     {
-        private string savePath;
+                private string savePath;
+        private bool isInitialized = false;
+
         private GameSaveData currentData;
 
         public GameSaveData Data => currentData;
 
+        private void Awake()
+        {
+            // [STABILITY] 초기화되지 않은 상태에서 Save가 호출되는 것을 방지하기 위해 Awake에서 즉시 경로를 설정합니다.
+            if (string.IsNullOrEmpty(savePath))
+            {
+                savePath = Path.Combine(Application.persistentDataPath, "savedata.json");
+            }
+        }
+
         public void Init()
         {
-            savePath = Path.Combine(Application.persistentDataPath, "savedata.json");
+            if (isInitialized) return;
+
+            // [STABILITY] 플랫폼 독립적인 저장 경로 강제 할당 (Master's Directive)
+            savePath = System.IO.Path.Combine(Application.persistentDataPath, "NecromancerSave.json");
+            
+            // 저장 폴더가 존재하지 않으면 생성
+            string directory = System.IO.Path.GetDirectoryName(savePath);
+            if (!System.IO.Directory.Exists(directory))
+            {
+                System.IO.Directory.CreateDirectory(directory);
+            }
+
             Load();
-            Debug.Log("<color=green>[SaveDataManager]</color> Initialized by GameManager.");
+            isInitialized = true;
+            Debug.Log($"<color=green>[SaveDataManager]</color> Initialized at: {savePath}");
         }
 
         /// <summary>
@@ -99,11 +122,19 @@ namespace Necromancer.Core
         /// </summary>
         public void Save()
         {
+            if (currentData == null) currentData = new GameSaveData();
+            
+            // [STABILITY] 저장 전 경로 재검증 (NullReference 방어)
+            if (string.IsNullOrEmpty(savePath))
+            {
+                savePath = System.IO.Path.Combine(Application.persistentDataPath, "NecromancerSave.json");
+            }
+
             try
             {
                 string json = JsonUtility.ToJson(currentData, true);
-                File.WriteAllText(savePath, json);
-                Debug.Log($"<color=green>[SaveDataManager]</color> Data saved successfully.");
+                System.IO.File.WriteAllText(savePath, json);
+                // Debug.Log($"<color=green>[SaveDataManager]</color> Data saved successfully.");
             }
             catch (Exception e)
             {
