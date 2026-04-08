@@ -55,11 +55,11 @@ namespace Necromancer.Core
                 if (isOpen)
                 {
                     commandInput.ActivateInputField();
-                    Time.timeScale = 0f; // 콘솔 열리면 일시 정지
+                    GameManager.Instance.SetPause(Necromancer.PauseSource.Debug, true);
                 }
                 else
                 {
-                    GameManager.Instance.ResumeGameSpeed();
+                    GameManager.Instance.SetPause(Necromancer.PauseSource.Debug, false);
                 }
             }
         }

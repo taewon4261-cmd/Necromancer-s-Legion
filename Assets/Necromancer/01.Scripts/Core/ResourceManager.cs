@@ -3,10 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 namespace Necromancer.Core {
     public class ResourceManager : MonoBehaviour {
+        public static ResourceManager Instance;
+
         public int currentSoul;
         public int currentSessionSoul; // 이번 판에서 얻은 실시간 소울 (UI 표현용)
         public int unlockedStageLevel;
         private List<LobbyUpgradeSO> upgradeList = new List<LobbyUpgradeSO>();
+
+        private void Awake()
+        {
+            if (Instance == null) Instance = this;
+            else Destroy(gameObject);
+        }
+
         public void Init() {
             currentSessionSoul = 0; // [DATA-SAFETY] 새로운 세션 시작 시 획득량 초기화
             if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null) {
@@ -102,6 +111,80 @@ namespace Necromancer.Core {
                 return true; 
             } return false; 
         }
+
+        #region Minion Unlock System (Altar of Souls)
+        /// <summary>
+        /// [LOGIC] 적 처치 시 획득한 정수를 데이터에 가산합니다.
+        /// </summary>
+        public void AddEssence(string enemyID, int amount)
+        {
+            if (GameManager.Instance == null || GameManager.Instance.SaveData == null) return;
+            var data = GameManager.Instance.SaveData.Data;
+
+            if (!data.minionEssences.ContainsKey(enemyID))
+                data.minionEssences[enemyID] = 0;
+
+            data.minionEssences[enemyID] += amount;
+            
+            // [NOTE] 실시간 저장은 부하를 줄이기 위해 생략하거나 필요 시 호출
+            // SaveDataManager.Instance.Save();
+            
+            Debug.Log($"<color=blue>[ResourceManager]</color> Essence Gained: {enemyID} (+{amount})");
+        }
+
+        public int GetEssenceCount(string enemyID)
+        {
+            if (GameManager.Instance == null || GameManager.Instance.SaveData == null) return 0;
+            return GameManager.Instance.SaveData.Data.minionEssences.TryGetValue(enemyID, out int count) ? count : 0;
+        }
+
+        /// <summary>
+        /// [LOGIC] 정수를 차감합니다. 보유량이 부족하면 false를 반환합니다.
+        /// </summary>
+        public bool SpendEssence(string enemyID, int amount)
+        {
+            if (GameManager.Instance == null || GameManager.Instance.SaveData == null) return false;
+            var data = GameManager.Instance.SaveData.Data;
+            int owned = data.minionEssences.TryGetValue(enemyID, out int c) ? c : 0;
+            if (owned < amount) return false;
+            data.minionEssences[enemyID] = owned - amount;
+            return true;
+        }
+
+        public bool IsMinionUnlocked(string minionID)
+        {
+            if (GameManager.Instance == null || GameManager.Instance.SaveData == null) return false;
+            return GameManager.Instance.SaveData.Data.unlockedMinionIDs.Contains(minionID);
+        }
+
+        /// <summary>
+        /// [LOGIC] 비용(소울+정수)을 검사하고 미니언을 영구 해금합니다.
+        /// </summary>
+        public bool TryUnlockMinion(Necromancer.Data.MinionUnlockSO minionData)
+        {
+            if (minionData == null || IsMinionUnlocked(minionData.minionID)) return false;
+
+            int currentEssence = GetEssenceCount(minionData.targetEnemyID);
+            
+            if (currentSoul >= minionData.unlockCost_Soul && currentEssence >= minionData.unlockCost_Essence)
+            {
+                // 소울 차감
+                SpendSoul(minionData.unlockCost_Soul);
+                // 정수 차감 (SpendEssence로 일원화)
+                SpendEssence(minionData.targetEnemyID, minionData.unlockCost_Essence);
+
+                // 해금 리스트 등록
+                var data = GameManager.Instance.SaveData.Data;
+                data.unlockedMinionIDs.Add(minionData.minionID);
+                GameManager.Instance.SaveData.Save();
+
+                Debug.Log($"<color=gold>[ResourceManager]</color> Minion Permanently Unlocked: {minionData.minionName}");
+                return true;
+            }
+
+            return false;
+        }
+        #endregion
         /// <summary>
         /// [NEW] 특정 업그레이드의 현재 레벨을 조회합니다. (GameManager에서 호출)
         /// </summary>

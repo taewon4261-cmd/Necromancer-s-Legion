@@ -112,6 +112,7 @@ namespace Necromancer.UI
             }
         }
 
+
         private void BindButtonAction(Button btn)
         {
             RectTransform rt = btn.GetComponent<RectTransform>();
@@ -120,6 +121,13 @@ namespace Necromancer.UI
             EventTrigger trigger = btn.gameObject.GetComponent<EventTrigger>() ?? btn.gameObject.AddComponent<EventTrigger>();
             AddEvent(trigger, EventTriggerType.PointerEnter, (d) => { if (!isTransitioning) rt.DOScale(1.05f, 0.2f).SetLink(btn.gameObject); });
             AddEvent(trigger, EventTriggerType.PointerExit, (d) => { if (rt != null) rt.DOScale(1f, 0.2f).SetLink(btn.gameObject); });  
+
+            btn.onClick.AddListener(() => {
+                // [SOUND] 모든 버튼 클릭 시 공통 효과음 재생
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                }
+            });
 
             if (btnName.Contains("start")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Start Button Clicked"); ShowPanel(stageSelectPanel); });
             else if (btnName.Contains("upgrade")) btn.onClick.AddListener(() => { Debug.Log("[TitleUI] Upgrade Button Clicked"); ShowPanel(upgradePanel); });

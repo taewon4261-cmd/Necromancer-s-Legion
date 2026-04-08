@@ -139,7 +139,7 @@ namespace Necromancer.UI
             if (immediate)
             {
                 goldTweener?.Kill();
-                soulText.text = $"{targetSoul:N0}";
+                soulText.text = $"Soul : {targetSoul:N0}";
                 lastDisplayedGold = targetSoul;
             }
             else if (lastDisplayedGold != targetSoul)
@@ -147,7 +147,7 @@ namespace Necromancer.UI
                 goldTweener?.Kill();
                 goldTweener = DOTween.To(() => lastDisplayedGold, x => {
                     lastDisplayedGold = x;
-                    soulText.text = $"{x:N0}";
+                    soulText.text = $" {x:N0}";
                 }, targetSoul, 0.5f).SetEase(Ease.OutQuad);
             }
         }

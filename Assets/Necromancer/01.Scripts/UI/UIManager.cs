@@ -75,8 +75,8 @@ namespace Necromancer.UI
             
             if (isOpening)
             {
-                // 열기: 일시정지
-                Time.timeScale = 0f;
+                // 열기: 설정 사유로 일시정지
+                GameManager.Instance.SetPause(PauseSource.Settings, true);
                 settingUI.gameObject.SetActive(true);
                 
                 // [SOUND] 설정창 열기 효과음
@@ -310,7 +310,7 @@ namespace Necromancer.UI
         private void HandleLevelUp(List<SkillData> options)
         {
             if (levelUpPanel != null) levelUpPanel.SetActive(true);
-            Time.timeScale = 0f;
+            // [NOTE] LevelUp 정지는 GameManager.AddExp에서 SetPause(LevelUp, true)로 이미 처리됨
             RefreshSkillCards(options);
         }
 
@@ -401,9 +401,10 @@ namespace Necromancer.UI
 
             if (levelUpPanel != null) levelUpPanel.SetActive(false);
 
+            // 스킬 선택 완료 → LevelUp 정지 사유 해소
             if (GameManager.Instance != null)
             {
-                GameManager.Instance.ResumeGameSpeed();
+                GameManager.Instance.SetPause(PauseSource.LevelUp, false);
             }
         }
 
@@ -414,9 +415,9 @@ namespace Necromancer.UI
             int souls = (GameManager.Instance != null && GameManager.Instance.Resources != null) ? 
                 GameManager.Instance.Resources.currentSessionSoul : 0;
 
-            // [STABILITY] 결과창 출력 즉시 세계 정지 (Master's Directive)
+            // [STABILITY] 결과창 출력 즉시 세계 정지
             resultUI.Open(isVictory, souls);
-            Time.timeScale = 0f;
+            GameManager.Instance.SetPause(PauseSource.GameOver, true);
 
             // [SOUND] 승리/패배 효과음 재생
             if (GameManager.Instance != null && GameManager.Instance.Sound != null) {

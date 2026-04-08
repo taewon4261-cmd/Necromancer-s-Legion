@@ -17,6 +17,8 @@ namespace Necromancer.UI
         public TextMeshProUGUI stageDescText;
         public Image stageThumbnail;
         public Button startButton;
+        public Button backButton;
+
 
         [Header("Navigations")]
         public Button prevButton;
@@ -33,6 +35,8 @@ namespace Necromancer.UI
         private void Start()
         {
             if (startButton != null) startButton.onClick.AddListener(OnStartButtonClicked);
+            if (backButton != null) backButton.onClick.AddListener(OnBackButtonClicked);
+
             if (prevButton != null) prevButton.onClick.AddListener(MovePrev);
             if (nextButton != null) nextButton.onClick.AddListener(MoveNext);
             // closeOverlayButton.onClick.AddListener(OnCloseLockOverlay) 제거됨
@@ -48,6 +52,7 @@ namespace Necromancer.UI
         }
 
         // PopulateList() 메서드 제거됨
+
 
         public void MoveNext()
         {
@@ -71,8 +76,14 @@ namespace Necromancer.UI
 
                 currentIndex++;
                 SelectStage(stageList[currentIndex]);
+
+                // [SOUND] 스테이지 이동 효과음 추가
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                }
             }
         }
+
 
         public void MovePrev()
         {
@@ -80,6 +91,11 @@ namespace Necromancer.UI
             {
                 currentIndex--;
                 SelectStage(stageList[currentIndex]);
+
+                // [SOUND] 스테이지 이동 효과음 추가
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                }
             }
         }
 
@@ -110,6 +126,7 @@ namespace Necromancer.UI
             if (nextButton != null) nextButton.interactable = currentIndex < stageList.Count - 1;
         }
 
+
         private void UpdateStageDisplay(StageDataSO stage)
         {
             if (stage == null) return;
@@ -136,7 +153,7 @@ namespace Necromancer.UI
                 if (img != null) img.color = isUnlocked ? Color.white : new Color(0.6f, 0.6f, 0.6f, 1f);
                 
                 var btnText = startButton.GetComponentInChildren<TextMeshProUGUI>();
-                if (btnText != null) btnText.text = isUnlocked ? "STAGE START" : "LOCKED";
+                if (btnText != null) btnText.text = isUnlocked ? "게임 시작" : "잠김";
             }
 
             if (!isUnlocked)
@@ -173,5 +190,29 @@ namespace Necromancer.UI
             GameManager.Instance.Combat.SetupStageModifiers(selectedStage);
             GameManager.Instance.StartGame(selectedStage);
         }
+
+
+
+        private void OnBackButtonClicked()
+        {
+            // [SOUND] 뒤로가기 버튼 클릭 시 기본 효과음
+            if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+            }
+
+            Debug.Log("<color=orange>[StageSelectUI]</color> Back to Title Scene.");
+            
+            // SceneTransitionManager를 통해 타이틀 씬으로 이동
+            if (Necromancer.Systems.SceneTransitionManager.Instance != null)
+            {
+                Necromancer.Systems.SceneTransitionManager.Instance.ChangeScene("TitleScene");
+            }
+            else
+            {
+                // [FALLBACK] 매니저가 없을 경우 직접 씬 로드
+                UnityEngine.SceneManagement.SceneManager.LoadScene("TitleScene");
+            }
+        }
+
     }
 }

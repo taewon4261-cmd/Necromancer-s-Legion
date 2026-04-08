@@ -7,6 +7,7 @@ namespace Necromancer
     public class EnemyData : ScriptableObject
     {
         [Header("Enemy Identification")]
+        public string enemyID = "Enemy_01_Peasant"; // [NEW] 데이터 식별용 고유 ID
         public string enemyName = "농부";
         
         [Tooltip("오브젝트 풀에서 꺼내올 때 사용할 태그/이름 (예: Enemy_Peasant)")]

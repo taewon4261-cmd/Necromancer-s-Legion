@@ -131,10 +131,10 @@ namespace Necromancer.UI
 
         public void CloseAndSave()
         {
-            // [STABILITY] 버튼이 비활성화되는 시점에 배속 복구 보장
+            // Settings 사유 해소 (다른 정지 사유가 있으면 timeScale은 0으로 유지됨)
             if (GameManager.Instance != null)
             {
-                GameManager.Instance.ResumeGameSpeed();
+                GameManager.Instance.SetPause(Necromancer.PauseSource.Settings, false);
             }
 
             if (GameManager.Instance != null && GameManager.Instance.SaveData != null)

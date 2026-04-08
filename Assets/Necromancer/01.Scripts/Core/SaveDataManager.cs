@@ -12,6 +12,14 @@ namespace Necromancer.Core
         public int level;
     }
 
+    [Serializable]
+    public class EssenceEntry
+    {
+        public string enemyID;
+        public int count;
+    }
+
+
     /// <summary>
     /// 게임 내 모든 영속성 데이터를 JSON 형식으로 관리하는 매니저입니다.
     /// </summary>
@@ -26,6 +34,12 @@ namespace Necromancer.Core
         [Header("Resources")]
         public int currentSoul = 0;
         public int unlockedStageLevel = 1;
+        public List<string> unlockedMinionIDs = new List<string>() { "Minion_01" };
+        
+        // [SAVE] 정수 획득 현황 딕셔너리 직렬화를 위한 리스트
+        [SerializeField] private List<EssenceEntry> essenceList = new List<EssenceEntry>();
+        public Dictionary<string, int> minionEssences = new Dictionary<string, int>();
+
 
         [Header("Upgrades")]
         [SerializeField] private List<UpgradeSaveData> upgradeLevels = new List<UpgradeSaveData>();
@@ -41,6 +55,13 @@ namespace Necromancer.Core
             {
                 upgradeLevels.Add(new UpgradeSaveData { key = kvp.Key, level = kvp.Value });
             }
+
+            // [SAVE] Essence Dictionary -> List 동기화
+            essenceList.Clear();
+            foreach (var kvp in minionEssences)
+            {
+                essenceList.Add(new EssenceEntry { enemyID = kvp.Key, count = kvp.Value });
+            }
         }
 
         public void OnAfterDeserialize()
@@ -51,6 +72,14 @@ namespace Necromancer.Core
             {
                 upgradeDict[item.key] = item.level;
             }
+
+            // [SAVE] Essence List -> Dictionary 동기화
+            minionEssences.Clear();
+            foreach (var entry in essenceList)
+            {
+                minionEssences[entry.enemyID] = entry.count;
+            }
+
         }
     }
 

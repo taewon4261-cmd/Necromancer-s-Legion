@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1569339c1929e0b4dae30b293eeed99f, type: 3}
+  m_Name: Minion_05_BoneGolem
+  m_EditorClassIdentifier: 
+  minionID: Minion_05
+  minionName: Bone Golem
+  minionTag: Minion_Golem
+  minionIcon: {fileID: 0}
+  tier: 2
+  description: "\uC218\uB9CE\uC740 \uBF08\uB97C \uD569\uCCD0 \uB9CC\uB4E0 \uAC70\uB300
+    \uACE8\uB818\uC785\uB2C8\uB2E4. \uD30C\uAD34\uC801\uC778 \uD798\uC73C\uB85C \uC801\uC758
+    \uC9C4\uD615\uC744 \uBD95\uAD34\uC2DC\uD0B5\uB2C8\uB2E4."
+  requiredSoul: 20000
+  requiredEssence: 100
+  targetEnemyID: Boss_King
+  attackPower: 100
+  attackSpeed: 0.3

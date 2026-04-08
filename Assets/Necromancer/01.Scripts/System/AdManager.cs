@@ -80,6 +80,10 @@ namespace Necromancer.Systems
             if (rewardedAd != null && rewardedAd.CanShowAd())
             {
                 isAdShowing = true;
+                // [PAUSE] 광고 시작 → Ad 사유로 일시정지 (LevelUp 정지 중이라도 중첩 유지)
+                if (GameManager.Instance != null)
+                    GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, true);
+
                 rewardedAd.Show((Reward reward) => {
                     UnityMainThreadDispatcher.Enqueue(() => {
                         Debug.Log("<color=green>[AdManager]</color> Reward earned!");
@@ -107,13 +111,21 @@ namespace Necromancer.Systems
             ad.OnAdFullScreenContentClosed += () => {
                 Debug.Log("[AdManager] Ad closed by user.");
                 isAdShowing = false;
-                UnityMainThreadDispatcher.Enqueue(() => LoadRewardedAd());
+                UnityMainThreadDispatcher.Enqueue(() => {
+                    // [PAUSE] 광고 종료 → Ad 사유 해소 (LevelUp이 남아있으면 timeScale은 여전히 0 유지)
+                    if (GameManager.Instance != null)
+                        GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, false);
+                    LoadRewardedAd();
+                });
             };
-            
+
             ad.OnAdFullScreenContentFailed += (AdError error) => {
                 Debug.LogError($"[AdManager] Ad failed to show: {error}");
                 isAdShowing = false;
                 UnityMainThreadDispatcher.Enqueue(() => {
+                    // [PAUSE] 광고 실패 → Ad 사유 해소 (QA #3: 기존 LevelUp 정지는 유지됨)
+                    if (GameManager.Instance != null)
+                        GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, false);
                     onRewardFailed?.Invoke();
                     LoadRewardedAd();
                 });

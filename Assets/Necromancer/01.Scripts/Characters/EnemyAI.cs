@@ -274,9 +274,29 @@ public class EnemyAI : UnitBase
         }
     }
 
-    protected override void Die()
+    
+    /// <summary>
+    /// [LOGIC] 사망 시 정수 드랍 로직 (Master's Directive)
+    /// </summary>
+    private void HandleEssenceDrop()
+    {
+        if (data == null) return;
+
+        // [LOGIC] 마스터의 지시: 10% 확률로 정수 드랍
+        if (Random.Range(0, 100) < 10)
+        {
+            // 중앙 매니저에 정수 가산 (PRD: ResourceManager.Instance.AddEssence 호출)
+            if (Necromancer.Core.ResourceManager.Instance != null)
+            {
+                Necromancer.Core.ResourceManager.Instance.AddEssence(data.enemyID, 1);
+            }
+        }
+    }
+protected override void Die()
     {
         base.Die();
+        HandleEssenceDrop();
+
         rb.velocity = Vector2.zero;
         
         if (GameManager.Instance != null)

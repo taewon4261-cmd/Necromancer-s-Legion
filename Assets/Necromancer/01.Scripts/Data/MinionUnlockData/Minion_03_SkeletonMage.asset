@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1569339c1929e0b4dae30b293eeed99f, type: 3}
+  m_Name: Minion_03_SkeletonMage
+  m_EditorClassIdentifier: 
+  minionID: Minion_03
+  minionName: Skeleton Mage
+  minionTag: Minion_Mage
+  minionIcon: {fileID: 0}
+  tier: 1
+  description: "\uB9C8\uBC95\uC744 \uC0AC\uC6A9\uD558\uB294 \uD574\uACE8 \uB9C8\uBC95\uC0AC\uC785\uB2C8\uB2E4.
+    \uAD11\uC5ED \uACF5\uACA9\uC744 \uD1B5\uD574 \uB2E4\uC218\uC758 \uC801\uC744
+    \uCC98\uCE58\uD569\uB2C8\uB2E4."
+  requiredSoul: 5000
+  requiredEssence: 50
+  targetEnemyID: Enemy_Guard
+  attackPower: 15
+  attackSpeed: 0.8

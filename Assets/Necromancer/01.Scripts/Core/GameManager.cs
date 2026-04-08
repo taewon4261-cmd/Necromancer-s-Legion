@@ -10,6 +10,12 @@ using UnityEngine.SceneManagement;
 
 namespace Necromancer
 {
+    /// <summary>
+    /// [PAUSE] 일시정지 사유 열거형
+    /// 모든 정지 사유가 해소되어야만 게임이 재개됩니다.
+    /// </summary>
+    public enum PauseSource { Settings, LevelUp, Ad, GameOver, Debug }
+
     public class GameManager : MonoBehaviour
     {
         public static GameManager Instance { get; private set; }
@@ -30,6 +36,10 @@ namespace Necromancer
         [SerializeField] private UIManager _uiManager;
         [SerializeField] private TitleUIController _titleUI;
         [SerializeField] private UnitManager _unitManager;
+
+        [Header("Data Config (Master's Directive)")]
+        [SerializeField] private List<Necromancer.Data.MinionUnlockSO> _minionUnlockDataList = new List<Necromancer.Data.MinionUnlockSO>();
+        public List<Necromancer.Data.MinionUnlockSO> minionUnlockDataList => _minionUnlockDataList;
 
         // --- [Direct Access Properties] ---
         public SaveDataManager SaveData => _saveData;
@@ -70,6 +80,23 @@ namespace Necromancer
         public StageDataSO currentStage;
         public bool IsGameOver { get; private set; }
 
+        // ─── [PAUSE SYSTEM] 상태 기반 일시정지 ───────────────────────────────
+        private readonly HashSet<PauseSource> _activePauseSources = new HashSet<PauseSource>();
+
+        /// <summary>
+        /// 일시정지 사유를 추가/제거합니다.
+        /// 활성 사유가 하나라도 남아 있으면 timeScale = 0, 모두 해소되면 currentGameSpeed로 복귀합니다.
+        /// </summary>
+        public void SetPause(PauseSource source, bool isPaused)
+        {
+            if (isPaused) _activePauseSources.Add(source);
+            else          _activePauseSources.Remove(source);
+
+            Time.timeScale = (_activePauseSources.Count > 0) ? 0f : currentGameSpeed;
+            Debug.Log($"[PauseSystem] Source: {source}, isPaused: {isPaused}, ActiveCount: {_activePauseSources.Count}, timeScale: {Time.timeScale}");
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         public int currentLevel = 1;
         public float currentExp = 0f;
         public float maxExp = 200f;
@@ -93,12 +120,22 @@ namespace Necromancer
             else Destroy(gameObject);
         }
 
+        private float lastEscTime = 0f;
+        private const float ESC_COOLDOWN = 0.3f;
+
         private void Update()
         {
+            // [STABILITY] 타이틀 씬에서는 ESC 키가 작동하지 않도록 차단 (Master's Directive)
+            if (SceneManager.GetActiveScene().name == "TitleScene") return;
+
             // [STABILITY] 중앙 집중형 입력 관리 (Single Source of Truth)
             // 어떤 UI가 꺼져 있거나 파편화된 상황에서도 GameManager는 항상 ESC/Back 버튼을 감시합니다.
             if (Input.GetKeyDown(KeyCode.Escape))
             {
+                // [STABILITY] 연타 방지 쿨다운 (0.3s)
+                if (Time.unscaledTime < lastEscTime + ESC_COOLDOWN) return;
+                lastEscTime = Time.unscaledTime;
+
                 if (uiManager != null)
                 {
                     uiManager.ToggleSettings();
@@ -198,8 +235,9 @@ namespace Necromancer
             // 4. 웨이브 로직 중단
             if (waveManager != null) waveManager.StopSpawning();
 
-            // 5. 트윈 및 시간 복구
+            // 5. 트윈 및 시간 복구 — 모든 정지 사유를 일괄 해소 후 timeScale 복원
             DOTween.KillAll();
+            _activePauseSources.Clear();
             Time.timeScale = 1f;
 
             Debug.Log("<color=red>[GameManager]</color> CRITICAL CLEANUP: All game sessions objects and logic reset.");
@@ -224,11 +262,16 @@ namespace Necromancer
         public void ToggleGameSpeed()
         {
             currentGameSpeed = currentGameSpeed <= 1.1f ? 1.5f : (currentGameSpeed <= 1.6f ? 2f : 1f);
-            Time.timeScale = currentGameSpeed;
+            // 일시정지 사유가 없을 때만 즉시 반영, 있으면 사유 해소 시 자동 적용됨
+            if (_activePauseSources.Count == 0) Time.timeScale = currentGameSpeed;
             OnSpeedChanged?.Invoke(currentGameSpeed);
         }
 
-        public void ResumeGameSpeed() => Time.timeScale = currentGameSpeed;
+        /// <summary>모든 정지 사유가 없을 때 배속을 복원합니다. SetPause 사용 권장.</summary>
+        public void ResumeGameSpeed()
+        {
+            if (_activePauseSources.Count == 0) Time.timeScale = currentGameSpeed;
+        }
 
         public void AddExp(float amount)
         {
@@ -245,7 +288,7 @@ namespace Necromancer
                     if (options != null && options.Count > 0)
                     {
                         OnLevelUp?.Invoke(options);
-                        Time.timeScale = 0f;
+                        SetPause(PauseSource.LevelUp, true);
                     }
                 }
             }
@@ -274,16 +317,32 @@ namespace Necromancer
             }
         }
 
+        
         private void UpdateUnlockedMinionPool()
         {
             unlockedMinionTags.Clear();
+            
+            // 1. 기본 미니언(전사)은 언제나 포함
             unlockedMinionTags.Add(minionTag);
 
             if (Resources == null) return;
 
-            if (Resources.GetUpgradeLevel("Upgrade_UnlockArcher_Lv") >= 1) unlockedMinionTags.Add("Minion_Archer");
-            if (Resources.GetUpgradeLevel("Upgrade_UnlockMage_Lv") >= 1) unlockedMinionTags.Add("Minion_Mage");
-            if (Resources.GetUpgradeLevel("Upgrade_UnlockGiant_Lv") >= 1) unlockedMinionTags.Add("Minion_Giant");
+            // [OCP] 데이터 기반 미니언 해금 연동
+            // Resources/Minions 폴더에서 모든 해금 데이터를 로드하여 체크합니다.
+            var unlockDataList = UnityEngine.Resources.LoadAll<Necromancer.Data.MinionUnlockSO>("Minions");
+            
+            foreach (var data in unlockDataList)
+            {
+                if (data != null && Resources.IsMinionUnlocked(data.minionID))
+                {
+                    if (!unlockedMinionTags.Contains(data.minionTag))
+                    {
+                        unlockedMinionTags.Add(data.minionTag);
+                    }
+                }
+            }
+
+            Debug.Log($"<color=green>[GameManager]</color> Unlocked Minion Pool Updated. Count: {unlockedMinionTags.Count}");
         }
 
         public void OnStageClear()
@@ -313,7 +372,7 @@ namespace Necromancer
         {
             if (IsGameOver) return;
             IsGameOver = true;
-            Time.timeScale = 0f;
+            SetPause(PauseSource.GameOver, true);
             if (Resources != null) Resources.CommitSessionSoul();
             OnGameOver?.Invoke(false);
         }
