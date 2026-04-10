@@ -16,6 +16,9 @@ namespace Necromancer
         [Tooltip("적 프리팹 (필요시 시각적 참고용)")]
         public GameObject enemyPrefab;
 
+        [Tooltip("인게임 애니메이션 컨트롤러")]
+        public RuntimeAnimatorController animatorController; // [NEW]
+
         [Header("Base Stats")]
         public float maxHp = 10f;
         public float moveSpeed = 2f;

@@ -152,7 +152,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerTransform: {fileID: 0}
-  tileSprite: {fileID: 21300000, guid: a5af0c6e51d55374a82a90cf09414538, type: 3}
+  tileSprite: {fileID: 21300000, guid: a87412baa5820434c8f1e380e3c08d98, type: 3}
   tileSize: 10
   gridSize: 8
   sortingOrder: -100
@@ -961,6 +961,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_AdditionalShaderChannelsFlag
       value: 25
+      objectReference: {fileID: 0}
+    - target: {fileID: 4363576428134938649, guid: 23202d6582a4b58409370e84499b2f2c,
+        type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4363576428134938649, guid: 23202d6582a4b58409370e84499b2f2c,
+        type: 3}
+      propertyPath: m_LocalScale.y
+      value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 4363576428134938649, guid: 23202d6582a4b58409370e84499b2f2c,
         type: 3}

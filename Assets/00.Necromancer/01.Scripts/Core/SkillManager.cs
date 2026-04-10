@@ -48,6 +48,7 @@ namespace Necromancer
         public float globalMinionHpBonusRatio = 1f;
         public float globalMinionDamageBonusRatio = 1f;
         public float globalMinionSpeedBonusRatio = 1f;
+        public float globalMinionAttackSpeedBonusRatio = 1f; // [NEW] 미니언 공격 속도 버프
         public int currentMaxMinions = 50;
         public float vampiricChance = 0f;
         public float minionExplosionDamage = 0f;

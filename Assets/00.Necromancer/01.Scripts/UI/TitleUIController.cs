@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using System.Collections.Generic;
 using Necromancer.Systems;
 using Cysharp.Threading.Tasks;
@@ -10,38 +9,48 @@ using Necromancer.Core;
 namespace Necromancer.UI
 {
     /// <summary>
-    /// [FINAL CLEAN] 타이틀 씬의 UI 전환을 100% SetActive(True/False)로만 관리합니다.
-    /// CanvasGroup을 전혀 사용하지 않아 알파값 관련 버그가 원천 차단된 최적화 버전입니다.
+    /// 타이틀 씬의 UI 전환을 SetActive(True/False)로만 관리합니다.
+    /// 버튼 바인딩은 전량 Inspector 직렬화 방식을 사용하며,
+    /// 런타임 Find / GetComponentsInChildren 스캔이 없습니다.
+    /// 서브 패널 내부 갱신은 각 패널의 OnEnable()이 자동으로 담당합니다.
     /// </summary>
     public class TitleUIController : MonoBehaviour
     {
         [Header("Main Panels")]
-        public GameObject authPanel;          // 로그인 창 (Panel_Login)
-        public GameObject mainButtonPanel;    // 메인 메뉴 버튼 그룹 (Panel_MainButtons)
-        public RectTransform logoTransform;   // 로고 (애니메이션용)
+        public GameObject authPanel;
+        public GameObject mainButtonPanel;
+        public RectTransform logoTransform;
 
         [Header("Sub Panels")]
         public GameObject stageSelectPanel;
         public GameObject upgradePanel;
+        public GameObject minionStorePanel;
         public GameObject settingPanel;
 
-        private List<GameObject> allSubPanels = new List<GameObject>();
+        [Header("Main Menu Buttons")]
+        [SerializeField] private Button btnStart;
+        [SerializeField] private Button btnUpgrade;
+        [SerializeField] private Button btnMinionStore;
+        [SerializeField] private Button btnSetting;
+
+        [Header("Back Buttons (Sub Panels)")]
+        [SerializeField] private Button btnStageSelectBack;
+        [SerializeField] private Button btnUpgradeBack;
+        [SerializeField] private Button btnMinionStoreBack;
+        [SerializeField] private Button btnSettingBack;
+
+        private readonly List<GameObject> allSubPanels = new List<GameObject>();
         private bool isTitleInitialized = false;
 
         private void Awake()
         {
-            // 필수 할당 체크
-            if (authPanel == null)        Debug.LogError("[TitleUI] authPanel is NOT assigned!");
-            if (mainButtonPanel == null)  Debug.LogError("[TitleUI] mainButtonPanel is NOT assigned!");
-            if (stageSelectPanel == null) Debug.LogError("[TitleUI] stageSelectPanel is NOT assigned!");
-            if (upgradePanel == null)     Debug.LogError("[TitleUI] upgradePanel is NOT assigned!");
-            if (settingPanel == null)     Debug.LogError("[TitleUI] settingPanel is NOT assigned!");
+            ValidateReferences();
 
             if (stageSelectPanel != null) allSubPanels.Add(stageSelectPanel);
-            if (upgradePanel != null) allSubPanels.Add(upgradePanel);
-            if (settingPanel != null) allSubPanels.Add(settingPanel);
+            if (upgradePanel != null)     allSubPanels.Add(upgradePanel);
+            if (minionStorePanel != null) allSubPanels.Add(minionStorePanel);
+            if (settingPanel != null)     allSubPanels.Add(settingPanel);
 
-            // GameManager 등록
             if (GameManager.Instance != null) GameManager.Instance.RegisterTitleUI(this);
 
             InitAllPanels();
@@ -61,20 +70,14 @@ namespace Necromancer.UI
         {
             SetupButtonEvents();
 
-            // 로그인 상태 즉시 체크 (재방문 유저 대응)
-            if (GameManager.Instance != null && GameManager.Instance.Auth != null)
+            if (GameManager.Instance?.Auth != null)
             {
                 var state = GameManager.Instance.Auth.CurrentState;
                 if (state == AuthState.LoggedIn || state == AuthState.Guest || state == AuthState.Failed)
-                {
                     HandleAuthState(state);
-                }
             }
         }
 
-        /// <summary>
-        /// [AUTH] 로그인 확인 시 호출되어 로그인창을 끄고 메인 화면을 켭니다.
-        /// </summary>
         private void HandleAuthState(AuthState state)
         {
             if (isTitleInitialized) return;
@@ -85,14 +88,8 @@ namespace Necromancer.UI
                 case AuthState.Guest:
                 case AuthState.Failed:
                     isTitleInitialized = true;
-                    
                     if (authPanel != null) authPanel.SetActive(false);
                     if (mainButtonPanel != null) mainButtonPanel.SetActive(true);
-
-                    // [ROBUST] 서브 패널 부모(Sub_Panels)를 미리 켜둡니다.
-                    if (stageSelectPanel != null && stageSelectPanel.transform.parent != null)
-                        stageSelectPanel.transform.parent.gameObject.SetActive(true);
-                    
                     Debug.Log($"<color=cyan>[TitleUI]</color> Login Verified ({state}). UI Activated.");
                     break;
             }
@@ -101,17 +98,14 @@ namespace Necromancer.UI
         private void InitAllPanels()
         {
             if (mainButtonPanel != null) mainButtonPanel.SetActive(false);
-            foreach (var panel in allSubPanels) if (panel != null) panel.SetActive(false);
-            
-            // [AUTH] 로그인 기록이 있으면 로그인 창을 즉시 띄우지 않습니다. (방문 유저 경험 개선)
-            bool hasLoginRecord = false;
-            if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null)
-            {
-                hasLoginRecord = GameManager.Instance.SaveData.Data.lastLoginMethod != "None";
-            }
+            foreach (var panel in allSubPanels)
+                if (panel != null) panel.SetActive(false);
+
+            var saveData = GameManager.Instance?.SaveData?.Data;
+            bool hasLoginRecord = saveData != null && saveData.lastLoginMethod != "None";
 
             if (authPanel != null) authPanel.SetActive(!hasLoginRecord);
-            
+
             if (hasLoginRecord)
                 Debug.Log("<color=cyan>[TitleUI]</color> Login record found. Hiding login panel for auto-login.");
         }
@@ -120,33 +114,20 @@ namespace Necromancer.UI
 
         public async UniTask OnLoginSuccess()
         {
-            // [STABILITY] AuthManager.OnAuthStateChanged 이벤트를 통해 HandleAuthState가 이미 실행되므로
-            // 여기서는 추가적인 UI 호출 없이 로그로만 성공을 확인합니다.
             Debug.Log("<color=green>[TitleUI]</color> Login/Link Success: Navigating to Main UI.");
             await UniTask.Yield();
         }
 
         /// <summary>
-        /// 메인 메뉴를 끄고 지정된 서브 패널을 즉시 활성화합니다.
+        /// 메인 메뉴를 끄고 지정된 서브 패널을 활성화합니다.
+        /// 패널 내부 갱신은 각 패널의 OnEnable()이 자동으로 처리합니다.
         /// </summary>
         public void ShowPanel(GameObject targetPanel)
         {
             if (targetPanel == null) return;
-
-            // 서브 패널의 부모 오브젝트가 있다면 먼저 켭니다.
-            if (targetPanel.transform.parent != null)
-                targetPanel.transform.parent.gameObject.SetActive(true);
-
             if (mainButtonPanel != null) mainButtonPanel.SetActive(false);
             targetPanel.SetActive(true);
-
-            // 내부 UI 갱신 로직 실행
-            var upgradeUI = targetPanel.GetComponent<UpgradeUI>();
-            if (upgradeUI != null) upgradeUI.RefreshUI();
-
-            var stageUI = targetPanel.GetComponent<StageSelectUI>();
-            if (stageUI != null && stageUI.selectedStage != null) stageUI.SelectStage(stageUI.selectedStage);
-
+            PlaySelectSound();
             Debug.Log($"<color=green>[TitleUI]</color> Open SubPanel: {targetPanel.name}");
         }
 
@@ -155,50 +136,45 @@ namespace Necromancer.UI
         /// </summary>
         public void BackToMainMenu()
         {
-            foreach (var panel in allSubPanels) if (panel != null) panel.SetActive(false);
+            foreach (var panel in allSubPanels)
+                if (panel != null) panel.SetActive(false);
             if (mainButtonPanel != null) mainButtonPanel.SetActive(true);
+            PlaySelectSound();
         }
 
         private void SetupButtonEvents()
         {
-            if (mainButtonPanel != null)
-            {
-                Button[] mainButtons = mainButtonPanel.GetComponentsInChildren<Button>(true);
-                foreach (var btn in mainButtons) BindButtonAction(btn);
-            }
+            // 메인 메뉴 → 서브 패널 열기
+            btnStart?.onClick.AddListener(() => ShowPanel(stageSelectPanel));
+            btnUpgrade?.onClick.AddListener(() => ShowPanel(upgradePanel));
+            btnMinionStore?.onClick.AddListener(() => ShowPanel(minionStorePanel));
+            btnSetting?.onClick.AddListener(() => ShowPanel(settingPanel));
 
-            foreach (var panel in allSubPanels)
-            {
-                if (panel == null) continue;
-                Button[] subButtons = panel.GetComponentsInChildren<Button>(true);
-                foreach (var btn in subButtons) BindButtonAction(btn);
-            }
+            // 서브 패널 → 메인 메뉴 복귀
+            btnStageSelectBack?.onClick.AddListener(BackToMainMenu);
+            btnUpgradeBack?.onClick.AddListener(BackToMainMenu);
+            btnMinionStoreBack?.onClick.AddListener(BackToMainMenu);
+            btnSettingBack?.onClick.AddListener(BackToMainMenu);
         }
 
-        private void BindButtonAction(Button btn)
+        private void PlaySelectSound()
         {
-            string btnName = btn.name.ToLower();
+            if (GameManager.Instance?.Sound != null)
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+        }
 
-            // [ROBUST] 다른 스크립트와의 리스너 충돌 방지 (특히 back 버튼)
-            if (btnName.Contains("back"))
-            {
-                btn.onClick.RemoveAllListeners();
-            }
-
-            btn.onClick.AddListener(() => {
-                Debug.Log($"<color=yellow>[TitleUI-Click]</color> Button: {btn.name}");
-                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
-                }
-            });
-
-            // [BUGFIX] "back"을 최우선 체크합니다.
-            // "button_back_upgrade"처럼 이름에 다른 키워드가 포함된 경우
-            // 잘못된 분기로 들어가는 것을 방지합니다.
-            if      (btnName.Contains("back"))    btn.onClick.AddListener(() => BackToMainMenu());
-            else if (btnName.Contains("start"))   btn.onClick.AddListener(() => ShowPanel(stageSelectPanel));
-            else if (btnName.Contains("upgrade")) btn.onClick.AddListener(() => ShowPanel(upgradePanel));
-            else if (btnName.Contains("setting")) btn.onClick.AddListener(() => ShowPanel(settingPanel));
+        private void ValidateReferences()
+        {
+            if (authPanel == null)        Debug.LogError("[TitleUI] authPanel is NOT assigned!");
+            if (mainButtonPanel == null)  Debug.LogError("[TitleUI] mainButtonPanel is NOT assigned!");
+            if (stageSelectPanel == null) Debug.LogError("[TitleUI] stageSelectPanel is NOT assigned!");
+            if (upgradePanel == null)     Debug.LogError("[TitleUI] upgradePanel is NOT assigned!");
+            if (minionStorePanel == null) Debug.LogError("[TitleUI] minionStorePanel is NOT assigned!");
+            if (settingPanel == null)     Debug.LogError("[TitleUI] settingPanel is NOT assigned!");
+            if (btnStart == null)         Debug.LogWarning("[TitleUI] btnStart is NOT assigned!");
+            if (btnUpgrade == null)       Debug.LogWarning("[TitleUI] btnUpgrade is NOT assigned!");
+            if (btnMinionStore == null)   Debug.LogWarning("[TitleUI] btnMinionStore is NOT assigned!");
+            if (btnSetting == null)       Debug.LogWarning("[TitleUI] btnSetting is NOT assigned!");
         }
     }
 }

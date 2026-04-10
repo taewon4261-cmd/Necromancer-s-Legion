@@ -100,6 +100,13 @@ public class EnemyAI : UnitBase
         this.data = enemyData;
         if (data == null) return;
 
+        // 1. 외형 변경 (애니메이터 교체)
+        if (data.animatorController != null && unitAnimator != null)
+        {
+            unitAnimator.runtimeAnimatorController = data.animatorController;
+        }
+
+        // 2. 능력치 설정
         float hpMult = 1f;
         float dmgMult = 1f;
 
@@ -164,12 +171,13 @@ public class EnemyAI : UnitBase
 
     public override void ManualFixedUpdate(float fixedDeltaTime)
     {
-        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) 
+        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver))
         {
-            if (rb != null) rb.velocity = Vector2.zero;
+            // [PERF] 이미 0이면 매 프레임 할당 스킵
+            if (rb != null && rb.velocity != Vector2.zero) rb.velocity = Vector2.zero;
             return;
         }
-        
+
         MoveWithSeparation();
     }
 
@@ -280,15 +288,24 @@ public class EnemyAI : UnitBase
     /// </summary>
     private void HandleEssenceDrop()
     {
-        if (data == null) return;
+        if (GameManager.Instance == null || GameManager.Instance.currentStage == null) return;
 
-        // [LOGIC] 마스터의 지시: 10% 확률로 정수 드랍
-        if (Random.Range(0, 100) < 10)
+        float dropRate = GameManager.Instance.currentStage.essenceDropRate;
+        
+        // [RULE] 확률 체크 및 스테이지별 미니언 데이터 가져오기
+        if (Random.value < dropRate)
         {
-            // 중앙 매니저에 정수 가산 (PRD: ResourceManager.Instance.AddEssence 호출)
-            if (Necromancer.Core.ResourceManager.Instance != null)
+            var minionData = GameManager.Instance.GetMinionDataForCurrentStage();
+            if (minionData == null) return;
+
+            if (GameManager.Instance.poolManager != null)
             {
-                Necromancer.Core.ResourceManager.Instance.AddEssence(data.enemyID, 1);
+                // [NEW] 정수 아이템 생성 및 설정
+                GameObject essenceObj = GameManager.Instance.poolManager.Get("Essence", transform.position, Quaternion.identity);
+                if (essenceObj != null && essenceObj.TryGetComponent(out EssenceItem essenceItem))
+                {
+                    essenceItem.Setup(minionData);
+                }
             }
         }
     }
@@ -319,50 +336,65 @@ protected override void Die()
     }
 
     /// <summary>
-    /// [HYBRID TARGETING] 주변 미니언 유무에 따라 타겟을 결정하는 비동기 루프
+    /// [HYBRID TARGETING] 미니언을 최우선으로, 없으면 플레이어를 타겟팅하는 비동기 루프
     /// </summary>
     private async UniTaskVoid ScanForTargetAsync(CancellationToken token)
     {
         // 초기 지터링 부여 (CPU 부하 분산)
         await UniTask.Delay(System.TimeSpan.FromSeconds(Random.Range(0f, 0.5f)), cancellationToken: token).SuppressCancellationThrow();
 
-        while (!isDead && !token.IsCancellationRequested)
+        while (!isDead && !token.IsCancellationRequested && gameObject.activeInHierarchy)
         {
-            // 1. 스나이퍼형 또는 보스는 무조건 플레이어 고정
-            if (data != null && (data.isSniper || data.isElite))
+            // 1. 보스 또는 특정 스나이퍼형은 무조건 플레이어 고정 (전략적 난이도 유지)
+            if (data != null && (data.isElite || data.isSniper))
             {
                 currentTarget = (UnitBase)GameManager.Instance.playerController;
             }
             else
             {
-                // 2. 일반형: UnitManager 격자 시스템 활용 (O(1)에 가까운 탐색)
+                // 2. 일반형: 우선순위가 높은 대상을 스캔 (O(1) 격자 활용)
                 if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
                 {
                     GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, MINION_SCAN_RANGE, nearbyBuffer);
                 }
 
-                UnitBase closestMinion = null;
+                UnitBase bestTarget = null;
+                int highestPriority = -1;
                 float minSqrDist = Mathf.Infinity;
 
                 for (int i = 0; i < nearbyBuffer.Count; i++)
                 {
-                    // [IMPORTANT] MinionAI 타입만 타겟팅 (동료 Enemy는 제외)
-                    if (nearbyBuffer[i] is MinionAI minion && !minion.IsDead)
+                    var unit = nearbyBuffer[i];
+                    if (unit == null || unit.IsDead) continue;
+
+                    // [LOGIC] 우선순위 결정 (미니언은 데이터 기반, 플레이어는 고정값 1)
+                    int priority = 0;
+                    if (unit is MinionAI minion) priority = minion.TargetPriority;
+                    else if (unit is PlayerController) priority = 1; // 플레이어는 최후의 타겟
+
+                    if (priority <= 0) continue;
+
+                    float sqrDist = ((Vector2)transform.position - (Vector2)unit.transform.position).sqrMagnitude;
+
+                    // [DECISION] 1순위: 우선순위가 높은가? 2순위: 더 가까운가?
+                    if (priority > highestPriority)
                     {
-                        float sqrDist = ((Vector2)transform.position - (Vector2)minion.transform.position).sqrMagnitude;
-                        if (sqrDist < minSqrDist)
-                        {
-                            minSqrDist = sqrDist;
-                            closestMinion = minion;
-                        }
+                        highestPriority = priority;
+                        bestTarget = unit;
+                        minSqrDist = sqrDist;
+                    }
+                    else if (priority == highestPriority && sqrDist < minSqrDist)
+                    {
+                        bestTarget = unit;
+                        minSqrDist = sqrDist;
                     }
                 }
                 
-                // 미니언 있으면 미니언, 없으면 플레이어
-                currentTarget = closestMinion ?? (UnitBase)GameManager.Instance.playerController;
+                // [FINAL] 최적의 타겟이 발견되지 않으면 기본적으로 플레이어 추격 (fallback)
+                currentTarget = bestTarget ?? (UnitBase)GameManager.Instance.playerController;
             }
 
-            // 0.4초 간격으로 스캔 (성능 확보)
+            // 0.4초 간격으로 타겟 갱신 (성능 확보)
             bool isCancelled = await UniTask.Delay(System.TimeSpan.FromSeconds(0.4f), cancellationToken: token).SuppressCancellationThrow();
             if (isCancelled) break;
         }

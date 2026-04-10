@@ -24,8 +24,13 @@ namespace Necromancer
         [Tooltip("스테이지 클리어 시 획득하는 골드 배율")]
         public float goldGainMultiplier = 1.0f;
 
+        [Header("Drop Settings")]
+        [Range(0f, 1f)]
+        [Tooltip("적 처치 시 정수 드랍 확률 (0~1)")]
+        public float essenceDropRate = 0.1f;
+
         [Header("Wave Settings")]
         [Tooltip("해당 스테이지에서 등장할 몬스터 웨이브 테이블")]
-        public WaveDatabase waveDatabase; 
+        public WaveDatabase waveDatabase;
     }
 }

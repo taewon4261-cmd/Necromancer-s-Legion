@@ -12,9 +12,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c91140c61f019847a5018fe68573c83, type: 3}
   m_Name: "Enemy_8_\uC815\uC608 \uAD81\uC218"
   m_EditorClassIdentifier: 
+  enemyID: Enemy_01_Peasant
   enemyName: "\uC815\uC608 \uAD81\uC218"
   poolTag: Enemy
   enemyPrefab: {fileID: 0}
+  animatorController: {fileID: 22100000, guid: 92916ce0cbcdec94eb0db4ff9a5d8d9f, type: 2}
   maxHp: 60
   moveSpeed: 1.3
   attackDamage: 20

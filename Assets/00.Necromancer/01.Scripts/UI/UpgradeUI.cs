@@ -42,19 +42,9 @@ namespace Necromancer.UI
 
         private void OnEnable()
         {
-            // [DATA-SAFETY] 상점 진입 시 최신 상태를 강제 로드하여 초기화 지연 및 데이터 불일치 해소
-            if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
-            {
-                GameManager.Instance.SaveData.Load();
-                if (GameManager.Instance.Resources != null)
-                {
-                    // ResourceManager의 휘발성 데이터도 최신 파일 데이터로 덮어쓰기
-                    GameManager.Instance.Resources.currentSoul = GameManager.Instance.SaveData.Data.currentSoul;
-                }
-            }
-
-            // [STABILITY] 이벤트 구독보다 UI 업데이트를 먼저 수행하여 이전 데이터 노출 차단
-            UpdateSoulUI(true); 
+            // [DATA-SAFETY] 진입 시 Load() 호출 제거 — 인게임 미저장 데이터(소울 등)를
+            // 파일 값으로 덮어써 유실하는 버그 방지. 데이터 로드는 게임 시작 시 1회만 수행.
+            UpdateSoulUI(true);
             RefreshUI();
             
             GameManager.OnSoulChanged += HandleSoulChanged;
@@ -147,7 +137,7 @@ namespace Necromancer.UI
                 goldTweener?.Kill();
                 goldTweener = DOTween.To(() => lastDisplayedGold, x => {
                     lastDisplayedGold = x;
-                    soulText.text = $" {x:N0}";
+                    soulText.text = $"Soul : {x:N0}";
                 }, targetSoul, 0.5f).SetEase(Ease.OutQuad);
             }
         }

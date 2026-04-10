@@ -135,14 +135,15 @@ namespace Necromancer
             // 1. [웨이브 가속 시스템] 필드의 적이 0마리이면 즉시 시간 점프
             if (currentWaveIndex < waveDatabase.waveList.Count - 1)
             {
-                // [OPTIMIZATION] 리스트 카운트 대신 O(1) 정수 카운트를 사용합니다.
-                if (activeEnemyCount == 0 && isSpawning)
+                // [BUG-FIX] 게임 시작 직후 또는 웨이브 전환 직후 찰나에 적이 0명인 것을 '클리어'로 오해하는 현상 방지
+                // 최소 3초는 지나야 하며, 게임 시작 직후(gameTime < 5s)에는 가속하지 않음
+                if (activeEnemyCount == 0 && isSpawning && gameTime > 5f)
                 {
                     float nextStartTime = waveDatabase.waveList[currentWaveIndex + 1].startTime;
                     if (gameTime < nextStartTime)
                     {
                         gameTime = nextStartTime; 
-                        Debug.Log($"<color=yellow>[WaveManager]</color> EARLY CLEAR! Jumping to next wave.");
+                        Debug.Log($"<color=yellow>[WaveManager]</color> EARLY CLEAR! Jumping to next wave (Time: {gameTime}).");
                     }
                 }
 
@@ -198,10 +199,12 @@ namespace Necromancer
         {
             if (waveData.enemyPoolList == null || waveData.enemyPoolList.Count == 0) return;
             EnemyData selectedEnemyData = waveData.enemyPoolList[Random.Range(0, waveData.enemyPoolList.Count)];
-            if (selectedEnemyData == null || string.IsNullOrEmpty(selectedEnemyData.poolTag) || playerTransform == null) return;
+            if (selectedEnemyData == null || playerTransform == null) return;
 
             Vector2 spawnPos = (Vector2)playerTransform.position + (Random.insideUnitCircle.normalized * spawnRadius);
-            GameObject enemyObj = GameManager.Instance.poolManager.Get(selectedEnemyData.poolTag, spawnPos, Quaternion.identity);
+            
+            // [AUTOMATION] 개별 태그 대신 통합 "Enemy" 풀 태그 사용
+            GameObject enemyObj = GameManager.Instance.poolManager.Get("Enemy", spawnPos, Quaternion.identity);
 
             if (enemyObj != null)
             {

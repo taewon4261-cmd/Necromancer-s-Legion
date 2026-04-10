@@ -261,7 +261,7 @@ namespace Necromancer.UI
             GameManager.OnExpChanged += UpdateExpBar;
             GameManager.OnLevelUp += HandleLevelUp;
             GameManager.OnWaveStarted += HandleWaveStarted;
-            GameManager.OnSoulChanged += UpdateSoulUI;
+            GameManager.OnSessionSoulChanged += UpdateSoulUI; // 인게임 HUD는 세션 획득량만 표시
             GameManager.OnTimeUpdated += HandleTimeUpdated;
             GameManager.OnSpeedChanged += HandleSpeedChanged;
             GameManager.OnGameOver += ShowResultPanel;
@@ -272,7 +272,7 @@ namespace Necromancer.UI
             GameManager.OnExpChanged -= UpdateExpBar;
             GameManager.OnLevelUp -= HandleLevelUp;
             GameManager.OnWaveStarted -= HandleWaveStarted;
-            GameManager.OnSoulChanged -= UpdateSoulUI;
+            GameManager.OnSessionSoulChanged -= UpdateSoulUI;
             GameManager.OnTimeUpdated -= HandleTimeUpdated;
             GameManager.OnSpeedChanged -= HandleSpeedChanged;
             GameManager.OnGameOver -= ShowResultPanel;

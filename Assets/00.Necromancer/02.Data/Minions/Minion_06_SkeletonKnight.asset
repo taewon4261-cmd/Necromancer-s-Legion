@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1569339c1929e0b4dae30b293eeed99f, type: 3}
+  m_Name: Minion_06_SkeletonKnight
+  m_EditorClassIdentifier: 
+  minionID: SkeletonKnight
+  minionTag: SkeletonKnight
+  minionIcon: {fileID: 21300000, guid: 9a1ba9d793e2bf44bb1e6cb02eaf3c84, type: 3}
+  animatorController: {fileID: 22100000, guid: 052b619bdb4a9fb48b4e044a7df9458b, type: 2}
+  unlockCost_Soul: 2000
+  unlockCost_Essence: 900
+  targetEnemyID: SkeletonKnight
+  tier: 2
+  minionName: "\uD574\uACE8 \uAE30\uC0AC"
+  description: "\uAC15\uB825\uD55C \uBB34\uAD6C\uB85C \uBB34\uC7A5\uD55C \uC5D8\uB9AC\uD2B8
+    \uC5B8\uB370\uB4DC \uC804\uC0AC\uC785\uB2C8\uB2E4."
+  baseHp: 120
+  baseDamage: 40
+  baseSpeed: 3
+  attackRange: 1.8
+  baseAttackSpeed: 1.5
+  targetPriority: 6

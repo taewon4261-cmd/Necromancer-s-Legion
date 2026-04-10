@@ -10,15 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1569339c1929e0b4dae30b293eeed99f, type: 3}
-  m_Name: Minion_01_Warrior
+  m_Name: Minion_01_SkeletonWarrior
   m_EditorClassIdentifier: 
-  minionID: Minion_01_Warrior
-  minionTag: Minion
+  minionID: SkeletonWarrior
+  minionTag: SkeletonWarrior
   minionIcon: {fileID: 21300000, guid: a40d5b8f44f96134e9de189329e6c2cb, type: 3}
+  animatorController: {fileID: 22100000, guid: 052b619bdb4a9fb48b4e044a7df9458b, type: 2}
   unlockCost_Soul: 0
   unlockCost_Essence: 0
-  targetEnemyID: Enemy_01_Peasant
+  targetEnemyID: SkeletonWarrior
   tier: 0
   minionName: "\uD574\uACE8 \uC804\uC0AC"
-  description: "\uAE30\uBCF8 \uADFC\uC811 \uC804\uD22C \uBBF8\uB2C8\uC5B8. \uCC98\uC74C\uBD80\uD130
-    \uD574\uAE08\uB41C \uC0C1\uD0DC\uB85C \uC2DC\uC791\uD569\uB2C8\uB2E4."
+  description: "\uAC00\uC7A5 \uAE30\uBCF8\uC801\uC778 \uC5B8\uB370\uB4DC \uBCF4\uBCD1\uC785\uB2C8\uB2E4.
+    \uC801\uB2F9\uD55C \uCCB4\uB825\uACFC \uACF5\uACA9\uB825\uC744 \uAC16\uCDC4\uC2B5\uB2C8\uB2E4."
+  baseHp: 50
+  baseDamage: 15
+  baseSpeed: 3.5
+  attackRange: 1.5
+  baseAttackSpeed: 1
+  targetPriority: 4

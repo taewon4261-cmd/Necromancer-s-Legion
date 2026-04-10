@@ -32,10 +32,18 @@ namespace Necromancer.UI
         public StageDataSO selectedStage;
         private int currentIndex = 0;
 
+        private void OnEnable()
+        {
+            // 패널이 열릴 때마다 현재 인덱스의 스테이지 정보를 갱신합니다.
+            if (stageList == null || stageList.Count == 0) InitStageList();
+            if (stageList != null && stageList.Count > 0)
+                SelectStage(stageList[currentIndex]);
+        }
+
         private void Start()
         {
             if (startButton != null) startButton.onClick.AddListener(OnStartButtonClicked);
-            if (backButton != null) backButton.onClick.AddListener(OnBackButtonClicked);
+            // backButton은 TitleUIController.btnStageSelectBack에서 BackToMainMenu()로 바인딩합니다.
 
             if (prevButton != null) prevButton.onClick.AddListener(MovePrev);
             if (nextButton != null) nextButton.onClick.AddListener(MoveNext);
@@ -192,27 +200,6 @@ namespace Necromancer.UI
         }
 
 
-
-        private void OnBackButtonClicked()
-        {
-            // [SOUND] 뒤로가기 버튼 클릭 시 기본 효과음
-            if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
-            }
-
-            Debug.Log("<color=orange>[StageSelectUI]</color> Back to Title Scene.");
-            
-            // SceneTransitionManager를 통해 타이틀 씬으로 이동
-            if (Necromancer.Systems.SceneTransitionManager.Instance != null)
-            {
-                Necromancer.Systems.SceneTransitionManager.Instance.ChangeScene("TitleScene");
-            }
-            else
-            {
-                // [FALLBACK] 매니저가 없을 경우 직접 씬 로드
-                UnityEngine.SceneManagement.SceneManager.LoadScene("TitleScene");
-            }
-        }
 
     }
 }

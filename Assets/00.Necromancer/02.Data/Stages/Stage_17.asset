@@ -20,4 +20,5 @@ MonoBehaviour:
   enemyHpMultiplier: 2.6
   enemyDamageMultiplier: 2.6
   goldGainMultiplier: 1.8
+  essenceDropRate: 0.03
   waveDatabase: {fileID: 11400000, guid: 9d75b168f11d14a4e9917c1b8a8037e3, type: 2}

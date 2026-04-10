@@ -145,6 +145,11 @@ MonoBehaviour:
       type: 3}
     size: 100
     batchSize: 30
+  - tag: Essence
+    prefab: {fileID: 7402268239645625210, guid: 20412ba61ffed5841860a12bb4bf7051,
+      type: 3}
+    size: 100
+    batchSize: 30
 --- !u!1 &1697176078313282221
 GameObject:
   m_ObjectHideFlags: 0
@@ -377,6 +382,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   testMode: 1
+  noAdMessagePrefab: {fileID: 0}
+  uiCanvasParent: {fileID: 0}
 --- !u!1 &5882722558533653139
 GameObject:
   m_ObjectHideFlags: 0
@@ -505,7 +512,6 @@ MonoBehaviour:
   _debugConsole: {fileID: 293355105053137642}
   _adManager: {fileID: 8491276329709891338}
   Auth: {fileID: 2786132494251319040}
-  UI: {fileID: 0}
   _poolManager: {fileID: 3109314625104592819}
   _waveManager: {fileID: 5443290973572342523}
   _skillManager: {fileID: 1496586085822398089}
@@ -513,7 +519,13 @@ MonoBehaviour:
   _uiManager: {fileID: 5222022597978494407}
   _titleUI: {fileID: 0}
   _unitManager: {fileID: 877591509518821255}
-  _minionUnlockDataList: []
+  _minionUnlockDataList:
+  - {fileID: 11400000, guid: df4797e7f18409a40a1de36b0023e572, type: 2}
+  - {fileID: 11400000, guid: aed21335d3a65f8449bca64281ebcf03, type: 2}
+  - {fileID: 11400000, guid: eba278a32329d5a45b68d87ace437893, type: 2}
+  - {fileID: 11400000, guid: fb623aea7c1d70547a83a3cf9164ccc0, type: 2}
+  - {fileID: 11400000, guid: 8c0d9559972f13f4ea12952b98b50218, type: 2}
+  - {fileID: 11400000, guid: 7893634c5a3656e44abd44299bb0ab09, type: 2}
   playerTransform: {fileID: 0}
   playerController: {fileID: 0}
   magnetRadius: 5

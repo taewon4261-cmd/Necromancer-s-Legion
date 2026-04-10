@@ -12,12 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2c91140c61f019847a5018fe68573c83, type: 3}
   m_Name: "Enemy_4_\uC815\uADDC\uAD70 \uAC80\uC0AC"
   m_EditorClassIdentifier: 
+  enemyID: Enemy_01_Peasant
   enemyName: "\uC815\uADDC\uAD70 \uAC80\uC0AC"
   poolTag: Enemy
   enemyPrefab: {fileID: 0}
+  animatorController: {fileID: 22100000, guid: 92916ce0cbcdec94eb0db4ff9a5d8d9f, type: 2}
   maxHp: 40
   moveSpeed: 2
   attackDamage: 15
   dropExpAmount: 11
   isRanged: 0
+  isSniper: 0
   isElite: 0
+  isArcher: 0

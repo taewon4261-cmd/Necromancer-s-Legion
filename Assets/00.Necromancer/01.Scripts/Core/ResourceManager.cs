@@ -10,6 +10,10 @@ namespace Necromancer.Core {
         public int unlockedStageLevel;
         private List<LobbyUpgradeSO> upgradeList = new List<LobbyUpgradeSO>();
 
+        // [DATA-SAFETY] 정수 누적 자동 저장 — N개 쌓일 때마다 파일에 기록하여 크래시 대비
+        private int essenceCountSinceLastSave = 0;
+        private const int ESSENCE_AUTOSAVE_THRESHOLD = 5;
+
         private void Awake()
         {
             if (Instance == null) Instance = this;
@@ -17,7 +21,8 @@ namespace Necromancer.Core {
         }
 
         public void Init() {
-            currentSessionSoul = 0; // [DATA-SAFETY] 새로운 세션 시작 시 획득량 초기화
+            currentSessionSoul = 0;       // 새로운 세션 시작 시 획득량 초기화
+            essenceCountSinceLastSave = 0; // 자동 저장 카운터 리셋
             if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null) {
                 var data = GameManager.Instance.SaveData.Data;
                 currentSoul = data.currentSoul;
@@ -65,8 +70,8 @@ namespace Necromancer.Core {
                 // [NOTE] 매 획득마다 저장(File I/O)하면 부하가 생길 수 있으므로 메모리 값만 유지하고 종료 시 일괄 저장
             }
 
-            // UI에는 세션 소울(이번 판 획득량)만 전달하여 0부터 시작하게 함
-            GameManager.BroadcastSoul(currentSessionSoul);
+            GameManager.BroadcastSoul(currentSoul);               // 로비 UI (UpgradeUI, MinionAltarUI) — 전체 보유량
+            GameManager.BroadcastSessionSoul(currentSessionSoul); // 인게임 HUD — 세션 획득량 (0부터 시작)
         }
 
         private void OnApplicationQuit()
@@ -125,10 +130,16 @@ namespace Necromancer.Core {
                 data.minionEssences[enemyID] = 0;
 
             data.minionEssences[enemyID] += amount;
-            
-            // [NOTE] 실시간 저장은 부하를 줄이기 위해 생략하거나 필요 시 호출
-            // SaveDataManager.Instance.Save();
-            
+
+            // [DATA-SAFETY] 5개 누적마다 자동 저장 — 크래시 시 최대 4개만 유실
+            essenceCountSinceLastSave += amount;
+            if (essenceCountSinceLastSave >= ESSENCE_AUTOSAVE_THRESHOLD)
+            {
+                essenceCountSinceLastSave = 0;
+                GameManager.Instance.SaveData.Save();
+                Debug.Log($"<color=blue>[ResourceManager]</color> Essence auto-saved. (threshold: {ESSENCE_AUTOSAVE_THRESHOLD})");
+            }
+
             Debug.Log($"<color=blue>[ResourceManager]</color> Essence Gained: {enemyID} (+{amount})");
         }
 
@@ -165,24 +176,30 @@ namespace Necromancer.Core {
             if (minionData == null || IsMinionUnlocked(minionData.minionID)) return false;
 
             int currentEssence = GetEssenceCount(minionData.targetEnemyID);
-            
-            if (currentSoul >= minionData.unlockCost_Soul && currentEssence >= minionData.unlockCost_Essence)
-            {
-                // 소울 차감
-                SpendSoul(minionData.unlockCost_Soul);
-                // 정수 차감 (SpendEssence로 일원화)
-                SpendEssence(minionData.targetEnemyID, minionData.unlockCost_Essence);
+            if (currentSoul < minionData.unlockCost_Soul || currentEssence < minionData.unlockCost_Essence)
+                return false;
 
-                // 해금 리스트 등록
-                var data = GameManager.Instance.SaveData.Data;
-                data.unlockedMinionIDs.Add(minionData.minionID);
-                GameManager.Instance.SaveData.Save();
+            var data = GameManager.Instance.SaveData.Data;
 
-                Debug.Log($"<color=gold>[ResourceManager]</color> Minion Permanently Unlocked: {minionData.minionName}");
-                return true;
-            }
+            // 소울 차감 (SpendSoul 대신 직접 수정 — Save() 중복 호출 방지)
+            currentSoul -= minionData.unlockCost_Soul;
+            data.currentSoul = currentSoul;
+            GameManager.BroadcastSoul(currentSoul);
 
-            return false;
+            // 정수 차감 (SpendEssence 대신 직접 수정 — 동일 이유)
+            data.minionEssences[minionData.targetEnemyID] = currentEssence - minionData.unlockCost_Essence;
+
+            // 해금 등록
+            data.unlockedMinionIDs.Add(minionData.minionID);
+
+            // 모든 데이터 변경 완료 후 단 한 번만 저장
+            GameManager.Instance.SaveData.Save();
+
+            if (GameManager.Instance?.Sound != null)
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade);
+
+            Debug.Log($"<color=gold>[ResourceManager]</color> Minion Permanently Unlocked: {minionData.minionName}");
+            return true;
         }
         #endregion
         /// <summary>

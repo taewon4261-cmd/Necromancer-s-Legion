@@ -14,63 +14,74 @@ namespace Necromancer
 [RequireComponent(typeof(Rigidbody2D))]
 public class MinionAI : UnitBase
 {
-    [Header("Minion Settings")]
-    [Tooltip("적에게 닿았을 때 입히는 데미지")]
+    [Header("Identity & Data")]
+    public Necromancer.Data.MinionUnlockSO minionData; // [NEW] 개별 능력치 데이터 연결
+
+    [Header("Minion Settings (Overridden by SO)")]
     public float attackDamage = 15f;
-    
-    [Tooltip("소멸하기 전까지 유지되는 생존 시간 (초 단위)")]
     public float lifeTime = 10f;
-    
-    [Tooltip("타겟을 새로 갱신하는 주기 (최적화용)")]
     public float targetScanRate = 0.5f;
-    
-    [Tooltip("공격 쿨타임")]
     public float hitCooldown = 0.5f;
+    public float attackRange = 1.5f; // [NEW] 공격 사거리
+public int TargetPriority => (minionData != null) ? minionData.targetPriority : 5; // [NEW] 우선순위 노출
 
+[Header("Inspector References (Zero-Search)")]
+[SerializeField] private Rigidbody2D rb;
 
-    [Header("Inspector References (Zero-Search)")]
-    [SerializeField] private Rigidbody2D rb;
+private Transform currentTarget;
+private float lastHitTime;
+private float spawnTime;
+private Transform playerTransform;
+private CancellationTokenSource lifetimeCts;
 
-    private Transform currentTarget;
-    private float lastHitTime;
-    private float spawnTime;
-    private Transform playerTransform;
-    private CancellationTokenSource lifetimeCts;
-    
+/// <summary>
+/// [AUTOMATION] 소환 시 데이터를 주입받아 외형과 스탯을 동적으로 설정합니다.
+/// </summary>
+public void Initialize(Necromancer.Data.MinionUnlockSO data)
+{
+    this.minionData = data;
+
+    // 1. 외형 변경 (애니메이터 교체)
+    if (data != null && data.animatorController != null && unitAnimator != null)
+    {
+        unitAnimator.runtimeAnimatorController = data.animatorController;
+    }
+
+    // 2. 스탯 재계산 및 전역 버프 적용
+    ApplyGlobalBuffs();
+
+    // 3. 체력 완전 회복 (새로운 데이터 기반)
+    this.currentHp = this.maxHp;
+}
+
     // [OPTIMIZATION] 물리 쿼리용 버퍼 및 레이어 마스크
     private static readonly Collider2D[] scanBuffer = new Collider2D[10];
     private static readonly Collider2D[] explosionBuffer = new Collider2D[20];
     [SerializeField] private LayerMask enemyLayer;
 
-        // [OPTIMIZATION] 타겟팅용 버퍼
-    private float scanRange = 5.0f;
+    // [OPTIMIZATION] 타겟팅용 버퍼
+    private float scanRange = 10.0f;
     private List<UnitBase> nearbyBuffer = new List<UnitBase>(16);
-protected override void Awake()
+
+    protected override void Awake()
     {
-        // [Pure Inspector] 모든 참조를 미리 인스펙터에서 연결했으므로 런타임 검색 비용 0ms
-        // [UnitBase] 부모의 Awake(currentHp 초기화 등)만 호출
         base.Awake();
-        
         if (rb != null) rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
     }
 
     protected override void OnEnable()
     {
-        // 1. 전역 버프 적용 및 이벤트 구독
+        // 1. 데이터 기반 초기화 및 전역 버프 적용
         ApplyGlobalBuffs();
         SkillManager.OnMinionStatsChanged += ApplyGlobalBuffs;
         
-        // 2. 그 다음 기본 UnitBase.OnEnable()을 호출
         base.OnEnable();
         
         spawnTime = Time.time;
         currentTarget = null;
         lifetimeCts = new CancellationTokenSource();
 
-        // 플레이어 위치 캐싱
         if (GameManager.Instance != null) playerTransform = GameManager.Instance.playerTransform;
-        
-        // [STABILITY] 오브젝트 비활성화 시 즉시 중단되도록 lifetimeCts.Token 연결
         ScanForTargetAsync(lifetimeCts.Token).Forget();
     }
 
@@ -80,15 +91,24 @@ protected override void Awake()
         {
             SkillManager sManager = GameManager.Instance.skillManager;
             
-            // [DATA INTEGRITY] HP Ratio Preservation (전역 버프 적용 시 비율 유지)
+            // [DATA-DRIVEN] 데이터 기반 기본값 설정 (SO가 없을 경우 기본값 유지)
+            float baseHpVal = (minionData != null) ? minionData.baseHp : 50f;
+            float baseSpeedVal = (minionData != null) ? minionData.baseSpeed : 3f;
+            float baseDmgVal = (minionData != null) ? minionData.baseDamage : 15f;
+            float baseAtkSpeedVal = (minionData != null) ? minionData.baseAttackSpeed : 1.0f; // [NEW] 기본 공속
+            this.attackRange = (minionData != null) ? minionData.attackRange : 1.5f;
+
             float oldMaxHp = maxHp;
             float hpRatio = (oldMaxHp > 0) ? currentHp / oldMaxHp : 1f;
 
-            this.maxHp = 50f * sManager.globalMinionHpBonusRatio;
-            this.moveSpeed = 3f * sManager.globalMinionSpeedBonusRatio;
-            this.attackDamage = 15f * sManager.globalMinionDamageBonusRatio;
+            this.maxHp = baseHpVal * sManager.globalMinionHpBonusRatio;
+            this.moveSpeed = baseSpeedVal * sManager.globalMinionSpeedBonusRatio;
+            this.attackDamage = baseDmgVal * sManager.globalMinionDamageBonusRatio;
+            
+            // [NEW] 공격 속도를 쿨타임으로 변환 (예: 공속 2.0 -> 0.5초 쿨타임)
+            float finalAtkSpeed = baseAtkSpeedVal * sManager.globalMinionAttackSpeedBonusRatio;
+            this.hitCooldown = (finalAtkSpeed > 0) ? (1f / finalAtkSpeed) : 1f;
 
-            // 새로운 최대 체력에 맞춰 현재 체력 보정
             this.currentHp = maxHp * hpRatio;
         }
     }
@@ -106,37 +126,41 @@ protected override void Awake()
     public override void ManualUpdate(float deltaTime)
     {
         base.ManualUpdate(deltaTime);
-        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) 
+        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver))
         {
-            if (rb != null) rb.velocity = Vector2.zero;
+            // [PERF] 이미 0이면 매 프레임 할당 스킵
+            if (rb != null && rb.velocity != Vector2.zero) rb.velocity = Vector2.zero;
             return;
         }
 
         UpdateAnimation();
 
-        if (playerTransform != null)
-        {
-            float sqrDistToPlayer = (playerTransform.position - transform.position).sqrMagnitude;
-            if (sqrDistToPlayer > 144.0f) // 12.0f * 12.0f
-            {
-                transform.position = playerTransform.position + (Vector3)Random.insideUnitCircle * 2f;
-            }
-        }
+        // [PERF] 텔레포트 체크는 ScanForTargetAsync(300ms 주기)로 이전 — ManualUpdate(매 프레임) 불필요
 
         if (Time.time > spawnTime + lifeTime)
         {
             Die();
         }
+
+        // [NEW] 원거리 공격 로직 (업데이트 루프에서 쿨타임 체크)
+        if (attackRange > 1.8f && currentTarget != null)
+        {
+            float sqrDist = (currentTarget.position - transform.position).sqrMagnitude;
+            if (sqrDist <= attackRange * attackRange)
+            {
+                TryRangedAttack();
+            }
+        }
     }
 
     public override void ManualFixedUpdate(float fixedDeltaTime)
     {
-        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) 
+        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver))
         {
-             if (rb != null) rb.velocity = Vector2.zero;
-             return;
+            if (rb != null && rb.velocity != Vector2.zero) rb.velocity = Vector2.zero;
+            return;
         }
-        
+
         ChaseTarget();
     }
 
@@ -157,7 +181,15 @@ protected override void Awake()
         {
             if (isDead) break;
 
-            // [GC-FREE] GetNearbyUnitsNonAlloc을 활용하여 힙 할당 없이 주변 유닛 스캔
+            // [PERF] 텔레포트 체크: ManualUpdate(매 프레임)에서 이곳(300ms)으로 이전
+            // 미니언 수십 마리 기준 초당 연산 횟수를 ~60회 → ~3.3회로 감소
+            if (playerTransform != null)
+            {
+                float sqrDistToPlayer = (playerTransform.position - transform.position).sqrMagnitude;
+                if (sqrDistToPlayer > 144.0f) // 12.0f * 12.0f
+                    transform.position = playerTransform.position + (Vector3)Random.insideUnitCircle * 2f;
+            }
+
             if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
             {
                 GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, scanRange, nearbyBuffer);
@@ -169,7 +201,6 @@ protected override void Awake()
             for (int i = 0; i < nearbyBuffer.Count; i++)
             {
                 var unit = nearbyBuffer[i];
-                // 미니언 자신이나 플레이어/동료 미니언을 제외한 '적'만 타겟팅 (is PlayerController check)
                 if (unit == null || unit.IsDead || unit is MinionAI || unit is PlayerController) continue;
 
                 float sqrDist = (transform.position - unit.transform.position).sqrMagnitude;
@@ -180,10 +211,7 @@ protected override void Awake()
                 }
             }
 
-            // [STABILITY] Transform 조준을 위해 UnitBase에서 transform 추출
             currentTarget = (newTarget != null) ? newTarget.transform : null;
-
-            // 성능 부하 분산을 위한 대기
             await UniTask.Delay(300, cancellationToken: token).SuppressCancellationThrow();
         }
     }
@@ -207,43 +235,46 @@ protected override void Awake()
             return;
         }
 
-        Vector2 direction = (currentTarget.position - transform.position).normalized;
-        rb.velocity = direction * moveSpeed;
+        float distSqr = (currentTarget.position - transform.position).sqrMagnitude;
+        float stopRange = attackRange * 0.8f; // 사거리 80% 지점에서 정지하여 공격 준비
+
+        if (distSqr > stopRange * stopRange)
+        {
+            Vector2 direction = (currentTarget.position - transform.position).normalized;
+            rb.velocity = direction * moveSpeed;
+        }
+        else
+        {
+            rb.velocity = Vector2.zero; // 공격 사거리 내에서는 정지
+        }
     }
 
     public void AddLifeTime(float amount)
     {
-        // 생존 시간을 연장하기 위해 스폰 시점을 과거로 밉니다.
         spawnTime += amount;
     }
 
-    /// <summary>
-    /// 트리거 충돌 판정 (적 타격 로직) - 뱀서류 군집 AI 최적화
-    /// </summary>
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        // [STABILITY] 스치기 불사 해결: 처음 닿는 순간에는 프레임 필터링 없이 무조건 타격 시도
-        TryAttack(collision, true);
+        // [CHECK] 근거리 미니언인 경우에만 접촉 공격 수행
+        if (attackRange <= 1.8f)
+            TryAttack(collision, true);
     }
 
     private void OnTriggerStay2D(Collider2D collision)
     {
-        // 머물러 있을 때만 프레임 최적화 적용
-        TryAttack(collision, false);
+        if (attackRange <= 1.8f)
+            TryAttack(collision, false);
     }
 
     private void TryAttack(Collider2D collision, bool isInitialContact)
     {
         if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) return;
-
-        // [OPTIMIZATION] 첫 타격이 아닐 때만 1/5 프레임 최적화
         if (!isInitialContact && Time.frameCount % 5 != 0) return;
         if (Time.time < lastHitTime + hitCooldown) return;
 
-        // 상대방이 적인지 태그로 확인
         if (collision.CompareTag("Enemy"))
         {
-            // [Zero-Search] GetComponent<UnitBase> 대신 인터페이스 레이어 사용 (성능 최적화)
             if (collision.TryGetComponent(out IDamageable targetUnit))
             {
                 SkillManager sManager = GameManager.Instance.skillManager;
@@ -252,24 +283,34 @@ protected override void Awake()
                 if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
                 targetUnit.ApplyDamage(finalDamage, this);
 
-                // [SOUND] 일반 공격(미니언 공격) 효과음 재생
                 if (GameManager.Instance != null && GameManager.Instance.Sound != null)
                 {
-                    // [IMPORTANT] 현재는 근접 공격 미니언 로직이므로 NormalAttackCraw 재생
                     GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxNormalAttackCraw);
                 }
                 
-                // [Kill-to-Live] 적의 남은 체력을 체크하여 처치 시 수명 회복 (0.2s)
-                if (targetUnit.IsDead)
-                {
-                    AddLifeTime(0.2f);
-                }
-
+                if (targetUnit.IsDead) AddLifeTime(0.2f);
                 lastHitTime = Time.time;
-                
-                // [REGISTRY PATTERN] AI는 구체적인 스킬 효과를 몰라도 되며, 
-                // SkillManager가 등록된 모든 공격 효과를 일괄적으로 적용합니다 (Agnostic).
                 if (sManager != null) sManager.ApplyAttackEffects(targetUnit.Unit);
+            }
+        }
+    }
+
+    private void TryRangedAttack()
+    {
+        if (Time.time < lastHitTime + hitCooldown) return;
+        if (currentTarget == null) return;
+
+        // [ACTION] 투사체 발사 (PoolManager 활용)
+        if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
+        {
+            GameObject projGo = GameManager.Instance.poolManager.Get("BoneProjectile", transform.position, Quaternion.identity);
+            if (projGo != null && projGo.TryGetComponent<BoneProjectile>(out var proj))
+            {
+                Vector2 dir = (currentTarget.position - transform.position).normalized;
+                proj.Fire(dir, attackDamage);
+                
+                if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
+                lastHitTime = Time.time;
             }
         }
     }
@@ -282,16 +323,12 @@ protected override void Awake()
         SkillManager sManager = GameManager.Instance.skillManager;
         if (sManager != null && sManager.minionExplosionDamage > 0f)
         {
-            // [GC-FIX] OverlapCircleAll 대신 NonAlloc 사용
             int count = Physics2D.OverlapCircleNonAlloc(transform.position, 2f, explosionBuffer);
             for (int i = 0; i < count; i++)
             {
                 Collider2D h = explosionBuffer[i];
-                if (h == null) continue;
-
-                if (h.CompareTag("Enemy"))
+                if (h != null && h.CompareTag("Enemy"))
                 {
-                    // [Zero-Search] 대규모 폭발 시 루프 내 검색 비용 제거
                     if (h.TryGetComponent(out IDamageable targetUnit))
                     {
                         targetUnit.ApplyDamage(sManager.minionExplosionDamage, this);
@@ -302,12 +339,15 @@ protected override void Awake()
         
         if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
         {
-            GameManager.Instance.poolManager.Release("Minion", gameObject);
+            // [BUG-FIX] 하드코딩된 "Minion" 태그 대신 SO의 minionTag를 사용하여 개별 풀에 정확히 반납
+            // 기본 미니언(SO 없음)은 GameManager.minionPoolTag("Minion")로 fallback
+            string poolTag = (minionData != null && !string.IsNullOrEmpty(minionData.minionTag))
+                ? minionData.minionTag
+                : GameManager.Instance.minionPoolTag;
+            GameManager.Instance.poolManager.Release(poolTag, gameObject);
         }
         else
-        {
             Destroy(gameObject);
-        }
     }
 }
 }
