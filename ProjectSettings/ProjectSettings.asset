@@ -819,7 +819,11 @@ PlayerSettings:
   webGLMemoryGeometricGrowthCap: 96
   webGLPowerPreference: 2
   scriptingDefineSymbols:
-    Android: DOTWEEN
+    1: GPGS
+    7: GPGS
+    13: GPGS
+    30: GPGS
+    Android: DOTWEEN;GPGS
     EmbeddedLinux: DOTWEEN
     GameCoreScarlett: DOTWEEN
     GameCoreXboxOne: DOTWEEN
