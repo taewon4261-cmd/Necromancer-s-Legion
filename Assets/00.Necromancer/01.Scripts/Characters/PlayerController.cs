@@ -45,8 +45,14 @@ public class PlayerController : UnitBase
     public float dodgeChance = 0f;
     private float regenAmount = 0f;
     private bool isAuraEnabled = false;
+    private float auraRadius = 3.5f; // [UPGRADE] ApplyUpgradedStats에서 AuraRange 업그레이드 적용 대상
+
+    [Header("Skill Visuals (Optional - Assign in Inspector for better performance)")]
+    [SerializeField] private GameObject auraVisualObject; // [NEW] 인스펙터에서 직접 연결 가능
+    private Transform auraVisualInstance; 
 
     private bool isRegenActive = false;
+    private readonly List<UnitBase> auraBuffer = new List<UnitBase>(16); // [PERF] GC 방지용 재사용 버퍼
 
     protected override void Awake()
     {
@@ -98,19 +104,25 @@ public class PlayerController : UnitBase
         if (GameManager.Instance == null || GameManager.Instance.Resources == null) return;
 
         var side = GameManager.Instance.Resources;
-        float hpUpgrade = side.GetUpgradeValue(UpgradeStatType.Health); 
-        maxHp += hpUpgrade;
+        
+        // [1] Player Base Stats
+        maxHp += side.GetUpgradeValue(UpgradeStatType.Health); 
         currentHp = maxHp;
-
-        float speedUpgrade = side.GetUpgradeValue(UpgradeStatType.MoveSpeed);
-        moveSpeed += speedUpgrade;
-
+        moveSpeed += side.GetUpgradeValue(UpgradeStatType.MoveSpeed);
+        
+        // [2] Magnet & Utility
         float magnetUpgrade = side.GetUpgradeValue(UpgradeStatType.MagnetRange);
         GameManager.Instance.magnetRadius += magnetUpgrade;
-        
         UpdateMagnetRadius();
 
-        Debug.Log($"[PlayerController] Lobby Upgrades Applied. Final HP: {maxHp}, Speed: {moveSpeed}, Magnet: {GameManager.Instance.magnetRadius}");
+        // [3] Combat Upgrades (New)
+        // 공격력 가산 (기본 데미지에 합산)
+        bodySlamDamage += side.GetUpgradeValue(UpgradeStatType.AttackDamage);
+
+        // 죽음의 오라 범위 가산
+        auraRadius += side.GetUpgradeValue(UpgradeStatType.AuraRange);
+
+        Debug.Log($"[PlayerController] Lobby Upgrades Applied. HP: {maxHp}, Atk: {bodySlamDamage}, Speed: {moveSpeed}");
     }
 
     public void UpdateMagnetRadius()
@@ -185,13 +197,14 @@ public class PlayerController : UnitBase
         isKnockbackActive = false;
     }
 
-    private async UniTaskVoid InvincibilityAsync()
+    // duration 미지정 시 invincibilityDuration(0.25s) 사용, 지정 시 해당 값 사용 (부활 2s 무적 등)
+    private async UniTaskVoid InvincibilityAsync(float duration = -1f)
     {
         isInvincible = true;
         float elapsed = 0f;
-        
-        // 0.25초 동안 깜빡임 연출
-        while (elapsed < invincibilityDuration)
+        float activeDuration = duration > 0f ? duration : invincibilityDuration;
+
+        while (elapsed < activeDuration)
         {
             if (unitSprite != null) unitSprite.color = new Color(1, 1, 1, 0.2f);
             await UniTask.Delay(50);
@@ -231,8 +244,103 @@ public class PlayerController : UnitBase
 
     public void EnableDeathAura(bool enable)
     {
+        bool wasEnabled = isAuraEnabled;
         isAuraEnabled = enable;
+        
+        // [NEW] 비주얼 오브젝트 관리
+        UpdateAuraVisual(enable);
+
+        if (isAuraEnabled && !wasEnabled)
+        {
+            DeathAuraLoopAsync().Forget();
+            DeathAuraVisualPulseAsync().Forget(); // 펄싱 애니메이션 시작
+        }
         Debug.Log($"[Player] 죽음의 오라 상태: {enable}");
+    }
+
+    private void UpdateAuraVisual(bool enable)
+    {
+        if (enable)
+        {
+            // 1. 인스펙터에서 미리 할당된 오브젝트가 있다면 우선 사용
+            if (auraVisualInstance == null && auraVisualObject != null)
+            {
+                auraVisualInstance = auraVisualObject.transform;
+                // 범위에 맞춰 스케일 고정 (반경 3.5 -> 7.0)
+                auraVisualInstance.localScale = Vector3.one * 7f;
+            }
+
+            // 2. 할당된 것도 없고 생성된 것도 없다면 그때만 자동 생성 (Safe-net)
+            if (auraVisualInstance == null)
+            {
+                GameObject auraGo = new GameObject("DeathAura_Visual");
+                auraGo.transform.SetParent(this.transform);
+                auraGo.transform.localPosition = Vector3.zero;
+
+                var sr = auraGo.AddComponent<SpriteRenderer>();
+                sr.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
+                if (sr.sprite == null) sr.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
+                
+                sr.color = new Color(0.6f, 0.1f, 0.9f, 0.15f);
+                sr.sortingOrder = -1;
+                
+                auraGo.transform.localScale = Vector3.one * 7f;
+                auraVisualInstance = auraGo.transform;
+            }
+            auraVisualInstance.gameObject.SetActive(true);
+        }
+        else if (auraVisualInstance != null)
+        {
+            auraVisualInstance.gameObject.SetActive(false);
+        }
+    }
+
+    private async UniTaskVoid DeathAuraVisualPulseAsync()
+    {
+        var token = gameObject.GetCancellationTokenOnDestroy();
+        Vector3 baseScale = Vector3.one * 7f;
+
+        while (!isDead && isAuraEnabled && !token.IsCancellationRequested)
+        {
+            if (auraVisualInstance != null)
+            {
+                // 소생하는 느낌의 부드러운 펄싱 효과
+                float sinValue = (Mathf.Sin(Time.time * 2f) + 1f) / 2f; // 0 ~ 1 사이 반복
+                auraVisualInstance.localScale = baseScale * (0.95f + sinValue * 0.1f);
+            }
+            await UniTask.Yield(PlayerLoopTiming.Update, token);
+        }
+    }
+
+    private async UniTaskVoid DeathAuraLoopAsync()
+    {
+        var token = gameObject.GetCancellationTokenOnDestroy();
+        // auraRadius는 클래스 필드 사용 (ApplyUpgradedStats에서 업그레이드 수치 적용됨)
+        float auraDamage = 15f; // [BALANCE] 기초 데미지 15
+
+        while (!isDead && isAuraEnabled && !token.IsCancellationRequested)
+        {
+            // 주변 적 스캔 (UnitManager 격자 시스템 활용)
+            if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
+            {
+                auraBuffer.Clear();
+                GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, auraRadius, auraBuffer);
+
+                foreach (var unit in auraBuffer)
+                {
+                    if (unit != null && unit is EnemyAI && !unit.IsDead)
+                    {
+                        // 초당 데미지 적용
+                        unit.ApplyDamage(auraDamage, this);
+
+                        // [VISUAL] 오라 피격 이펙트 (필요 시 추가 가능)
+                    }
+                }
+            }
+
+            // 0.8초마다 한 번씩 타격 (너무 자주 연산하지 않도록 최적화)
+            await UniTask.Delay(800, cancellationToken: token);
+        }
     }
 
     private void UpdateAnimation()
@@ -296,7 +404,19 @@ public class PlayerController : UnitBase
 
     protected override void Die()
     {
+        // [UPGRADE] 부활 로직 체크
+        if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
+        {
+            if (GameManager.Instance.skillManager.totalResurrections > 0)
+            {
+                GameManager.Instance.skillManager.totalResurrections--;
+                Resurrect();
+                return;
+            }
+        }
+
         base.Die();
+        
         if (unitAnimator != null)
         {
             unitAnimator.updateMode = AnimatorUpdateMode.UnscaledTime;
@@ -311,6 +431,21 @@ public class PlayerController : UnitBase
         }
         
         Debug.Log("[PlayerController] Player is dead. Triggering GameOver sequence.");
+    }
+
+    private void Resurrect()
+    {
+        isDead = false;
+        currentHp = maxHp;
+        
+        // 2초간 무적 및 시각적 효과
+        InvincibilityAsync(2.0f).Forget();
+        
+        // [SOUND] 부활 효과음
+        if (GameManager.Instance != null && GameManager.Instance.Sound != null)
+            GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxWin); 
+
+        Debug.Log("<color=gold>[Player] RESURRECTED!</color> Remaining Lives: " + (GameManager.Instance?.skillManager?.totalResurrections ?? 0));
     }
 }
 }

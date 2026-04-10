@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3de13da3839d83e4cac256fe493d509c, type: 3}
   m_Name: 12_Upgrade_CDR
   m_EditorClassIdentifier: 
-  upgradeName: "\uC601\uD63C\uC758 \uC21C\uD658"
-  saveKey: Upgrade_CDR_Lv
+  upgradeName: "\uAD11\uBD84"
+  saveKey: Upgrade_MinionAtkSpeed_Lv
   statType: 11
   icon: {fileID: 21300000, guid: aff2497a5968c784f89bd1f0ebd55218, type: 3}
   iconFrame: {fileID: 0}
-  description: "\uC7AC\uC0AC\uC6A9 \uB300\uAE30\uC2DC\uAC04 \uAC10\uC18C"
+  description: "\uBCD1\uC0AC\uC758 \uACF5\uACA9 \uC18D\uB3C4\uB97C \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."
   requiredUpgrade: {fileID: 0}
   requiredLevel: 0
   currentLevel: 0
   maxLevel: 6
   baseCost: 1500
   costIncreaseFactor: 1
-  valuePerLevel: 0.05
+  valuePerLevel: 1

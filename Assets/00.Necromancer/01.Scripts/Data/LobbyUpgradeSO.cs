@@ -4,22 +4,22 @@ namespace Necromancer
 {
     public enum UpgradeStatType
     {
-        Health,             // 체력 강화
-        AttackDamage,       // 공격력 증가 (방어무시/위력)
+        Health,             // 본체 체력 강화
+        AttackDamage,       // 본체 공격력 증가
         MagnetRange,        // 자석 범위
         StartMinionCount,   // 시작 해골 수 증가
-        MoveSpeed,          // 이동속도
+        MoveSpeed,          // 본체 이동속도
         SoulGain,           // 영혼 획득
         ExpGain,            // 경험치 획득
-        RerollCount,        // 리롤 횟수
+        MinionHealth,       // [NEW] 미니언 체력 증가 (운명 뒤틀기 대체)
         AuraRange,          // 오라 범위
         MinionDamage,       // 미니언 공격력
         MinionSpeed,        // 미니언 속도
-        CooldownReduction,   // 재사용 대기시간 감소
+        MinionAttackSpeed,  // [NEW] 미니언 공격 속속 (재사용 대기시간 대체)
         Resurrection,
-        UnlockArcher,       // 해골 궁수 해금
-        UnlockMage,         // 해골 마법사 해금
-        UnlockGiant          // 해골 거인 해금
+        UnlockArcher,       
+        UnlockMage,         
+        UnlockGiant          
     }
 
     /// <summary>

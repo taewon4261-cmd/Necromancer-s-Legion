@@ -8,6 +8,8 @@ namespace Necromancer.Core {
         public int currentSoul;
         public int currentSessionSoul; // 이번 판에서 얻은 실시간 소울 (UI 표현용)
         public int unlockedStageLevel;
+        // [INSPECTOR] Resources.LoadAll 대신 Inspector 직렬화 사용 (Resources 폴더 의존 제거)
+        [SerializeField] private List<LobbyUpgradeSO> upgradeSOConfig = new List<LobbyUpgradeSO>();
         private List<LobbyUpgradeSO> upgradeList = new List<LobbyUpgradeSO>();
 
         // [DATA-SAFETY] 정수 누적 자동 저장 — N개 쌓일 때마다 파일에 기록하여 크래시 대비
@@ -28,10 +30,15 @@ namespace Necromancer.Core {
                 currentSoul = data.currentSoul;
                 unlockedStageLevel = data.unlockedStageLevel;
             }
-            upgradeList = Resources.LoadAll<LobbyUpgradeSO>("Upgrades").ToList();
-            
+            // [INSPECTOR] Inspector에서 직접 연결된 SO 리스트 사용 (Resources 폴더 불필요)
+            upgradeList = upgradeSOConfig;
+            if (upgradeList == null || upgradeList.Count == 0)
+            {
+                Debug.LogError("<color=red>[ResourceManager]</color> upgradeSOConfig is EMPTY! Assign LobbyUpgradeSO list in Inspector.");
+            }
+
             // [DATA.md] 중앙 집중형 데이터 시스템을 사용하도록 로드 시점 일원화
-            foreach (var u in upgradeList) 
+            foreach (var u in upgradeList)
             {
                 if (u != null) u.LoadLevel(); // 내부적으로 GameManager.SaveData를 사용
             }
@@ -56,8 +63,12 @@ namespace Necromancer.Core {
         /// 인게임에서 적을 처치하거나 보석을 먹어 소울을 획득할 때 호출
         /// </summary>
         public void AddSoul(int a) { 
-            currentSessionSoul += a; 
-            currentSoul += a; // [DATA-SAFETY] 이번 판 획득량을 즉시 전체 지갑에 합산
+            // [UPGRADE] 영혼 획득량 보너스 적용
+            float bonus = GetUpgradeValue(UpgradeStatType.SoulGain); // 예: 0.1 이면 10% 추가
+            int finalAmount = Mathf.RoundToInt(a * (1f + bonus));
+
+            currentSessionSoul += finalAmount; 
+            currentSoul += finalAmount; // [DATA-SAFETY] 이번 판 획득량을 즉시 전체 지갑에 합산
 
             // [SOUND] 소울 획득 효과음 재생
             if (GameManager.Instance != null && GameManager.Instance.Sound != null) {

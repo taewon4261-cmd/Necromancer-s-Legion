@@ -20,7 +20,7 @@ namespace Necromancer.UI
         public void SyncUpgradeData()
         {
 #if UNITY_EDITOR
-            string[] guids = AssetDatabase.FindAssets("t:LobbyUpgradeSO", new[] { "Assets/Necromancer/02.Data/Upgrades" });
+            string[] guids = AssetDatabase.FindAssets("t:LobbyUpgradeSO", new[] { "Assets/00.Necromancer/02.Data/Upgrades" });
             upgradeList = guids.Select(guid => AssetDatabase.LoadAssetAtPath<LobbyUpgradeSO>(AssetDatabase.GUIDToAssetPath(guid)))
                                .OrderBy(x => x.name.Split('_')[0]) // 숫자로 정렬할 수 있도록 보완
                                .ToList();

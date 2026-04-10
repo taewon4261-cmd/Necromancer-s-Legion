@@ -107,7 +107,8 @@ namespace Necromancer
 
         private void RecycleDistantEnemies()
         {
-            if (playerTransform == null || GameManager.Instance.unitManager == null) return;
+            if (playerTransform == null || GameManager.Instance == null) return;
+            if (GameManager.Instance.unitManager == null || GameManager.Instance.poolManager == null) return;
 
             var units = GameManager.Instance.unitManager.allUnits;
             float sqrDespawnRadius = despawnRadius * despawnRadius;
@@ -122,8 +123,8 @@ namespace Necromancer
                 float sqrDist = (unit.transform.position - playerPos).sqrMagnitude;
                 if (sqrDist > sqrDespawnRadius)
                 {
-                    // 즉시 오브젝트 풀로 회수 (OnDisable에서 카운트 반환됨)
-                    unit.gameObject.SetActive(false);
+                    // [BUG-FIX] 단순히 SetActive(false)가 아니라 풀로 명확히 반납해야 함
+                    GameManager.Instance.poolManager.Release("Enemy", unit.gameObject);
                 }
             }
         }

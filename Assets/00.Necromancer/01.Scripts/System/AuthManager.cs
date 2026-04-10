@@ -29,6 +29,23 @@ namespace Necromancer.Systems
 
         public void Init()
         {
+            // [STABILITY] Firebase 의존성 체크 후 비동기 초기화 (Crash 방지)
+            Firebase.FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task => {
+                var dependencyStatus = task.Result;
+                if (dependencyStatus == Firebase.DependencyStatus.Available)
+                {
+                    UnityMainThreadDispatcher.Enqueue(StartInitialization);
+                }
+                else
+                {
+                    Debug.LogError($"[AuthManager] Could not resolve all Firebase dependencies: {dependencyStatus}");
+                    UnityMainThreadDispatcher.Enqueue(() => SetState(AuthState.Failed));
+                }
+            });
+        }
+
+        private void StartInitialization()
+        {
             auth = FirebaseAuth.DefaultInstance;
 
 #if GPGS
@@ -42,7 +59,7 @@ namespace Necromancer.Systems
                 lastMethod = GameManager.Instance.SaveData.Data.lastLoginMethod;
             }
 
-            Debug.Log($"<color=cyan>[AuthManager]</color> Last Login Method: {lastMethod}");
+            Debug.Log($"<color=cyan>[AuthManager]</color> Firebase Initialized. Last Login Method: {lastMethod}");
 
             if (lastMethod == "Google")
             {

@@ -23,6 +23,7 @@ public class BoneProjectile : UnitBase
 
     private Rigidbody2D rb;
     private CancellationTokenSource projectileCts;
+    private UnitBase owner; // [NEW] 이 투사체를 발사한 주인 (회복용)
 
     protected override void Awake()
     {
@@ -54,8 +55,9 @@ public class BoneProjectile : UnitBase
     /// <summary>
     /// 외부(공격 스크립트)에서 발사 방향과 데미지를 세팅해주는 초기화 함수
     /// </summary>
-    public void Fire(Vector2 direction, float currentDamage)
+    public void Fire(Vector2 direction, float currentDamage, UnitBase fireOwner = null)
     {
+        owner = fireOwner;
         damage = currentDamage;
         rb.velocity = direction.normalized * speed;
         
@@ -89,9 +91,19 @@ public class BoneProjectile : UnitBase
                 
                 if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
                 {
+                    var sManager = GameManager.Instance.skillManager;
                     // UnitBase 유닛인 경우 스킬 효과 전파
                     if (enemy.Unit != null)
-                        GameManager.Instance.skillManager.ApplyAttackEffects(enemy.Unit);
+                        sManager.ApplyAttackEffects(enemy.Unit);
+
+                    // [NEW] 흡혈(Vampiric Teeth) 효과 적용 (주인 회복)
+                    if (owner != null && !owner.IsDead && sManager.vampiricChance > 0f)
+                    {
+                        if (Random.value < sManager.vampiricChance)
+                        {
+                            owner.currentHp = Mathf.Min(owner.currentHp + sManager.vampiricHealAmount, owner.maxHp);
+                        }
+                    }
                 }
             }
 

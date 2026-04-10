@@ -127,17 +127,17 @@ namespace Necromancer
     {
         public string ModifierId => "Stigma";
         private int stacks = 1;
-        public bool IsExpired => stacks >= 10; // 10스택 시 폭발하며 만료
+        private const int MaxStacks = 5; // 10대 -> 5대로 완화
+        public bool IsExpired => false; // 낙인은 죽을 때까지 유지 (영구 증폭)
 
         public void OnApply(UnitBase unit) { }
         public void OnUpdate(UnitBase unit, float deltaTime) { }
-        public void OnRemove(UnitBase unit)
-        {
-            if (stacks >= 10) unit.TakeDamage(unit.maxHp * 0.2f);
-        }
+        public void OnRemove(UnitBase unit) { }
 
-        // 스택 합치기 로직 (UnitBase.AddModifier에서 호출 가능하도록 확장 고려 가능하나 간단히 구현)
-        public void AddStack() => stacks++;
+        public void AddStack() => stacks = Mathf.Min(stacks + 1, MaxStacks);
+        
+        // 현재 낙인에 의한 데미지 배율 반환 (1.0 + 10% 증폭)
+        public float GetDamageMultiplier() => (stacks >= MaxStacks) ? 1.1f : 1.0f;
     }
     #endregion
 

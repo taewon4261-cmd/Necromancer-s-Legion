@@ -15,7 +15,7 @@ MonoBehaviour:
   upgradeName: "\uBA85\uBBFC\uD55C \uC601\uD63C"
   saveKey: Upgrade_ExpGain_Lv
   statType: 6
-  icon: {fileID: 21300000, guid: c760b1cce581e94449f1f9b6483555b8, type: 3}
+  icon: {fileID: 21300000, guid: 75d963c3118fd6c4f8c11a47158fb495, type: 3}
   iconFrame: {fileID: 0}
   description: "\uACBD\uD5D8\uCE58 \uD68D\uB4DD\uB7C9 \uC99D\uAC00"
   requiredUpgrade: {fileID: 0}

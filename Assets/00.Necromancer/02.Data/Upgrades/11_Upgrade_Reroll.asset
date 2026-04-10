@@ -12,12 +12,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3de13da3839d83e4cac256fe493d509c, type: 3}
   m_Name: 11_Upgrade_Reroll
   m_EditorClassIdentifier: 
-  upgradeName: "\uC6B4\uBA85 \uB4A4\uD2C0\uAE30"
-  saveKey: Upgrade_RerollCount_Lv
-  statType: 7
+  upgradeName: "\uC218\uD638\uC758 \uC601\uD63C"
+  saveKey: Upgrade_MinionHP_Lv
+  statType: 0
   icon: {fileID: 21300000, guid: 14ed569ee2e59244aa6a45022550136f, type: 3}
   iconFrame: {fileID: 0}
-  description: "\uB9AC\uB864 \uD69F\uC218 \uCD94\uAC00"
+  description: "\uBCD1\uC0AC\uC758 \uCD5C\uB300 \uCCB4\uB825\uC744 \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."
   requiredUpgrade: {fileID: 0}
   requiredLevel: 0
   currentLevel: 0

@@ -814,6 +814,7 @@ GameObject:
   - component: {fileID: 329936504}
   - component: {fileID: 329936503}
   - component: {fileID: 329936505}
+  - component: {fileID: 329936506}
   m_Layer: 5
   m_Name: 'Panel_Upgrade '
   m_TagString: Untagged
@@ -899,7 +900,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ec6caf191e837c74294c695071e8e075, type: 2}
   - {fileID: 11400000, guid: bcf543218c74f2c4780f079d253c1145, type: 2}
   - {fileID: 11400000, guid: 830717b626362fe4aaa8447b38c2858e, type: 2}
-  - {fileID: 11400000, guid: 4e89789ee44cdef4bb36cc13c33919ea, type: 2}
+  - {fileID: 11400000, guid: 207313174480aa447934944591be555c, type: 2}
   - {fileID: 11400000, guid: cc873400c64467c4a94d56dfa87bf124, type: 2}
   - {fileID: 11400000, guid: 4a7b13421a50f6542b38a540c750e433, type: 2}
   - {fileID: 11400000, guid: bf09b55b0db789c4ba8afd8b580dac3a, type: 2}
@@ -911,6 +912,23 @@ MonoBehaviour:
   slotPrefab: {fileID: 8293275331917451820, guid: b0c46dfbd7157c64a9bc100b7148f1be,
     type: 3}
   soulText: {fileID: 853982778}
+  initialGold: 1000
+--- !u!114 &329936506
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 329936500}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b43ff6b16151cf42bb9187fbe581509, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  upgradeList: []
+  contentRoot: {fileID: 0}
+  slotPrefab: {fileID: 0}
+  soulText: {fileID: 0}
   initialGold: 1000
 --- !u!1 &330585543
 GameObject:
@@ -2421,10 +2439,10 @@ MonoBehaviour:
   m_Padding:
     m_Left: 0
     m_Right: 0
-    m_Top: 1300
+    m_Top: 1000
     m_Bottom: 200
   m_ChildAlignment: 4
-  m_Spacing: 0
+  m_Spacing: 10
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 1
   m_ChildControlWidth: 0
@@ -3063,6 +3081,95 @@ PrefabInstance:
       propertyPath: _minionUnlockDataList.Array.data[4]
       value: 
       objectReference: {fileID: 11400000, guid: fb623aea7c1d70547a83a3cf9164ccc0,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.size
+      value: 13
+      objectReference: {fileID: 0}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[0]
+      value: 
+      objectReference: {fileID: 11400000, guid: 4b6dd8aeb7892ac49966c660a6ff7d46,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[1]
+      value: 
+      objectReference: {fileID: 11400000, guid: 699905ff77bd4794baafaefd701b1103,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[2]
+      value: 
+      objectReference: {fileID: 11400000, guid: ec6caf191e837c74294c695071e8e075,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[3]
+      value: 
+      objectReference: {fileID: 11400000, guid: bcf543218c74f2c4780f079d253c1145,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[4]
+      value: 
+      objectReference: {fileID: 11400000, guid: 830717b626362fe4aaa8447b38c2858e,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[5]
+      value: 
+      objectReference: {fileID: 11400000, guid: 207313174480aa447934944591be555c,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[6]
+      value: 
+      objectReference: {fileID: 11400000, guid: cc873400c64467c4a94d56dfa87bf124,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[7]
+      value: 
+      objectReference: {fileID: 11400000, guid: 4a7b13421a50f6542b38a540c750e433,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[8]
+      value: 
+      objectReference: {fileID: 11400000, guid: bf09b55b0db789c4ba8afd8b580dac3a,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[9]
+      value: 
+      objectReference: {fileID: 11400000, guid: aed5c8a5ccf32fd4d9e88f0a318df922,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[10]
+      value: 
+      objectReference: {fileID: 11400000, guid: e95ebec3e8dac28429b406728e57d96a,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[11]
+      value: 
+      objectReference: {fileID: 11400000, guid: 9a9602b27fd0d3544b319763a6efe584,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[12]
+      value: 
+      objectReference: {fileID: 11400000, guid: 8e2d1cc9d05c4a84aa0d1b4dec7dcdb5,
+        type: 2}
+    - target: {fileID: 2516593692990285014, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: upgradeSOConfig.Array.data[13]
+      value: 
+      objectReference: {fileID: 11400000, guid: 8e2d1cc9d05c4a84aa0d1b4dec7dcdb5,
         type: 2}
     - target: {fileID: 2663693136703229708, guid: d076dd6845f5ca84eb94326ecd47b265,
         type: 3}

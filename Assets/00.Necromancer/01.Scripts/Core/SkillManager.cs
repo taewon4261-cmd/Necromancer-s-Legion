@@ -50,8 +50,14 @@ namespace Necromancer
         public float globalMinionSpeedBonusRatio = 1f;
         public float globalMinionAttackSpeedBonusRatio = 1f; // [NEW] 미니언 공격 속도 버프
         public int currentMaxMinions = 50;
+        public int globalExtraProjectiles = 0; 
         public float vampiricChance = 0f;
+        public float vampiricHealAmount = 3f; // [NEW] 레벨업 시 증가할 회복량
         public float minionExplosionDamage = 0f;
+
+        [Header("Upgrade State")]
+        public int remainingRerolls = 0;
+        public int totalResurrections = 0;
 
         [Header("Player Weapon Stats")]
         public int playerWeaponLevel = 1;
@@ -75,12 +81,18 @@ namespace Necromancer
             if (GameManager.Instance != null && GameManager.Instance.Resources != null)
             {
                 var side = GameManager.Instance.Resources;
-                globalMinionHpBonusRatio = 1f + side.GetUpgradeValue(UpgradeStatType.Health) * 0.1f; // 레벨당 10%
-                globalMinionDamageBonusRatio = 1f + side.GetUpgradeValue(UpgradeStatType.AttackDamage) * 0.1f;
-                globalMinionSpeedBonusRatio = 1f + side.GetUpgradeValue(UpgradeStatType.MoveSpeed) * 0.05f;
-                currentMaxMinions = 50 + Mathf.FloorToInt(side.GetUpgradeValue(UpgradeStatType.StartMinionCount));
+                // 미니언 업그레이드
+                globalMinionDamageBonusRatio = 1f + (side.GetUpgradeValue(UpgradeStatType.MinionDamage) * 0.1f);
+                globalMinionSpeedBonusRatio = 1f + (side.GetUpgradeValue(UpgradeStatType.MinionSpeed) * 0.05f);
+                globalMinionHpBonusRatio = 1f + (side.GetUpgradeValue(UpgradeStatType.MinionHealth) * 0.1f);
+                globalMinionAttackSpeedBonusRatio = 1f + (side.GetUpgradeValue(UpgradeStatType.MinionAttackSpeed) * 0.1f);
                 
-                Debug.Log($"[SkillManager] Lobby Upgrades Applied. HP Ratio: {globalMinionHpBonusRatio}, DMG Ratio: {globalMinionDamageBonusRatio}");
+                // 유틸리티 업그레이드
+                currentMaxMinions = 50 + Mathf.FloorToInt(side.GetUpgradeValue(UpgradeStatType.StartMinionCount));
+                remainingRerolls = 1; // 리롤은 상시 1회로 기본 제공
+                totalResurrections = Mathf.FloorToInt(side.GetUpgradeValue(UpgradeStatType.Resurrection));
+
+                Debug.Log($"[SkillManager] Lobby Upgrades Applied. Rerolls: {remainingRerolls}, Resurrects: {totalResurrections}");
             }
         }
 
@@ -196,7 +208,9 @@ namespace Necromancer
                     GameManager.Instance.baseReviveChance += 10f;
                     break;
                 case SkillType.VampiricTeeth:
-                    vampiricChance += 0.02f;
+                    if (vampiricChance <= 0f) vampiricChance = 0.3f; // 처음 배울 때 30% 고정
+                    else vampiricHealAmount += 3f; // 이후 배울 때마다 회복량 3씩 증가 (3 -> 6 -> 9...)
+                    
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.ChainExplosion:
@@ -230,6 +244,9 @@ namespace Necromancer
                     // [REGISTRY] 보스 추가 피해 등을 위한 전용 모디파이어 등록
                     RegisterAttackModifier(new StunModifierTemplate()); // 실험용으로 Stun 등록
                     isMinionUpdateNeeded = true;
+                    break;
+                case SkillType.PiercingBone:
+                    globalExtraProjectiles++; // 한 번에 쏘는 발사체 수 1개 증가
                     break;
                     
                 default:

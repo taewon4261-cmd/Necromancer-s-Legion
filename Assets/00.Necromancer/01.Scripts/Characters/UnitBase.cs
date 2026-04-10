@@ -111,7 +111,18 @@ namespace Necromancer
         {
             if (isDead) return;
 
-            currentHp -= damage;
+            // [SKILL: Cursed Stigma] 낙인 효과 확인 및 데미지 증폭 적용
+            float finalDamage = damage;
+            for (int i = 0; i < activeModifiers.Count; i++)
+            {
+                if (activeModifiers[i] is StigmaModifier stigma)
+                {
+                    finalDamage *= stigma.GetDamageMultiplier();
+                    break; 
+                }
+            }
+
+            currentHp -= finalDamage;
             currentHp = Mathf.Clamp(currentHp, 0, maxHp);
             
             // 피격 반짝임 연출 (이미지 없는 경우 대응)

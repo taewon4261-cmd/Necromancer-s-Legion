@@ -444,26 +444,32 @@ namespace Necromancer.UI
         }
 
         /// <summary>
-        /// 광고 시청 후 스킬 리롤 (Reward Flow)
+        /// 스킬 리롤 (무료 횟수 우선 사용, 소진 시 광고 시청)
         /// </summary>
         public void OnClick_RerollWithAds()
         {
-            if (GameManager.Instance == null || GameManager.Instance.AdManager == null) return;
+            if (GameManager.Instance == null || GameManager.Instance.skillManager == null) return;
 
             // [SOUND] 버튼 클릭 효과음
             if (GameManager.Instance.Sound != null) GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
 
-            // [ADS] 보상형 광고 호출
-            GameManager.Instance.AdManager.ShowRewardedAd(
-                () => {
-                    // 1. 광고 시청 완료 콜백 (OnAdCompleted)
-                    ExecuteReroll();
-                },
-                () => {
-                    // 2. 광고 로드 실패 또는 네트워크 문제
-                    ShowAdErrorPopup("광고를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.");
-                }
-            );
+            // [UPGRADE] 무료 리롤 횟수가 남아있는지 확인
+            if (GameManager.Instance.skillManager.remainingRerolls > 0)
+            {
+                GameManager.Instance.skillManager.remainingRerolls--;
+                ExecuteReroll();
+                Debug.Log($"<color=cyan>[UIManager]</color> Free Reroll used. Remaining: {GameManager.Instance.skillManager.remainingRerolls}");
+                return;
+            }
+
+            // [ADS] 무료 횟수 소진 시 보상형 광고 호출
+            if (GameManager.Instance.AdManager != null)
+            {
+                GameManager.Instance.AdManager.ShowRewardedAd(
+                    () => ExecuteReroll(),
+                    () => ShowAdErrorPopup("광고를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.")
+                );
+            }
         }
 
         private void ExecuteReroll()

@@ -193,6 +193,9 @@ namespace Necromancer
                 if (skillManager != null) skillManager.Init();
                 if (uiManager != null) uiManager.Init();
 
+                // [UPGRADE] 시작 미니언 소환 (Type 10)
+                SpawnInitialMinions();
+
                 if (Sound != null && Sound.gameBGM != null) Sound.PlayBGM(Sound.gameBGM);
 
                 OnSpeedChanged?.Invoke(currentGameSpeed);
@@ -398,6 +401,33 @@ namespace Necromancer
             Debug.Log($"<color=green>[GameManager]</color> Dynamic Pool Updated. Unlocked Types: {unlockedMinionDatas.Count}");
         }
 
+        private void SpawnInitialMinions()
+        {
+            if (Resources == null || poolManager == null || playerTransform == null) return;
+
+            int count = Mathf.FloorToInt(Resources.GetUpgradeValue(UpgradeStatType.StartMinionCount));
+            if (count <= 0) return;
+
+            Debug.Log($"[GameManager] Spawning {count} initial minions from lobby upgrade.");
+
+            for (int i = 0; i < count; i++)
+            {
+                // 플레이어 주변 랜덤 위치
+                Vector3 spawnPos = playerTransform.position + (Vector3)UnityEngine.Random.insideUnitCircle * 2f;
+                
+                GameObject minionObj = poolManager.Get(minionPoolTag, spawnPos, Quaternion.identity);
+                if (minionObj != null && minionObj.TryGetComponent<MinionAI>(out var ai))
+                {
+                    // 기본 워리어 데이터 또는 해금된 풀 중 하나 선택
+                    Necromancer.Data.MinionUnlockSO selectedData = null;
+                    if (unlockedMinionDatas.Count > 0)
+                        selectedData = unlockedMinionDatas[0]; // 보통 첫 번째가 워리어
+
+                    ai.Initialize(selectedData);
+                }
+            }
+        }
+
         public void OnStageClear()
         {
             if (IsGameOver) return;
@@ -418,6 +448,10 @@ namespace Necromancer
             }
             yield return new WaitForSeconds(1.5f);
             if (Resources != null) Resources.CommitSessionSoul();
+            
+            // [STABILITY] 클리어 시 즉시 저장 (데이터 유실 방지)
+            if (SaveData != null) SaveData.Save();
+
             OnGameOver?.Invoke(true);
         }
 
@@ -427,6 +461,10 @@ namespace Necromancer
             IsGameOver = true;
             SetPause(PauseSource.GameOver, true);
             if (Resources != null) Resources.CommitSessionSoul();
+            
+            // [STABILITY] 패배 시에도 즉시 저장하여 획득한 영혼/진척도 보존
+            if (SaveData != null) SaveData.Save();
+
             OnGameOver?.Invoke(false);
         }
 

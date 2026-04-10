@@ -15,7 +15,7 @@ MonoBehaviour:
   upgradeName: "\uD0D0\uC695\uC2A4\uB7EC\uC6B4 \uB208"
   saveKey: Upgrade_SoulGain_Lv
   statType: 5
-  icon: {fileID: 0}
+  icon: {fileID: 21300000, guid: 25925479d4ef58a459eebf0065ccc0d3, type: 3}
   iconFrame: {fileID: 0}
   description: "\uC601\uD63C \uD68D\uB4DD\uB7C9 \uC99D\uAC00"
   requiredUpgrade: {fileID: 0}

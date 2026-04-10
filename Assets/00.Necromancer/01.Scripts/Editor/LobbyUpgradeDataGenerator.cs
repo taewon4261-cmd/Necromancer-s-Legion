@@ -8,7 +8,7 @@ namespace Necromancer.Editor
     // [InitializeOnLoad]
     public class LobbyUpgradeDataGenerator
     {
-        private const string SAVE_PATH = "Assets/Necromancer/02.Data/Upgrades/";
+        private const string SAVE_PATH = "Assets/00.Necromancer/02.Data/Upgrades/";
 
         static LobbyUpgradeDataGenerator()
         {
@@ -18,8 +18,8 @@ namespace Necromancer.Editor
 
         public static void GenerateAssets()
         {
-            if (!AssetDatabase.IsValidFolder("Assets/Necromancer/02.Data")) AssetDatabase.CreateFolder("Assets/Necromancer", "02.Data");
-            if (!AssetDatabase.IsValidFolder("Assets/Necromancer/02.Data/Upgrades")) AssetDatabase.CreateFolder("Assets/Necromancer/02.Data", "Upgrades");
+            if (!AssetDatabase.IsValidFolder("Assets/00.Necromancer/02.Data")) AssetDatabase.CreateFolder("Assets/00.Necromancer", "02.Data");
+            if (!AssetDatabase.IsValidFolder("Assets/00.Necromancer/02.Data/Upgrades")) AssetDatabase.CreateFolder("Assets/00.Necromancer/02.Data", "Upgrades");
 
             var dataList = new List<UpgradeDataSpec>
             {
@@ -33,8 +33,8 @@ namespace Necromancer.Editor
                 new UpgradeDataSpec("08_Upgrade_Magnet", "영혼 갈무리", "Upgrade_MagnetRange_Lv", UpgradeStatType.MagnetRange, "보석 자석 흡수 범위 +1.0m 증가", 5, 600, 0.5f, 1.0f),
                 new UpgradeDataSpec("09_Upgrade_MinionDamage", "군단의 분노", "Upgrade_MinionDamage_Lv", UpgradeStatType.MinionDamage, "모든 미니언 공격력 +2 증가", 10, 1200, 0.9f, 2.0f),
                 new UpgradeDataSpec("10_Upgrade_MinionSpeed", "군단의 진격", "Upgrade_MinionSpeed_Lv", UpgradeStatType.MinionSpeed, "모든 미니언 이동 속도 +0.3 증가", 10, 1100, 0.9f, 0.3f),
-                new UpgradeDataSpec("11_Upgrade_Reroll", "운명 뒤틀기", "Upgrade_RerollCount_Lv", UpgradeStatType.RerollCount, "레벨업 스킬 리롤 횟수 +1회", 3, 2000, 1.5f, 1.0f),
-                new UpgradeDataSpec("12_Upgrade_CDR", "영혼의 순환", "Upgrade_CDR_Lv", UpgradeStatType.CooldownReduction, "재사용 대기시간 -5% 감소", 6, 1500, 1.0f, 0.05f),
+                new UpgradeDataSpec("11_Upgrade_Reroll", "수호의 영혼 (Minion HP)", "Upgrade_MinionHP_Lv", UpgradeStatType.MinionHealth, "미니언의 최대 체력을 레벨당 10% 증가시킵니다.", 10, 1000, 1.5f, 1.0f),
+                new UpgradeDataSpec("12_Upgrade_CDR", "광분 (Minion AtkSpeed)", "Upgrade_MinionAttackSpeed_Lv", UpgradeStatType.MinionAttackSpeed, "미니언의 공격 속도를 레벨당 10% 증가시킵니다.", 10, 1500, 1.5f, 1.0f),
                 new UpgradeDataSpec("13_Upgrade_SkullPact", "묘지기의 서약", "Upgrade_StartMinionCount_Lv", UpgradeStatType.StartMinionCount, "시작 시 기본 미니언 수 +1마리 증가", 5, 1200, 0.8f, 1.0f)
             };
 

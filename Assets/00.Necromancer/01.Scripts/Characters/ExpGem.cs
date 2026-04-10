@@ -74,9 +74,19 @@ public class ExpGem : MonoBehaviour
         {
             if (GameManager.Instance != null)
             {
-                GameManager.Instance.AddExp(expAmount);
+                // [UPGRADE] 경험치 획득량 보너스 적용
+                float bonus = 0f;
                 if (GameManager.Instance.Resources != null)
                 {
+                    bonus = GameManager.Instance.Resources.GetUpgradeValue(UpgradeStatType.ExpGain);
+                }
+                float finalExp = expAmount * (1f + bonus);
+
+                GameManager.Instance.AddExp(finalExp);
+                
+                if (GameManager.Instance.Resources != null)
+                {
+                    // 영혼은 ResourceManager.AddSoul 내부에 이미 업그레이드 업그레이드 로직이 적용되어 있음
                     GameManager.Instance.Resources.AddSoul(1);
                 }
                 GameManager.Instance.poolManager.Release("ExpGem", gameObject);

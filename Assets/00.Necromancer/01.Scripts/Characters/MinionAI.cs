@@ -101,9 +101,10 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
             float oldMaxHp = maxHp;
             float hpRatio = (oldMaxHp > 0) ? currentHp / oldMaxHp : 1f;
 
-            this.maxHp = baseHpVal * sManager.globalMinionHpBonusRatio;
-            this.moveSpeed = baseSpeedVal * sManager.globalMinionSpeedBonusRatio;
-            this.attackDamage = baseDmgVal * sManager.globalMinionDamageBonusRatio;
+            // [SKILL & UPGRADE] SkillManager에서 합산된 글로벌 배율만 적용 (중복 적용 방지)
+            maxHp = baseHpVal * sManager.globalMinionHpBonusRatio;
+            attackDamage = baseDmgVal * sManager.globalMinionDamageBonusRatio;
+            moveSpeed = baseSpeedVal * sManager.globalMinionSpeedBonusRatio;
             
             // [NEW] 공격 속도를 쿨타임으로 변환 (예: 공속 2.0 -> 0.5초 쿨타임)
             float finalAtkSpeed = baseAtkSpeedVal * sManager.globalMinionAttackSpeedBonusRatio;
@@ -288,6 +289,16 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
                     GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxNormalAttackCraw);
                 }
                 
+                // [NEW] 흡혈(Vampiric Teeth) 효과 적용
+                if (sManager != null && sManager.vampiricChance > 0f)
+                {
+                    if (Random.value < sManager.vampiricChance)
+                    {
+                        float healAmount = sManager.vampiricHealAmount; // 업그레이드 수치 반영 (3, 6, 9...)
+                        this.currentHp = Mathf.Min(currentHp + healAmount, maxHp);
+                    }
+                }
+
                 if (targetUnit.IsDead) AddLifeTime(0.2f);
                 lastHitTime = Time.time;
                 if (sManager != null) sManager.ApplyAttackEffects(targetUnit.Unit);
@@ -300,18 +311,30 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
         if (Time.time < lastHitTime + hitCooldown) return;
         if (currentTarget == null) return;
 
-        // [ACTION] 투사체 발사 (PoolManager 활용)
+        // [ACTION] 다중 발사 로직 처리 (1 + 추가 발수)
         if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
         {
-            GameObject projGo = GameManager.Instance.poolManager.Get("BoneProjectile", transform.position, Quaternion.identity);
-            if (projGo != null && projGo.TryGetComponent<BoneProjectile>(out var proj))
+            SkillManager sManager = GameManager.Instance.skillManager;
+            int totalProjectiles = 1 + (sManager != null ? sManager.globalExtraProjectiles : 0);
+            
+            Vector2 baseDir = (currentTarget.position - transform.position).normalized;
+            float spreadAngle = 10f; // 발사체 사이의 간격 (도)
+            float startAngle = -((totalProjectiles - 1) * spreadAngle) / 2f;
+
+            for (int i = 0; i < totalProjectiles; i++)
             {
-                Vector2 dir = (currentTarget.position - transform.position).normalized;
-                proj.Fire(dir, attackDamage);
-                
-                if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
-                lastHitTime = Time.time;
+                float currentAngle = startAngle + (i * spreadAngle);
+                Vector2 finalDir = Quaternion.Euler(0, 0, currentAngle) * baseDir;
+
+                GameObject projGo = GameManager.Instance.poolManager.Get("BoneProjectile", transform.position, Quaternion.identity);
+                if (projGo != null && projGo.TryGetComponent<BoneProjectile>(out var proj))
+                {
+                    proj.Fire(finalDir, attackDamage, this); // 'this' (본체)를 주인으로 전달
+                }
             }
+
+            if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
+            lastHitTime = Time.time;
         }
     }
 

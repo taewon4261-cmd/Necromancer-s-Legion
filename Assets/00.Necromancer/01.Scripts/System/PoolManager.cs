@@ -134,14 +134,16 @@ public class PoolManager : MonoBehaviour
     {
         if (poolDictionary == null || !poolDictionary.ContainsKey(tag))
         {
-            Debug.LogWarning($"[PoolManager] Invalid pool tag: {tag}");
             if (obj != null) obj.SetActive(false);
             return;
         }
 
+        // [STABILITY] 중복 반납 방지: 이미 비활성화 상태면 풀에 있거나 이미 처리된 것이므로 즉시 반환
+        // Queue.Contains()는 O(n)이므로 activeSelf 단순 체크만으로 충분 (활성→비활성 순서 보장)
+        if (!obj.activeSelf) return;
+
         obj.SetActive(false);
         
-        // 이미 PoolManager 자식이라면 SetParent 호출 생략하여 연산 절감
         if (obj.transform.parent != this.transform)
         {
             obj.transform.SetParent(this.transform);
