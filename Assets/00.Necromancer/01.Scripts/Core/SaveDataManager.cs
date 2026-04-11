@@ -178,11 +178,29 @@ namespace Necromancer.Core
             Debug.Log("<color=orange>[SaveDataManager]</color> Final save on ApplicationQuit executed.");
         }
 
-        private void OnDisable()
+        public void OnDisable()
         {
             // [ATOMIC] 에디터 중단이나 비활성화 시점에 데이터를 즉각 보호
             Save();
             Debug.Log("<color=orange>[SaveDataManager]</color> Final save on OnDisable executed.");
+        }
+
+        /// <summary>
+        /// [DEBUG] 모든 저장 데이터와 로그인 기록을 초기화합니다. (인스펙터 우클릭 메뉴)
+        /// </summary>
+        [ContextMenu("Clear All Save Data")]
+        public void ClearAllData()
+        {
+            if (File.Exists(savePath))
+            {
+                File.Delete(savePath);
+                Debug.Log("<color=red>[SaveDataManager]</color> 저장 파일이 삭제되었습니다: " + savePath);
+            }
+            
+            currentData = new GameSaveData();
+            Save();
+            
+            Debug.Log("<color=cyan>[SaveDataManager]</color> 모든 데이터가 초기화되었습니다. 재시작 시 로그인 패널이 다시 표시됩니다.");
         }
 
         /// <summary>

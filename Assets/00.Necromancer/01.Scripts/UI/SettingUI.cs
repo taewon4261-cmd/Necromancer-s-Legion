@@ -164,7 +164,7 @@ namespace Necromancer.UI
         public void OpenPrivacyPolicy()
         {
             // [ARCHITECT] 마스터가 제공한 최종 개인정보 처리방침 링크로 업데이트
-            string url = "https://gist.githubusercontent.com/taewon4261-cmd/a4af2e183162369226c3a8cb83245b07/raw/c89eddb98753bc125f8d968a19d299edaa695568/gistfile1.txt"; 
+            string url = "https://gist.github.com/taewon4261-cmd/a4af2e183162369226c3a8cb83245b07"; 
             Application.OpenURL(url);
             Debug.Log($"<color=cyan>[SettingUI]</color> Redirecting to Privacy Policy: {url}");
         }

@@ -266,7 +266,15 @@ namespace Necromancer
             if (Resources != null) Resources.Init();
             if (Combat != null) Combat.Init();
             if (Sound != null) Sound.Init();
-            if (AdManager != null) AdManager.Init(); // [NEW] 광고 매니저 초기화
+            // [STABILITY] AdMob 초기화 실패 시 Auth 초기화가 막히는 문제 방지
+            try
+            {
+                if (AdManager != null) AdManager.Init();
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[GameManager] AdManager.Init() failed — Google Mobile Ads AAR 누락 또는 버전 오류. Auth 초기화는 계속 진행합니다.\n{e.Message}");
+            }
         }
 
         public void StartGame(StageDataSO stage)
@@ -483,10 +491,7 @@ namespace Necromancer
 
         private void HandleLoginResult(bool success, string uid)
         {
-            if (success && _titleUI != null)
-            {
-                _titleUI.OnLoginSuccess().Forget(); // 로비 전환 지시 (UniTask 사용)
-            }
+            // TitleUIController가 Auth.OnLoginResult에 직접 구독하여 UI 전환을 처리하므로 여기선 불필요
         }
 
         // --- [UI REGISTRATION] TitleUIController가 스스로를 등록할 때 사용 (성능 최적화) ---

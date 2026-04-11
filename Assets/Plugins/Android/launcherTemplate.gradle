@@ -1,13 +1,28 @@
 apply plugin: 'com.android.application'
+**APPLY_PLUGINS**
 
 dependencies {
     implementation project(':unityLibrary')
+    /* **DEPS** 제거 - androidlib 서브모듈들은 unityLibrary 소속이므로 launcher에서 직접 참조하면 빌드 오류 발생 */
+}
+
+// [FIX] firebase-auth:24.0.1 이 끌어오는 kotlinx-coroutines:1.9.0 (Kotlin 2.x 메타데이터 포함) 이
+// AGP 7.4.2 의 D8 컴파일러에서 StackOverflowError를 유발하므로 1.7.3 으로 강제 다운그레이드
+configurations.all {
+    resolutionStrategy {
+        force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'
     }
+}
 
 android {
-    namespace "**NAMESPACE**"
-    ndkPath "**NDKPATH**"
-
+	namespace "**NAMESPACE**"
+	ndkPath "**NDKPATH**"
     compileSdkVersion **APIVERSION**
     buildToolsVersion '**BUILDTOOLS**'
 
@@ -27,41 +42,35 @@ android {
         versionName '**VERSIONNAME**'
     }
 
-    aaptOptions {
-        noCompress = **BUILTIN_NOCOMPRESS** + unityStreamingAssets.tokenize(', ')
-        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
-    }**SIGN**
-
     lintOptions {
         abortOnError false
     }
 
-    dexOptions {
-        javaMaxHeapSize = "4g"
-        preDexLibraries = false
+    aaptOptions {
+        noCompress = **BUILTIN_NOCOMPRESS** + unityStreamingAssets.tokenize(', ')
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
     }
 
+    **SIGN**
     buildTypes {
         debug {
             minifyEnabled **MINIFY_DEBUG**
-            proguardFiles getDefaultProguardFile('proguard-android.txt')**SIGNCONFIG**
-            jniDebuggable true
+
+            proguardFiles getDefaultProguardFile('proguard-android.txt')
+            **SIGNCONFIG**
         }
         release {
             minifyEnabled **MINIFY_RELEASE**
-            proguardFiles getDefaultProguardFile('proguard-android.txt')**SIGNCONFIG**
-        }
-    }**PACKAGING_OPTIONS****PLAY_ASSET_PACKS****SPLITS**
-**BUILT_APK_LOCATION**
-    bundle {
-        language {
-            enableSplit = false
-        }
-        density {
-            enableSplit = false
-        }
-        abi {
-            enableSplit = true
+
+            proguardFiles getDefaultProguardFile('proguard-android.txt')
+            **SIGNCONFIG**
         }
     }
-}**SPLITS_VERSION_CODE****LAUNCHER_SOURCE_BUILD_SETUP**
+    **PACKAGING_OPTIONS**
+    **BUNDLE_OPTIONS**
+    **SPLITS_VERSION**
+    **SPLITS_OPTIONS**
+    **BUILT_APK_LOCATION**
+    **BUILD_APP_BUNDLE**
+}
+**SOURCE_BUILD_SETUP**

@@ -39,6 +39,10 @@ namespace Necromancer.UI
         [SerializeField] private Button btnMinionStoreBack;
         [SerializeField] private Button btnSettingBack;
 
+        [Header("Auth Panel Buttons")]
+        [SerializeField] private Button btnGuest;
+        [SerializeField] private Button btnGoogle;
+
         private readonly List<GameObject> allSubPanels = new List<GameObject>();
         private bool isTitleInitialized = false;
 
@@ -51,6 +55,9 @@ namespace Necromancer.UI
             if (minionStorePanel != null) allSubPanels.Add(minionStorePanel);
             if (settingPanel != null)     allSubPanels.Add(settingPanel);
 
+            // Firebase 초기화 완료(OnFirebaseReady) 전까지 버튼 비활성화
+            SetButtonsInteractable(false);
+
             if (GameManager.Instance != null) GameManager.Instance.RegisterTitleUI(this);
 
             InitAllPanels();
@@ -59,38 +66,73 @@ namespace Necromancer.UI
         private void OnEnable()
         {
             AuthManager.OnAuthStateChanged += HandleAuthState;
+            AuthManager.OnFirebaseReady += EnableLoginButtons;
+            if (GameManager.Instance != null && GameManager.Instance.Auth != null)
+            {
+                GameManager.Instance.Auth.OnLoginResult += OnLoginSuccess;
+            }
         }
 
         private void OnDisable()
         {
             AuthManager.OnAuthStateChanged -= HandleAuthState;
+            AuthManager.OnFirebaseReady -= EnableLoginButtons;
+            if (GameManager.Instance != null && GameManager.Instance.Auth != null)
+            {
+                GameManager.Instance.Auth.OnLoginResult -= OnLoginSuccess;
+            }
         }
 
         private void Start()
         {
             SetupButtonEvents();
 
-            if (GameManager.Instance?.Auth != null)
+            if (GameManager.Instance != null && GameManager.Instance.Auth != null)
             {
-                var state = GameManager.Instance.Auth.CurrentState;
-                if (state == AuthState.LoggedIn || state == AuthState.Guest || state == AuthState.Failed)
-                    HandleAuthState(state);
+                // OnFirebaseReady 이벤트를 OnEnable 구독 전에 이미 놓쳤을 경우 대비
+                if (GameManager.Instance.Auth.IsFirebaseReady)
+                    SetButtonsInteractable(true);
+
+                HandleAuthState(GameManager.Instance.Auth.CurrentState);
             }
+        }
+
+        private void EnableLoginButtons()
+        {
+            SetButtonsInteractable(true);
+            Debug.Log("<color=cyan>[TitleUI]</color> Firebase ready. Login buttons enabled.");
+        }
+
+        private void SetButtonsInteractable(bool interactable)
+        {
+            if (btnGuest != null) btnGuest.interactable = interactable;
+            if (btnGoogle != null) btnGoogle.interactable = interactable;
         }
 
         private void HandleAuthState(AuthState state)
         {
-            if (isTitleInitialized) return;
+            // [FIX] 로그인 성공(Guest/LoggedIn) 시에는 초기화 여부와 상관없이 화면을 전환하도록 보강
+            if (isTitleInitialized && (state != AuthState.LoggedIn && state != AuthState.Guest))
+                return;
 
             switch (state)
             {
                 case AuthState.LoggedIn:
                 case AuthState.Guest:
-                case AuthState.Failed:
                     isTitleInitialized = true;
                     if (authPanel != null) authPanel.SetActive(false);
                     if (mainButtonPanel != null) mainButtonPanel.SetActive(true);
-                    Debug.Log($"<color=cyan>[TitleUI]</color> Login Verified ({state}). UI Activated.");
+                    Debug.Log($"<color=green>[TitleUI]</color> Login Success! UI Transition to Main Menu. (State: {state})");
+                    break;
+                case AuthState.Initializing:
+                    Debug.Log("<color=cyan>[TitleUI]</color> Firebase initializing...");
+                    break;
+                case AuthState.Failed:
+                    // 자동로그인 실패 시 authPanel 복원 후 버튼 활성화 (부모가 꺼져있으면 버튼도 안 보임)
+                    if (authPanel != null) authPanel.SetActive(true);
+                    if (mainButtonPanel != null) mainButtonPanel.SetActive(false);
+                    SetButtonsInteractable(true);
+                    Debug.LogWarning($"<color=red>[TitleUI]</color> Login Failed. Showing Auth Panel.");
                     break;
             }
         }
@@ -112,16 +154,17 @@ namespace Necromancer.UI
 
         public void SetupInitialUI() => InitAllPanels();
 
-        public async UniTask OnLoginSuccess()
+        public void OnLoginSuccess(bool success, string uid)
         {
-            Debug.Log("<color=green>[TitleUI]</color> Login/Link Success: Navigating to Main UI.");
-            await UniTask.Yield();
+            if (success)
+            {
+                Debug.Log($"<color=green>[TitleUI]</color> Login/Link Success (UID: {uid}): Navigating to Main UI.");
+                
+                if (authPanel != null) authPanel.SetActive(false);
+                if (mainButtonPanel != null) mainButtonPanel.SetActive(true);
+            }
         }
 
-        /// <summary>
-        /// 메인 메뉴를 끄고 지정된 서브 패널을 활성화합니다.
-        /// 패널 내부 갱신은 각 패널의 OnEnable()이 자동으로 처리합니다.
-        /// </summary>
         public void ShowPanel(GameObject targetPanel)
         {
             if (targetPanel == null) return;
@@ -131,9 +174,6 @@ namespace Necromancer.UI
             Debug.Log($"<color=green>[TitleUI]</color> Open SubPanel: {targetPanel.name}");
         }
 
-        /// <summary>
-        /// 모든 서브 패널을 끄고 메인 메뉴로 복귀합니다.
-        /// </summary>
         public void BackToMainMenu()
         {
             foreach (var panel in allSubPanels)
@@ -144,17 +184,48 @@ namespace Necromancer.UI
 
         private void SetupButtonEvents()
         {
-            // 메인 메뉴 → 서브 패널 열기
+            // [FORCE] 로그인 버튼 이벤트 강제 할당
+            if (btnGuest != null)
+            {
+                btnGuest.onClick.RemoveAllListeners();
+                btnGuest.onClick.AddListener(OnGuestLoginClick);
+                Debug.Log("[TitleUI] Guest Button Listener Linked");
+            }
+
+            if (btnGoogle != null)
+            {
+                btnGoogle.onClick.RemoveAllListeners();
+                btnGoogle.onClick.AddListener(OnGoogleLoginClick);
+                Debug.Log("[TitleUI] Google Button Listener Linked");
+            }
+
             btnStart?.onClick.AddListener(() => ShowPanel(stageSelectPanel));
             btnUpgrade?.onClick.AddListener(() => ShowPanel(upgradePanel));
             btnMinionStore?.onClick.AddListener(() => ShowPanel(minionStorePanel));
             btnSetting?.onClick.AddListener(() => ShowPanel(settingPanel));
 
-            // 서브 패널 → 메인 메뉴 복귀
             btnStageSelectBack?.onClick.AddListener(BackToMainMenu);
             btnUpgradeBack?.onClick.AddListener(BackToMainMenu);
             btnMinionStoreBack?.onClick.AddListener(BackToMainMenu);
             btnSettingBack?.onClick.AddListener(BackToMainMenu);
+        }
+
+        public void OnGuestLoginClick()
+        {
+            Debug.Log("<color=yellow>[TitleUI]</color> Guest Login Button Clicked!");
+            if (GameManager.Instance.Auth != null)
+                GameManager.Instance.Auth.LoginAsGuest();
+            else
+                Debug.LogError("[TitleUI] GameManager.Instance.Auth is NULL!");
+        }
+
+        public void OnGoogleLoginClick()
+        {
+            Debug.Log("<color=yellow>[TitleUI]</color> Google Login Button Clicked!");
+            if (GameManager.Instance.Auth != null)
+                GameManager.Instance.Auth.LoginWithGoogle();
+            else
+                Debug.LogError("[TitleUI] GameManager.Instance.Auth is NULL!");
         }
 
         private void PlaySelectSound()
@@ -175,6 +246,8 @@ namespace Necromancer.UI
             if (btnUpgrade == null)       Debug.LogWarning("[TitleUI] btnUpgrade is NOT assigned!");
             if (btnMinionStore == null)   Debug.LogWarning("[TitleUI] btnMinionStore is NOT assigned!");
             if (btnSetting == null)       Debug.LogWarning("[TitleUI] btnSetting is NOT assigned!");
+            if (btnGuest == null)         Debug.LogWarning("[TitleUI] btnGuest is NOT assigned! (Auth panel guest button)");
+            if (btnGoogle == null)        Debug.LogWarning("[TitleUI] btnGoogle is NOT assigned! (Auth panel google button)");
         }
     }
 }

@@ -1,4 +1,5 @@
 using Firebase.Auth;
+using Firebase.Extensions;
 using System.Threading.Tasks;
 #if GPGS
 using GooglePlayGames;
@@ -22,24 +23,30 @@ namespace Necromancer.Systems
     public class AuthManager : MonoBehaviour
     {
         public static event Action<AuthState> OnAuthStateChanged;
+        public static event Action OnFirebaseReady; 
         public AuthState CurrentState { get; private set; } = AuthState.Initializing;
+        public bool IsFirebaseReady { get; private set; } = false; 
 
         private FirebaseAuth auth;
         public event Action<bool, string> OnLoginResult;
 
+
         public void Init()
         {
+            Debug.Log("<color=cyan>[AuthManager]</color> Firebase dependency check started...");
             // [STABILITY] Firebase 의존성 체크 후 비동기 초기화 (Crash 방지)
-            Firebase.FirebaseApp.CheckAndFixDependenciesAsync().ContinueWith(task => {
+            Firebase.FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task => {
                 var dependencyStatus = task.Result;
+                Debug.Log($"<color=cyan>[AuthManager]</color> Firebase dependency result: {dependencyStatus}");
                 if (dependencyStatus == Firebase.DependencyStatus.Available)
                 {
-                    UnityMainThreadDispatcher.Enqueue(StartInitialization);
+                    IsFirebaseReady = true;
+                    StartInitialization();
                 }
                 else
                 {
                     Debug.LogError($"[AuthManager] Could not resolve all Firebase dependencies: {dependencyStatus}");
-                    UnityMainThreadDispatcher.Enqueue(() => SetState(AuthState.Failed));
+                    SetState(AuthState.Failed);
                 }
             });
         }
@@ -74,6 +81,9 @@ namespace Necromancer.Systems
                 SetState(AuthState.Initializing);
                 Debug.Log("[AuthManager] No previous login record found. Waiting for user action.");
             }
+
+            // [ADDED] Firebase가 이제 정말로 준비됨을 UI에 알림
+            OnFirebaseReady?.Invoke();
         }
 
         private void TryAutoLogin()
@@ -95,29 +105,57 @@ namespace Necromancer.Systems
 
         public void LoginAsGuest()
         {
-            auth.SignInAnonymouslyAsync().ContinueWith(task => {
+            Debug.Log($"<color=orange>[AuthManager]</color> LoginAsGuest Requested. (FirebaseReady: {IsFirebaseReady})");
+            
+            if (!IsFirebaseReady)
+            {
+                Debug.LogWarning("[AuthManager] Firebase is not ready yet. Please wait a few seconds and try again.");
+            }
+
+            // [STABILITY] Firebase 초기화 전 클릭 방지
+            if (auth == null)
+            {
+                Debug.LogError("<color=red>[AuthManager]</color> Firebase is not initialized yet!");
+                OnLoginResult?.Invoke(false, null);
+                return;
+            }
+
+            auth.SignInAnonymouslyAsync().ContinueWithOnMainThread(task => {
                 bool success = !task.IsFaulted && !task.IsCanceled;
                 string uid = success ? auth.CurrentUser.UserId : null;
 
-                UnityMainThreadDispatcher.Enqueue(() => {
-                    if (success)
-                    {
-                        SaveLoginMethod("Guest");
-                        SetState(AuthState.Guest);
-                    }
-                    else
-                    {
-                        SetState(AuthState.Failed);
-                    }
-                    OnLoginResult?.Invoke(success, uid);
-                });
+                if (success)
+                {
+                    Debug.Log("<color=green>[AuthManager]</color> Guest Login Success!");
+                    SaveLoginMethod("Guest");
+                    SetState(AuthState.Guest);
+                }
+                else
+                {
+                    Debug.LogError($"[AuthManager] Guest Login Failed: {task.Exception}");
+                    SetState(AuthState.Failed);
+                }
+                OnLoginResult?.Invoke(success, uid);
             });
         }
 
         public void LoginWithGoogle()
         {
+            Debug.Log($"<color=orange>[AuthManager]</color> LoginWithGoogle Requested. (FirebaseReady: {IsFirebaseReady})");
+
+            if (!IsFirebaseReady)
+            {
+                Debug.LogWarning("[AuthManager] Firebase is not ready yet. Google login might fail.");
+            }
+
+            if (auth == null)
+            {
+                Debug.LogError("<color=red>[AuthManager]</color> Firebase is not initialized yet!");
+                OnLoginResult?.Invoke(false, null);
+                return;
+            }
+
 #if GPGS
-            // [DEBUG] GPGS 인증 시도 로그
             Debug.Log("<color=cyan>[AuthManager]</color> Attempting GPGS Authenticate...");
             PlayGamesPlatform.Instance.Authenticate((SignInStatus status) => {
                 Debug.Log($"<color=cyan>[AuthManager]</color> GPGS Authenticate Result: {status}");
@@ -128,8 +166,9 @@ namespace Necromancer.Systems
                 }
                 else
                 {
-                    UnityMainThreadDispatcher.Enqueue(() => {
-                        Debug.LogWarning($"<color=red>[AuthManager]</color> GPGS Login Failed! Status: {status}. If you are in Editor, this is normal.");
+                    // [FIX] Task를 사용하여 메인 스레드로 안전하게 복귀
+                    Task.Yield().GetAwaiter().OnCompleted(() => {
+                        Debug.LogWarning($"<color=red>[AuthManager]</color> GPGS Login Failed! Status: {status}");
                         SetState(AuthState.Failed);
                         OnLoginResult?.Invoke(false, null);
                     });
@@ -151,7 +190,7 @@ namespace Necromancer.Systems
 
                 if (string.IsNullOrEmpty(serverAuthCode))
                 {
-                    UnityMainThreadDispatcher.Enqueue(() => {
+                    Task.Yield().GetAwaiter().OnCompleted(() => {
                         Debug.LogError("[AuthManager] Failed to get Server Auth Code. Check Web Client ID in GPGS Setup.");
                         SetState(AuthState.Failed);
                         OnLoginResult?.Invoke(false, null);
@@ -163,8 +202,8 @@ namespace Necromancer.Systems
 
                 if (auth.CurrentUser != null && auth.CurrentUser.IsAnonymous)
                 {
-                    // [FIX] LinkWithCredentialAsync → Task<AuthResult> (Firebase SDK 신버전)
-                    auth.CurrentUser.LinkWithCredentialAsync(credential).ContinueWith(task => {
+                    // [FIX] LinkWithCredentialAsync
+                    auth.CurrentUser.LinkWithCredentialAsync(credential).ContinueWithOnMainThread(task => {
                         bool success = !task.IsFaulted && !task.IsCanceled;
                         string uid = (success && task.Result?.User != null) ? task.Result.User.UserId : null;
                         DispatchAuthResult(success, uid, isLinking: true, exception: task.Exception);
@@ -172,8 +211,8 @@ namespace Necromancer.Systems
                 }
                 else
                 {
-                    // [FIX] SignInWithCredentialAsync → Task<FirebaseUser> (Firebase SDK 구버전)
-                    auth.SignInWithCredentialAsync(credential).ContinueWith(task => {
+                    // [FIX] SignInWithCredentialAsync
+                    auth.SignInWithCredentialAsync(credential).ContinueWithOnMainThread(task => {
                         bool success = !task.IsFaulted && !task.IsCanceled;
                         string uid = (success && task.Result != null) ? task.Result.UserId : null;
                         DispatchAuthResult(success, uid, isLinking: false, exception: task.Exception);
@@ -183,26 +222,22 @@ namespace Necromancer.Systems
 #endif
         }
 
-        // [REFACTOR] 두 메서드의 반환 타입이 다르므로(AuthResult vs FirebaseUser)
-        // 결과값을 미리 추출한 뒤 공통 처리 메서드로 위임합니다.
         private void DispatchAuthResult(bool success, string uid, bool isLinking, AggregateException exception)
         {
-            UnityMainThreadDispatcher.Enqueue(() => {
-                if (success)
-                {
-                    SaveLoginMethod("Google");
-                    SetState(AuthState.LoggedIn);
-                    Debug.Log(isLinking
-                        ? "<color=green>[AuthManager]</color> Account Linked Successfully!"
-                        : "<color=green>[AuthManager]</color> Logged In Successfully!");
-                }
-                else
-                {
-                    SetState(AuthState.Failed);
-                    Debug.LogError($"[AuthManager] Login/Link Failed: {exception}");
-                }
-                OnLoginResult?.Invoke(success, uid);
-            });
+            if (success)
+            {
+                SaveLoginMethod("Google");
+                SetState(AuthState.LoggedIn);
+                Debug.Log(isLinking
+                    ? "<color=green>[AuthManager]</color> Account Linked Successfully!"
+                    : "<b><color=green>[AuthManager] GOOGLE LOGIN SUCCESS!!</color></b> UID: " + uid);
+            }
+            else
+            {
+                SetState(AuthState.Failed);
+                Debug.LogError($"[AuthManager] Login/Link Failed: {exception}");
+            }
+            OnLoginResult?.Invoke(success, uid);
         }
 
         public void LinkAccount()

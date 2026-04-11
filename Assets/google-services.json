@@ -12,7 +12,28 @@
           "package_name": "com.teca.necromancerlegion"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "341507312415-0oomf3p2igf16h53j1qimre3vm8rtvkr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.teca.necromancerlegion",
+            "certificate_hash": "f489ecbff59609eea3097f7540a5785c88a4924c"
+          }
+        },
+        {
+          "client_id": "341507312415-jf01h9jg3bvq416ojjc9dmvspf1f8he9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.teca.necromancerlegion",
+            "certificate_hash": "d8ba3eecc764861e271673a9e36d16fd32c70852"
+          }
+        },
+        {
+          "client_id": "341507312415-e6ra648ucip5ouhjg8egs7a7vstshavo.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCbxI5JblrLcHTXSLEy5JF-87X1NBP8Yxc"
@@ -20,7 +41,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "341507312415-e6ra648ucip5ouhjg8egs7a7vstshavo.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
