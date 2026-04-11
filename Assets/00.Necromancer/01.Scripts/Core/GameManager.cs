@@ -115,15 +115,14 @@ namespace Necromancer
                 Instance = this;
                 transform.SetParent(null);
                 DontDestroyOnLoad(gameObject);
-                
+
                 if (_poolManager == null || _waveManager == null || _uiManager == null)
                 {
                     Debug.LogError("<color=red>[GameManager]</color> CRITICAL ERROR: Essential managers (Pool, Wave, UI) are NOT assigned in the Inspector!");
                 }
-                
+
                 SceneManager.sceneLoaded += OnSceneLoaded;
                 InitAllManagers();
-                if (Auth != null) Auth.Init();
             }
             else Destroy(gameObject);
         }
@@ -266,14 +265,25 @@ namespace Necromancer
             if (Resources != null) Resources.Init();
             if (Combat != null) Combat.Init();
             if (Sound != null) Sound.Init();
-            // [STABILITY] AdMob 초기화 실패 시 Auth 초기화가 막히는 문제 방지
+            // [CRITICAL] Auth는 AdManager보다 반드시 먼저 초기화
+            // MobileAds.Initialize()가 렌더 스레드에서 예외를 던지면 C# try-catch로 잡히지 않아
+            // 뒤에 위치한 Auth.Init()이 호출되지 않는 문제 방지
+            if (Auth != null)
+            {
+                Auth.Init();
+                Debug.Log("<color=cyan>[GameManager]</color> Auth.Init() called.");
+            }
+            else
+            {
+                Debug.LogError("[GameManager] Auth is NULL! Firebase will not initialize. Check Inspector assignment.");
+            }
             try
             {
                 if (AdManager != null) AdManager.Init();
             }
             catch (Exception e)
             {
-                Debug.LogError($"[GameManager] AdManager.Init() failed — Google Mobile Ads AAR 누락 또는 버전 오류. Auth 초기화는 계속 진행합니다.\n{e.Message}");
+                Debug.LogError($"[GameManager] AdManager.Init() failed — Google Mobile Ads AAR 누락 또는 버전 오류.\n{e.Message}");
             }
         }
 
