@@ -17,7 +17,7 @@ MonoBehaviour:
   poolTag: Enemy
   enemyPrefab: {fileID: 0}
   animatorController: {fileID: 22100000, guid: 92916ce0cbcdec94eb0db4ff9a5d8d9f, type: 2}
-  maxHp: 15
+  maxHp: 10
   moveSpeed: 1.8
   attackDamage: 8
   dropExpAmount: 7

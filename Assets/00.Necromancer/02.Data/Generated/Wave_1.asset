@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   waveName: Wave 1
   startTime: 0
-  spawnDelay: 1
-  maxEnemiesTotal: 100
+  spawnDelay: 0.6
+  maxEnemiesTotal: 150
   enemyPoolList:
   - {fileID: 11400000, guid: 718223c4551bd964e9eb20b2164af76d, type: 2}
   - {fileID: 11400000, guid: 718223c4551bd964e9eb20b2164af76d, type: 2}

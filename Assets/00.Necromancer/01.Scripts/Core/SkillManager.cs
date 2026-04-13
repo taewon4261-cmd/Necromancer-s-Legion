@@ -56,7 +56,6 @@ namespace Necromancer
         public float minionExplosionDamage = 0f;
 
         [Header("Upgrade State")]
-        public int remainingRerolls = 0;
         public int totalResurrections = 0;
 
         [Header("Player Weapon Stats")]
@@ -89,10 +88,9 @@ namespace Necromancer
                 
                 // 유틸리티 업그레이드
                 currentMaxMinions = 50 + Mathf.FloorToInt(side.GetUpgradeValue(UpgradeStatType.StartMinionCount));
-                remainingRerolls = 1; // 리롤은 상시 1회로 기본 제공
                 totalResurrections = Mathf.FloorToInt(side.GetUpgradeValue(UpgradeStatType.Resurrection));
 
-                Debug.Log($"[SkillManager] Lobby Upgrades Applied. Rerolls: {remainingRerolls}, Resurrects: {totalResurrections}");
+                Debug.Log($"[SkillManager] Lobby Upgrades Applied. Resurrects: {totalResurrections}");
             }
         }
 

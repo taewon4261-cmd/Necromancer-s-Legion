@@ -47,6 +47,7 @@ namespace Necromancer.UI
 
         private List<SkillData> currentOptions;
         private PlayerController cachedPlayer;
+        private bool freeRefreshUsed = false;
 
         private void Update()
         {
@@ -310,8 +311,18 @@ namespace Necromancer.UI
         private void HandleLevelUp(List<SkillData> options)
         {
             if (levelUpPanel != null) levelUpPanel.SetActive(true);
+            freeRefreshUsed = false;
+            UpdateRefreshButtonText();
             // [NOTE] LevelUp 정지는 GameManager.AddExp에서 SetPause(LevelUp, true)로 이미 처리됨
             RefreshSkillCards(options);
+        }
+
+        private void UpdateRefreshButtonText()
+        {
+            if (rerollButton == null) return;
+            var label = rerollButton.GetComponentInChildren<TextMeshProUGUI>();
+            if (label == null) return;
+            label.text = freeRefreshUsed ? "광고 보고 새로고침" : "새로고침";
         }
 
         private void HandleTimeUpdated(float time)
@@ -444,25 +455,23 @@ namespace Necromancer.UI
         }
 
         /// <summary>
-        /// 스킬 리롤 (무료 횟수 우선 사용, 소진 시 광고 시청)
+        /// 스킬 새로고침 (1회 무료, 이후 광고 시청)
         /// </summary>
         public void OnClick_RerollWithAds()
         {
             if (GameManager.Instance == null || GameManager.Instance.skillManager == null) return;
 
-            // [SOUND] 버튼 클릭 효과음
             if (GameManager.Instance.Sound != null) GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
 
-            // [UPGRADE] 무료 리롤 횟수가 남아있는지 확인
-            if (GameManager.Instance.skillManager.remainingRerolls > 0)
+            if (!freeRefreshUsed)
             {
-                GameManager.Instance.skillManager.remainingRerolls--;
+                freeRefreshUsed = true;
+                UpdateRefreshButtonText();
                 ExecuteReroll();
-                Debug.Log($"<color=cyan>[UIManager]</color> Free Reroll used. Remaining: {GameManager.Instance.skillManager.remainingRerolls}");
                 return;
             }
 
-            // [ADS] 무료 횟수 소진 시 보상형 광고 호출
+            // 무료 횟수 소진 시 보상형 광고 호출
             if (GameManager.Instance.AdManager != null)
             {
                 GameManager.Instance.AdManager.ShowRewardedAd(
@@ -478,7 +487,6 @@ namespace Necromancer.UI
             {
                 var newOptions = GameManager.Instance.skillManager.GetRandomSkillsForLevelUp(3);
                 RefreshSkillCards(newOptions);
-                Debug.Log("<color=green>[ADS]</color> Reroll Complete via Ad Reward.");
             }
         }
 

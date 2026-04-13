@@ -198,7 +198,7 @@ namespace Necromancer.Systems
                     return;
                 }
 
-                Credential credential = GoogleAuthProvider.GetCredential(null, serverAuthCode);
+                Credential credential = PlayGamesAuthProvider.GetCredential(serverAuthCode);
 
                 if (auth.CurrentUser != null && auth.CurrentUser.IsAnonymous)
                 {

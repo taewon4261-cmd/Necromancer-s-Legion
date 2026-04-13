@@ -18,7 +18,7 @@ namespace Necromancer
 
         [Header("Survival & Performance")]
         public float despawnRadius = 22.0f;
-        public int maxEnemyCount = 150; // 기본 최댓값 제한
+        public int maxEnemyCount = 300; // 기본 최댓값 제한
 
         private int currentWaveIndex = 0;
         private bool isSpawning = false;

@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Text;
 using UnityEngine;
 
 namespace Necromancer.Core
@@ -86,7 +88,11 @@ namespace Necromancer.Core
 
     public class SaveDataManager : MonoBehaviour
     {
-                private string savePath;
+        // AES 암호화 키/IV (32바이트 키 = AES-256)
+        private const string AES_KEY = "NecroLegion!Key#2024$Secure@Pass";  // 32자
+        private const string AES_IV  = "NecroLegion!IV##";                  // 16자
+
+        private string savePath;
         private bool isInitialized = false;
 
         private GameSaveData currentData;
@@ -130,7 +136,8 @@ namespace Necromancer.Core
             {
                 try
                 {
-                    string json = File.ReadAllText(savePath);
+                    string encrypted = File.ReadAllText(savePath);
+                    string json = Decrypt(encrypted);
                     currentData = JsonUtility.FromJson<GameSaveData>(json);
                     Debug.Log($"<color=green>[SaveDataManager]</color> Data loaded from {savePath}");
                 }
@@ -163,7 +170,8 @@ namespace Necromancer.Core
             try
             {
                 string json = JsonUtility.ToJson(currentData, true);
-                System.IO.File.WriteAllText(savePath, json);
+                string encrypted = Encrypt(json);
+                System.IO.File.WriteAllText(savePath, encrypted);
                 // Debug.Log($"<color=green>[SaveDataManager]</color> Data saved successfully.");
             }
             catch (Exception e)
@@ -211,6 +219,40 @@ namespace Necromancer.Core
             updateAction?.Invoke(currentData);
             Save();
         }
+
+        #region Encryption
+        private string Encrypt(string plainText)
+        {
+            using (Aes aes = Aes.Create())
+            {
+                aes.Key = Encoding.UTF8.GetBytes(AES_KEY);
+                aes.IV  = Encoding.UTF8.GetBytes(AES_IV);
+                using (var ms = new MemoryStream())
+                using (var cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
+                {
+                    byte[] data = Encoding.UTF8.GetBytes(plainText);
+                    cs.Write(data, 0, data.Length);
+                    cs.FlushFinalBlock();
+                    return Convert.ToBase64String(ms.ToArray());
+                }
+            }
+        }
+
+        private string Decrypt(string cipherText)
+        {
+            using (Aes aes = Aes.Create())
+            {
+                aes.Key = Encoding.UTF8.GetBytes(AES_KEY);
+                aes.IV  = Encoding.UTF8.GetBytes(AES_IV);
+                using (var ms = new MemoryStream(Convert.FromBase64String(cipherText)))
+                using (var cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read))
+                using (var sr = new StreamReader(cs))
+                {
+                    return sr.ReadToEnd();
+                }
+            }
+        }
+        #endregion
 
         #region Upgrade Helpers
         public int GetUpgradeLevel(string key)
