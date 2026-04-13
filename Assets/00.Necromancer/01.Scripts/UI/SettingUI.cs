@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 using Necromancer.Core;
 using Necromancer.Systems;
 using Necromancer;
@@ -26,6 +27,10 @@ namespace Necromancer.UI
         [Header("Texts")]
         public TMPro.TextMeshProUGUI loginTxt;
 
+        [Header("Toast Notification")]
+        [SerializeField] private CanvasGroup toastCanvasGroup;
+        [SerializeField] private TMPro.TextMeshProUGUI toastText;
+
         private void Awake()
         {
             if (masterSlider == null) Debug.LogWarning("[SettingUI] masterSlider is NOT assigned!");
@@ -51,12 +56,56 @@ namespace Necromancer.UI
             // [AUTH] 패널이 열릴 때마다 현재 로그인 상태를 반영
             RefreshLoginButton();
             AuthManager.OnAuthStateChanged += OnAuthStateChanged;
+            if (GameManager.Instance?.Auth != null)
+                GameManager.Instance.Auth.OnLoginResult += OnLoginResult;
         }
 
         private void OnDisable()
         {
             AuthManager.OnAuthStateChanged -= OnAuthStateChanged;
+            if (GameManager.Instance?.Auth != null)
+                GameManager.Instance.Auth.OnLoginResult -= OnLoginResult;
         }
+
+        private void OnLoginResult(bool success, string uid)
+        {
+            if (!success) return;
+            var state = GameManager.Instance?.Auth?.CurrentState;
+            if (state == AuthState.LoggedIn)
+                ShowToast("구글 로그인 성공!");
+            else if (state == AuthState.Guest)
+                ShowToast("게스트 로그인 성공!");
+        }
+
+        private void ShowToast(string message)
+        {
+            if (toastCanvasGroup == null) return;
+            StopCoroutine("ToastCoroutine");
+            StartCoroutine(ToastCoroutine(message));
+        }
+
+        private IEnumerator ToastCoroutine(string message)
+        {
+            if (toastText != null) toastText.text = message;
+            toastCanvasGroup.alpha = 0f;
+            toastCanvasGroup.gameObject.SetActive(true);
+
+            float t = 0f;
+            while (t < 0.3f) { t += Time.unscaledDeltaTime; toastCanvasGroup.alpha = Mathf.Clamp01(t / 0.3f); yield return null; }
+            toastCanvasGroup.alpha = 1f;
+
+            yield return new WaitForSecondsRealtime(2f);
+
+            t = 0f;
+            while (t < 0.5f) { t += Time.unscaledDeltaTime; toastCanvasGroup.alpha = 1f - Mathf.Clamp01(t / 0.5f); yield return null; }
+            toastCanvasGroup.gameObject.SetActive(false);
+        }
+
+        [ContextMenu("Test Toast - 구글 로그인 성공")]
+        private void TestToastGoogle() => ShowToast("구글 로그인 성공!");
+
+        [ContextMenu("Test Toast - 게스트 로그인 성공")]
+        private void TestToastGuest() => ShowToast("게스트 로그인 성공!");
 
         /// <summary>
         /// [AUTH] 인증 상태 변경 시 로그인 버튼 텍스트/상호작용 갱신

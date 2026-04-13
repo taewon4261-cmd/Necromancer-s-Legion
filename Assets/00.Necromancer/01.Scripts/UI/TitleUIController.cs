@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using Necromancer.Systems;
 using Cysharp.Threading.Tasks;
 using Necromancer;
@@ -42,6 +44,10 @@ namespace Necromancer.UI
         [Header("Auth Panel Buttons")]
         [SerializeField] private Button btnGuest;
         [SerializeField] private Button btnGoogle;
+
+        [Header("Toast Notification")]
+        [SerializeField] private CanvasGroup toastCanvasGroup;
+        [SerializeField] private TextMeshProUGUI toastText;
 
         private readonly List<GameObject> allSubPanels = new List<GameObject>();
         private bool isTitleInitialized = false;
@@ -159,10 +165,53 @@ namespace Necromancer.UI
             if (success)
             {
                 Debug.Log($"<color=green>[TitleUI]</color> Login/Link Success (UID: {uid}): Navigating to Main UI.");
-                
+
                 if (authPanel != null) authPanel.SetActive(false);
                 if (mainButtonPanel != null) mainButtonPanel.SetActive(true);
+
+                // 로그인 방식에 따라 토스트 메시지 구분
+                var authState = GameManager.Instance?.Auth?.CurrentState;
+                if (authState == AuthState.LoggedIn)
+                    ShowToast("구글 로그인 성공!");
+                else if (authState == AuthState.Guest)
+                    ShowToast("게스트 로그인 성공!");
             }
+        }
+
+        private void ShowToast(string message)
+        {
+            if (toastCanvasGroup == null) return;
+            StopCoroutine("ToastCoroutine");
+            StartCoroutine(ToastCoroutine(message));
+        }
+
+        private IEnumerator ToastCoroutine(string message)
+        {
+            if (toastText != null) toastText.text = message;
+            toastCanvasGroup.alpha = 0f;
+            toastCanvasGroup.gameObject.SetActive(true);
+
+            // Fade in (0.3s)
+            float t = 0f;
+            while (t < 0.3f)
+            {
+                t += Time.deltaTime;
+                toastCanvasGroup.alpha = Mathf.Clamp01(t / 0.3f);
+                yield return null;
+            }
+            toastCanvasGroup.alpha = 1f;
+
+            yield return new WaitForSeconds(2f);
+
+            // Fade out (0.5s)
+            t = 0f;
+            while (t < 0.5f)
+            {
+                t += Time.deltaTime;
+                toastCanvasGroup.alpha = 1f - Mathf.Clamp01(t / 0.5f);
+                yield return null;
+            }
+            toastCanvasGroup.gameObject.SetActive(false);
         }
 
         public void ShowPanel(GameObject targetPanel)
@@ -227,6 +276,12 @@ namespace Necromancer.UI
             else
                 Debug.LogError("[TitleUI] GameManager.Instance.Auth is NULL!");
         }
+
+        [ContextMenu("Test Toast - 구글 로그인 성공")]
+        private void TestToastGoogle() => ShowToast("구글 로그인 성공!");
+
+        [ContextMenu("Test Toast - 게스트 로그인 성공")]
+        private void TestToastGuest() => ShowToast("게스트 로그인 성공!");
 
         private void PlaySelectSound()
         {
