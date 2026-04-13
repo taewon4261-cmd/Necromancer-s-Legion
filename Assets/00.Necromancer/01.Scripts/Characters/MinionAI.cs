@@ -255,6 +255,19 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
         spawnTime += amount;
     }
 
+    // [BloodFrenzy] HP 50% 미만 시 공속 버프를 반영한 실제 쿨타임 반환
+    // 공격 시도 시점에만 호출 → 매 프레임 비용 없음
+    private float GetEffectiveCooldown()
+    {
+        SkillManager sManager = GameManager.Instance?.skillManager;
+        if (sManager != null && sManager.bloodFrenzyLevel > 0 && currentHp < maxHp * 0.5f)
+        {
+            float speedBonus = sManager.bloodFrenzyLevel * 0.1f; // lv1:10%, lv2:20%, lv3:30%
+            return hitCooldown / (1f + speedBonus);
+        }
+        return hitCooldown;
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
         // [CHECK] 근거리 미니언인 경우에만 접촉 공격 수행
@@ -272,7 +285,7 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
     {
         if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) return;
         if (!isInitialContact && Time.frameCount % 5 != 0) return;
-        if (Time.time < lastHitTime + hitCooldown) return;
+        if (Time.time < lastHitTime + GetEffectiveCooldown()) return;
 
         if (collision.CompareTag("Enemy"))
         {
@@ -308,7 +321,7 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
 
     private void TryRangedAttack()
     {
-        if (Time.time < lastHitTime + hitCooldown) return;
+        if (Time.time < lastHitTime + GetEffectiveCooldown()) return;
         if (currentTarget == null) return;
 
         // [ACTION] 다중 발사 로직 처리 (1 + 추가 발수)

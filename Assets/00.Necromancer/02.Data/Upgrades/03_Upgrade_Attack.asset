@@ -17,7 +17,7 @@ MonoBehaviour:
   statType: 1
   icon: {fileID: 21300000, guid: 2ce5f3afd458f28459e2e07111d7979c, type: 3}
   iconFrame: {fileID: 0}
-  description: "\uBAA8\uB4E0 \uBBF8\uB2C8\uC5B8\uC758 \uACF5\uACA9\uB825 \uC99D\uAC00"
+  description: "\uBAA8\uB4E0 \uBCD1\uC0AC\uB4E4\uC758 \uACF5\uACA9\uB825 \uC99D\uAC00"
   requiredUpgrade: {fileID: 0}
   requiredLevel: 0
   currentLevel: 0

@@ -3429,6 +3429,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8491276329709891338, guid: d076dd6845f5ca84eb94326ecd47b265,
         type: 3}
+      propertyPath: testMode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8491276329709891338, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
       propertyPath: uiCanvasParent
       value: 
       objectReference: {fileID: 7082373221104781157, guid: 2003e946e0f690945950cd78c7b154a9,
@@ -3439,6 +3444,11 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 6630314820459439442, guid: b8f00691f9832634e8936fcb706e9247,
         type: 3}
+    - target: {fileID: 8491276329709891338, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: androidRealAdUnitId
+      value: ca-app-pub-3770611612840704~7065144018
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

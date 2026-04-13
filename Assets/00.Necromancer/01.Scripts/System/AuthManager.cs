@@ -156,9 +156,10 @@ namespace Necromancer.Systems
             }
 
 #if GPGS
-            Debug.Log("<color=cyan>[AuthManager]</color> Attempting GPGS Authenticate...");
-            PlayGamesPlatform.Instance.Authenticate((SignInStatus status) => {
-                Debug.Log($"<color=cyan>[AuthManager]</color> GPGS Authenticate Result: {status}");
+            Debug.Log("<color=cyan>[AuthManager]</color> Attempting GPGS ManuallyAuthenticate (Interactive)...");
+            // [FIX] Authenticate 대신 ManuallyAuthenticate를 사용하여 계정 선택창 유도
+            PlayGamesPlatform.Instance.ManuallyAuthenticate((SignInStatus status) => {
+                Debug.Log($"<color=cyan>[AuthManager]</color> GPGS ManuallyAuthenticate Result: {status}");
                 
                 if (status == SignInStatus.Success)
                 {
@@ -168,7 +169,7 @@ namespace Necromancer.Systems
                 {
                     // [FIX] Task를 사용하여 메인 스레드로 안전하게 복귀
                     Task.Yield().GetAwaiter().OnCompleted(() => {
-                        Debug.LogWarning($"<color=red>[AuthManager]</color> GPGS Login Failed! Status: {status}");
+                        Debug.LogWarning($"<color=red>[AuthManager]</color> GPGS Manually Login Failed! Status: {status}");
                         SetState(AuthState.Failed);
                         OnLoginResult?.Invoke(false, null);
                     });
@@ -268,9 +269,9 @@ namespace Necromancer.Systems
         {
             if (auth != null) auth.SignOut();
 #if GPGS
-            // [NOTE] GPGS v11+ (신버전) SDK에서는 PlayGamesPlatform.Instance.SignOut() 메서드가 제거되었습니다.
-            // 신버전 GPGS는 시스템 레벨에서 로그인을 관리하므로, 앱 내에서 명시적인 GPGS 로그아웃은 지원되지 않습니다.
-            // 대신 Firebase 로그아웃을 통해 앱 내 계정 상태를 초기화합니다.
+            // GPGS SDK 버전에 따라 SignOut() 지원 여부가 다름
+            // ManuallyAuthenticate()가 이미 계정 선택을 강제하므로 GPGS 세션 리셋 불필요
+            Debug.Log("<color=orange>[AuthManager]</color> GPGS session will be reset on next ManuallyAuthenticate call.");
 #endif
             SaveLoginMethod("None");
             SetState(AuthState.Initializing);

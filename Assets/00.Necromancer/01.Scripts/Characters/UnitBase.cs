@@ -1,6 +1,8 @@
 // File: Assets/Necromancer/01.Scripts/Characters/UnitBase.cs
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace Necromancer
@@ -38,6 +40,7 @@ namespace Necromancer
         public bool IsDead => isDead;
         protected bool isDead = false;
         private Coroutine hitFlashCoroutine;
+        private CancellationTokenSource _poisonFlashCts;
 
         public event global::System.Action<float, float> OnHealthChanged; // (current, max)
 
@@ -71,9 +74,14 @@ namespace Necromancer
 
         protected virtual void OnDisable()
         {
-             // [ARCHITECT] 중앙 관리자 해제
-            if (GameManager.Instance != null && GameManager.Instance.unitManager != null) 
+            // [ARCHITECT] 중앙 관리자 해제
+            if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
                 GameManager.Instance.unitManager.UnregisterUnit(this);
+
+            // 독 반짝임 취소
+            _poisonFlashCts?.Cancel();
+            _poisonFlashCts?.Dispose();
+            _poisonFlashCts = null;
         }
 
         /// <summary>
@@ -148,6 +156,36 @@ namespace Necromancer
             yield return new WaitForSeconds(hitDuration);
             unitSprite.color = Color.white;
             hitFlashCoroutine = null;
+        }
+
+        // 독(Poison) 틱마다 호출되는 초록 반짝임 (UniTask)
+        public void TriggerPoisonFlash()
+        {
+            if (unitSprite == null) return;
+            _poisonFlashCts?.Cancel();
+            _poisonFlashCts?.Dispose();
+            _poisonFlashCts = new CancellationTokenSource();
+            PoisonFlashAsync(_poisonFlashCts.Token).Forget();
+        }
+
+        private async UniTaskVoid PoisonFlashAsync(CancellationToken ct)
+        {
+            var green = new Color(0.2f, 1f, 0.2f);
+            try
+            {
+                // 반짝×2 효과
+                unitSprite.color = green;
+                await UniTask.Delay(100, cancellationToken: ct);
+                unitSprite.color = Color.white;
+                await UniTask.Delay(70, cancellationToken: ct);
+                unitSprite.color = green;
+                await UniTask.Delay(100, cancellationToken: ct);
+                unitSprite.color = Color.white;
+            }
+            catch (System.OperationCanceledException)
+            {
+                if (unitSprite != null) unitSprite.color = Color.white;
+            }
         }
 
         protected virtual void Die()

@@ -66,6 +66,7 @@ namespace Necromancer
             if (tickTimer >= 1.0f)
             {
                 unit.TakeDamage(tickDamage);
+                unit.TriggerPoisonFlash(); // 독 틱마다 초록 반짝임
                 tickTimer = 0;
             }
         }

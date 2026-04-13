@@ -11,18 +11,17 @@ namespace Necromancer.Systems
     public class AdManager : MonoBehaviour
     {
         [Header("AdMob Settings")]
-        [SerializeField] private bool testMode = true;
+        [SerializeField] private bool testMode = false; // 실제 광고 확인을 위해 기본값을 false로 변경
+        [SerializeField] private string androidRealAdUnitId = "ca-app-pub-3770611612840704/4228061831";
+        [SerializeField] private string iosRealAdUnitId = "unused"; // iOS는 아직 없으므로 unused 유지
         [SerializeField] private GameObject noAdMessagePrefab; // 광고 없을 때 띄울 텍스트 프리팹
         [SerializeField] private Transform uiCanvasParent;    // 메시지 상자가 생성될 부모 Canvas (성능 최적화용)
 
-#if UNITY_ANDROID
-        private string adUnitId = "ca-app-pub-3940256099942544/5224354917";
-#elif UNITY_IPHONE
-        private string adUnitId = "ca-app-pub-3940256099942544/1712485313";
-#else
-        private string adUnitId = "unused";
-#endif
+        // AdMob 공식 테스트 ID
+        private const string AndroidTestId = "ca-app-pub-3940256099942544/5224354917";
+        private const string IosTestId = "ca-app-pub-3940256099942544/1712485313";
 
+        private string adUnitId;
         private RewardedAd rewardedAd;
         private Action onRewardSuccess;
         private Action onRewardFailed;
@@ -34,6 +33,17 @@ namespace Necromancer.Systems
             {
                 gameObject.AddComponent<UnityMainThreadDispatcher>();
             }
+
+            // 플랫폼 및 테스트 모드에 따른 ID 설정
+#if UNITY_ANDROID
+            adUnitId = testMode ? AndroidTestId : androidRealAdUnitId;
+#elif UNITY_IPHONE
+            adUnitId = testMode ? IosTestId : iosRealAdUnitId;
+#else
+            adUnitId = "unused";
+#endif
+
+            Debug.Log($"<color=green>[AdManager]</color> Initializing with ID: {adUnitId} (TestMode: {testMode})");
 
             MobileAds.Initialize(initStatus => {
                 Debug.Log("<color=green>[AdManager]</color> AdMob Initialized.");

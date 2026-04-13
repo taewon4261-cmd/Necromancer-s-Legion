@@ -95,11 +95,26 @@ namespace Necromancer.UI
 
             if (GameManager.Instance != null && GameManager.Instance.Auth != null)
             {
+                // [FIX] OnEnable 시점에 Auth가 null이어서 구독이 누락됐을 경우 재구독
+                GameManager.Instance.Auth.OnLoginResult -= OnLoginSuccess;
+                GameManager.Instance.Auth.OnLoginResult += OnLoginSuccess;
+
                 // OnFirebaseReady 이벤트를 OnEnable 구독 전에 이미 놓쳤을 경우 대비
                 if (GameManager.Instance.Auth.IsFirebaseReady)
                     SetButtonsInteractable(true);
 
-                HandleAuthState(GameManager.Instance.Auth.CurrentState);
+                var currentState = GameManager.Instance.Auth.CurrentState;
+                HandleAuthState(currentState);
+
+                // [FIX] 자동 로그인 등으로 이미 로그인이 완료된 상태라면 토스트 메시지 출력
+                if (currentState == AuthState.LoggedIn)
+                {
+                    ShowToast("구글 로그인 성공!");
+                }
+                else if (currentState == AuthState.Guest)
+                {
+                    ShowToast("게스트 로그인 성공!");
+                }
             }
         }
 

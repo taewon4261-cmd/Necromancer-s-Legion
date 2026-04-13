@@ -55,6 +55,10 @@ namespace Necromancer
         public float vampiricHealAmount = 3f; // [NEW] 레벨업 시 증가할 회복량
         public float minionExplosionDamage = 0f;
 
+        // --- [스킬 레벨 추적] ---
+        public int toxicBladeLevel = 0;   // 15번: 레벨당 독 데미지 +2
+        public int bloodFrenzyLevel = 0;  // 17번: 레벨당 체력 50% 미만 시 공속 +10%
+
         [Header("Upgrade State")]
         public int totalResurrections = 0;
 
@@ -70,6 +74,8 @@ namespace Necromancer
         {
             // [STABILITY] 씬 재시작 시 이전 판의 스킬 효과가 중첩되는 것을 방지
             activeAttackModifiers.Clear();
+            toxicBladeLevel = 0;
+            bloodFrenzyLevel = 0;
 
             if (skillDB == null || skillDB.allSkills.Count == 0)
             {
@@ -222,7 +228,9 @@ namespace Necromancer
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.ToxicBlade:
-                    RegisterAttackModifier(new PoisonModifierTemplate(3f, 2f));
+                    // 레벨업마다 독 데미지 +2 (1→2, 2→4, 3→6)
+                    toxicBladeLevel++;
+                    RegisterAttackModifier(new PoisonModifierTemplate(3f, toxicBladeLevel * 2f));
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.FrostDippedWeapon:
@@ -230,8 +238,8 @@ namespace Necromancer
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.BloodFrenzy:
-                    // [REGISTRY] 흡혈 효과 등으로 전환 가능 (Bleeding 예시로 대체하거나 모디파이어 추가)
-                    RegisterAttackModifier(new BleedingModifierTemplate());
+                    // 패시브: 미니언 HP 50% 미만 시 공속 +10%/레벨. activeAttackModifiers 불필요
+                    bloodFrenzyLevel++;
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.CursedStigma:
