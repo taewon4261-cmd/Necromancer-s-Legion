@@ -225,20 +225,50 @@ namespace Necromancer.Systems
 
         private void DispatchAuthResult(bool success, string uid, bool isLinking, AggregateException exception)
         {
-            if (success)
-            {
-                SaveLoginMethod("Google");
-                SetState(AuthState.LoggedIn);
-                Debug.Log(isLinking
-                    ? "<color=green>[AuthManager]</color> Account Linked Successfully!"
-                    : "<b><color=green>[AuthManager] GOOGLE LOGIN SUCCESS!!</color></b> UID: " + uid);
-            }
-            else
+            if (!success)
             {
                 SetState(AuthState.Failed);
                 Debug.LogError($"[AuthManager] Login/Link Failed: {exception}");
+                OnLoginResult?.Invoke(false, uid);
+                return;
             }
-            OnLoginResult?.Invoke(success, uid);
+
+            SaveLoginMethod("Google");
+            SetState(AuthState.LoggedIn);
+            Debug.Log(isLinking
+                ? "<color=green>[AuthManager]</color> Account Linked Successfully!"
+                : "<b><color=green>[AuthManager] GOOGLE LOGIN SUCCESS!!</color></b> UID: " + uid);
+
+            // [CLOUD] UID 등록 후 Firestore에서 데이터 복구
+            var saveManager = GameManager.Instance?.SaveData;
+            if (saveManager != null && !string.IsNullOrEmpty(uid))
+            {
+                saveManager.SetCloudUser(uid);
+                saveManager.LoadFromCloud(uid).ContinueWithOnMainThread(task =>
+                {
+                    if (task.IsFaulted)
+                    {
+                        Debug.LogError($"[AuthManager] LoadFromCloud error: {task.Exception}");
+                    }
+                    else
+                    {
+                        Debug.Log($"[AuthManager] Cloud sync complete. HasData={task.Result}");
+
+                        // [FIX] 첫 로그인이라 클라우드에 데이터가 없으면 즉시 문서 생성
+                        if (!task.Result)
+                        {
+                            Debug.Log("[AuthManager] 첫 로그인 감지. Firestore에 문서를 즉시 생성합니다.");
+                            _ = saveManager.SaveToCloud(uid);
+                        }
+                    }
+
+                    OnLoginResult?.Invoke(true, uid);
+                });
+            }
+            else
+            {
+                OnLoginResult?.Invoke(true, uid);
+            }
         }
 
         public void LinkAccount()

@@ -23,6 +23,7 @@ namespace Necromancer.UI
         public Button backBtn;
         public Button quitBtn;
         public Button mainMenuBtn;
+        public Button tutorialBtn; // 게임 팁 / 도움말 버튼
 
         [Header("Texts")]
         public TMPro.TextMeshProUGUI loginTxt;
@@ -42,6 +43,7 @@ namespace Necromancer.UI
             if (backBtn != null) backBtn.onClick.AddListener(CloseAndSave);
             if (quitBtn != null) quitBtn.onClick.AddListener(QuitGame);
             if (mainMenuBtn != null) mainMenuBtn.onClick.AddListener(OnClick_MainMenu);
+            if (tutorialBtn != null) tutorialBtn.onClick.AddListener(OnClick_Tutorial);
         }
 
         private void OnEnable()
@@ -241,6 +243,24 @@ namespace Necromancer.UI
             }
 
             gameObject.SetActive(false); 
+        }
+
+        /// <summary>
+        /// 설정창에서 '게임 팁' 버튼 클릭 시 튜토리얼 패널을 다시 표시합니다.
+        /// 인게임(UIManager) / 타이틀(TitleUIController) 양쪽 모두 처리합니다.
+        /// </summary>
+        public void OnClick_Tutorial()
+        {
+            bool isGameScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == "GameScene";
+
+            if (isGameScene)
+            {
+                GameManager.Instance?.uiManager?.ShowTutorial();
+            }
+            else
+            {
+                GameManager.Instance?.titleUI?.ShowTutorial();
+            }
         }
 
         public void OnClick_MainMenu()

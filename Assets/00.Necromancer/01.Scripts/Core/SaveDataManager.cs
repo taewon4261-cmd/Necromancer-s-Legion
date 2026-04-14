@@ -3,7 +3,10 @@ using System.IO;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using UnityEngine;
+using Firebase.Firestore;
+using Firebase.Extensions;
 
 namespace Necromancer.Core
 {
@@ -38,6 +41,7 @@ namespace Necromancer.Core
         public int unlockedStageLevel = 1;
         public List<string> unlockedMinionIDs = new List<string>() { "Minion_01" };
         public string lastLoginMethod = "None"; // [AUTH] "None", "Guest", "Google"
+        public bool hasSeenTutorial = false;   // [TUTORIAL] 최초 실행 가이드 노출 여부
         
         // [SAVE] 정수 획득 현황 딕셔너리 직렬화를 위한 리스트
         [SerializeField] private List<EssenceEntry> essenceList = new List<EssenceEntry>();
@@ -94,6 +98,9 @@ namespace Necromancer.Core
 
         private string savePath;
         private bool isInitialized = false;
+
+        // [CLOUD] 현재 로그인된 Firebase UID (로그인 시 AuthManager가 설정)
+        private string _cloudUid = null;
 
         private GameSaveData currentData;
 
@@ -156,11 +163,12 @@ namespace Necromancer.Core
 
         /// <summary>
         /// 현재 메모리의 데이터를 파일에 저장합니다.
+        /// 로그인 상태라면 Firestore에도 비동기로 업로드합니다.
         /// </summary>
         public void Save()
         {
             if (currentData == null) currentData = new GameSaveData();
-            
+
             // [STABILITY] 저장 전 경로 재검증 (NullReference 방어)
             if (string.IsNullOrEmpty(savePath))
             {
@@ -172,11 +180,100 @@ namespace Necromancer.Core
                 string json = JsonUtility.ToJson(currentData, true);
                 string encrypted = Encrypt(json);
                 System.IO.File.WriteAllText(savePath, encrypted);
-                // Debug.Log($"<color=green>[SaveDataManager]</color> Data saved successfully.");
             }
             catch (Exception e)
             {
                 Debug.LogError($"[SaveDataManager] Save failed: {e.Message}");
+            }
+
+            // [CLOUD] 로그인 상태일 때 클라우드에 fire-and-forget 업로드
+            if (!string.IsNullOrEmpty(_cloudUid))
+            {
+                _ = SaveToCloud(_cloudUid);
+            }
+        }
+
+        /// <summary>
+        /// [CLOUD] 로그인된 UID를 설정합니다. AuthManager가 로그인 성공 후 호출합니다.
+        /// </summary>
+        public void SetCloudUser(string uid)
+        {
+            _cloudUid = uid;
+            Debug.Log($"<color=cyan>[SaveDataManager]</color> Cloud user set: {uid}");
+        }
+
+        /// <summary>
+        /// [CLOUD] 현재 데이터를 Firestore에 업로드합니다.
+        /// </summary>
+        public async Task SaveToCloud(string uid = null)
+        {
+            string targetUid = string.IsNullOrEmpty(uid) ? _cloudUid : uid;
+            if (string.IsNullOrEmpty(targetUid))
+            {
+                Debug.LogWarning("[SaveDataManager] SaveToCloud skipped: no user UID.");
+                return;
+            }
+
+            try
+            {
+                string json = JsonUtility.ToJson(currentData, true);
+                string encrypted = Encrypt(json);
+
+                var db = FirebaseFirestore.DefaultInstance;
+                var data = new Dictionary<string, object>
+                {
+                    { "gameData", encrypted },
+                    { "lastUpdate", FieldValue.ServerTimestamp }
+                };
+
+                await db.Collection("users").Document(targetUid).SetAsync(data, SetOptions.MergeAll);
+                Debug.Log("<color=green>[SaveDataManager]</color> Cloud save successful.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[SaveDataManager] SaveToCloud failed: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// [CLOUD] Firestore에서 데이터를 불러와 로컬에 덮어씁니다.
+        /// 문서가 없으면 false, 성공하면 true를 반환합니다.
+        /// </summary>
+        public async Task<bool> LoadFromCloud(string uid)
+        {
+            if (string.IsNullOrEmpty(uid))
+            {
+                Debug.LogWarning("[SaveDataManager] LoadFromCloud skipped: uid is null/empty.");
+                return false;
+            }
+
+            try
+            {
+                var db = FirebaseFirestore.DefaultInstance;
+                var snapshot = await db.Collection("users").Document(uid).GetSnapshotAsync();
+
+                if (!snapshot.Exists)
+                {
+                    Debug.Log("[SaveDataManager] No cloud save found. Using local data.");
+                    return false;
+                }
+
+                if (!snapshot.TryGetValue("gameData", out string encrypted))
+                {
+                    Debug.LogWarning("[SaveDataManager] Cloud document has no 'gameData' field.");
+                    return false;
+                }
+
+                string json = Decrypt(encrypted);
+                currentData = JsonUtility.FromJson<GameSaveData>(json);
+                Save(); // 로컬 파일과 동기화 (클라우드 재업로드는 _cloudUid가 없어 스킵됨)
+                Debug.Log("<color=green>[SaveDataManager]</color> Cloud data loaded and synced to local.");
+                return true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[SaveDataManager] LoadFromCloud failed: {e.Message}");
+                return false;
             }
         }
 

@@ -20,6 +20,8 @@ namespace Necromancer.UI
         public GameObject levelUpPanel;
         public ResultUI resultUI;
         public CanvasGroup dangerOverlay;
+        public GameObject tutorialPanel;
+        public Button tutorialCloseButton; // 튜토리얼 패널 안의 닫기 버튼
 
         [Header("Buttons")]
         public Button speedButton;

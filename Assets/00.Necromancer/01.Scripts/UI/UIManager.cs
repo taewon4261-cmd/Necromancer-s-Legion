@@ -40,6 +40,9 @@ namespace Necromancer.UI
         [Header("Global UI")]
         public SettingUI settingUI; // [NEW] 이제 ESC를 누르면 이 창이 뜹니다.
 
+        [Header("Tutorial")]
+        [SerializeField] private GameObject tutorialPanel;
+
         [Header("Screen Effects")]
         public CanvasGroup dangerOverlay;
         public float flashFrequency = 2.0f;
@@ -143,6 +146,14 @@ namespace Necromancer.UI
                     textSpeedToggle = hud.textSpeedToggle;
                     settingUI = hud.settingUI; // [NEW] 브릿지 연결
                     if (settingUI != null) settingUI.gameObject.SetActive(false);
+                    tutorialPanel = hud.tutorialPanel;
+                    if (tutorialPanel != null) tutorialPanel.SetActive(false);
+                    // [TUTORIAL] 닫기 버튼을 코드로 바인딩 (프리팹에서 씬 오브젝트 직접 참조 불가 문제 해결)
+                    if (hud.tutorialCloseButton != null)
+                    {
+                        hud.tutorialCloseButton.onClick.RemoveAllListeners();
+                        hud.tutorialCloseButton.onClick.AddListener(OnClick_CloseTutorial);
+                    }
 
                     // [STABILITY] 설정창 버튼 바인딩 (HUD Button Binding)
                     if (hud.settingsButton != null)
@@ -238,6 +249,58 @@ namespace Necromancer.UI
 
             if (levelUpPanel != null) levelUpPanel.SetActive(false);
             if (resultUI != null) resultUI.gameObject.SetActive(false);
+
+            // [TUTORIAL] 최초 실행 시 가이드 패널 노출
+            CheckAndShowTutorial();
+        }
+
+        /// <summary>
+        /// hasSeenTutorial이 false일 때만 패널을 열고 게임을 일시정지합니다.
+        /// </summary>
+        private void CheckAndShowTutorial()
+        {
+            var saveData = GameManager.Instance?.SaveData?.Data;
+            if (saveData == null) return;
+            if (saveData.hasSeenTutorial) return;
+
+            ShowTutorial();
+        }
+
+        /// <summary>
+        /// 튜토리얼 패널을 엽니다. SettingUI의 도움말 버튼에서도 호출합니다.
+        /// </summary>
+        public void ShowTutorial()
+        {
+            if (tutorialPanel == null)
+            {
+                Debug.LogWarning("[UIManager] tutorialPanel이 연결되지 않았습니다.");
+                return;
+            }
+
+            tutorialPanel.SetActive(true);
+            GameManager.Instance?.SetPause(PauseSource.Settings, true);
+            Debug.Log("<color=cyan>[UIManager]</color> Tutorial panel opened.");
+        }
+
+        /// <summary>
+        /// 튜토리얼 확인 버튼 클릭 시 호출. Inspector에서 버튼 OnClick에 연결하세요.
+        /// </summary>
+        public void OnClick_CloseTutorial()
+        {
+            if (tutorialPanel != null)
+                tutorialPanel.SetActive(false);
+
+            // 최초 확인 시에만 플래그 저장
+            var saveData = GameManager.Instance?.SaveData?.Data;
+            if (saveData != null && !saveData.hasSeenTutorial)
+            {
+                saveData.hasSeenTutorial = true;
+                GameManager.Instance.SaveData.Save();
+                Debug.Log("<color=green>[UIManager]</color> Tutorial flag saved.");
+            }
+
+            GameManager.Instance?.SetPause(PauseSource.Settings, false);
+            Debug.Log("<color=cyan>[UIManager]</color> Tutorial panel closed.");
         }
 
         public void Clear()

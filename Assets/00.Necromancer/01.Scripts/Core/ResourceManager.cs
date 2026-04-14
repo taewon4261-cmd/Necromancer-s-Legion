@@ -214,6 +214,23 @@ namespace Necromancer.Core {
         }
         #endregion
         /// <summary>
+        /// [REWARD-AD] 결과창 2배 보상 광고 시청 완료 시 호출.
+        /// 이번 판 획득 소울(bonus)만큼 추가 지급하고 Firestore까지 즉시 동기화합니다.
+        /// </summary>
+        public void DoubleSessionSoul(int bonus)
+        {
+            currentSoul += bonus;
+            GameManager.BroadcastSoul(currentSoul);
+
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
+            {
+                GameManager.Instance.SaveData.Data.currentSoul = currentSoul;
+                GameManager.Instance.SaveData.Save(); // 로컬 저장 + Firestore 자동 업로드
+                Debug.Log($"<color=green>[ResourceManager]</color> DoubleSessionSoul: +{bonus} 지급 완료. 총 소울: {currentSoul}");
+            }
+        }
+
+        /// <summary>
         /// [NEW] 특정 업그레이드의 현재 레벨을 조회합니다. (GameManager에서 호출)
         /// </summary>
         public int GetUpgradeLevel(string saveKey)

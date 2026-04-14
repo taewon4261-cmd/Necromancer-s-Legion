@@ -29,6 +29,10 @@ namespace Necromancer.UI
         public GameObject minionStorePanel;
         public GameObject settingPanel;
 
+        [Header("Tutorial")]
+        public GameObject tutorialPanel;
+        public Button tutorialCloseButton;
+
         [Header("Main Menu Buttons")]
         [SerializeField] private Button btnStart;
         [SerializeField] private Button btnUpgrade;
@@ -105,16 +109,6 @@ namespace Necromancer.UI
 
                 var currentState = GameManager.Instance.Auth.CurrentState;
                 HandleAuthState(currentState);
-
-                // [FIX] 자동 로그인 등으로 이미 로그인이 완료된 상태라면 토스트 메시지 출력
-                if (currentState == AuthState.LoggedIn)
-                {
-                    ShowToast("구글 로그인 성공!");
-                }
-                else if (currentState == AuthState.Guest)
-                {
-                    ShowToast("게스트 로그인 성공!");
-                }
             }
         }
 
@@ -246,6 +240,38 @@ namespace Necromancer.UI
             PlaySelectSound();
         }
 
+        /// <summary>
+        /// 튜토리얼 패널을 엽니다. SettingUI 도움말 버튼에서도 호출합니다.
+        /// </summary>
+        public void ShowTutorial()
+        {
+            if (tutorialPanel == null)
+            {
+                Debug.LogWarning("[TitleUI] tutorialPanel이 연결되지 않았습니다.");
+                return;
+            }
+            tutorialPanel.SetActive(true);
+            Debug.Log("<color=cyan>[TitleUI]</color> Tutorial panel opened.");
+        }
+
+        /// <summary>
+        /// 튜토리얼 닫기 버튼 클릭 시 호출.
+        /// </summary>
+        public void OnClick_CloseTutorial()
+        {
+            if (tutorialPanel != null)
+                tutorialPanel.SetActive(false);
+
+            // 최초 확인 시에만 플래그 저장
+            var saveData = GameManager.Instance?.SaveData?.Data;
+            if (saveData != null && !saveData.hasSeenTutorial)
+            {
+                saveData.hasSeenTutorial = true;
+                GameManager.Instance.SaveData.Save();
+                Debug.Log("<color=green>[TitleUI]</color> Tutorial flag saved.");
+            }
+        }
+
         private void SetupButtonEvents()
         {
             // [FORCE] 로그인 버튼 이벤트 강제 할당
@@ -272,6 +298,12 @@ namespace Necromancer.UI
             btnUpgradeBack?.onClick.AddListener(BackToMainMenu);
             btnMinionStoreBack?.onClick.AddListener(BackToMainMenu);
             btnSettingBack?.onClick.AddListener(BackToMainMenu);
+
+            if (tutorialCloseButton != null)
+            {
+                tutorialCloseButton.onClick.RemoveAllListeners();
+                tutorialCloseButton.onClick.AddListener(OnClick_CloseTutorial);
+            }
         }
 
         public void OnGuestLoginClick()
