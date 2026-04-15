@@ -11,8 +11,8 @@ namespace Necromancer
     /// </summary>
     public class SkillDataGenerator
     {
-        private const string DATA_PATH = "Assets/Necromancer/02.Data/SkillSO";
-        private const string ICON_PATH = "Assets/Necromancer/04.Sprites/SkillIcons";
+        private const string DATA_PATH = "Assets/00.Necromancer/02.Data/SkillSO";
+        private const string ICON_PATH = "Assets/00.Necromancer/04.Sprites/SkillIcons";
 
         [MenuItem("Necromancer/Generate 20 Skill SO Data")]
         public static void GenerateSkills()
@@ -20,10 +20,10 @@ namespace Necromancer
             if (!AssetDatabase.IsValidFolder(DATA_PATH))
             {
                 // 부모 폴더 확인 및 생성
-                if (!AssetDatabase.IsValidFolder("Assets/Necromancer/02.Data"))
-                    AssetDatabase.CreateFolder("Assets/Necromancer", "02.Data");
+                if (!AssetDatabase.IsValidFolder("Assets/00.Necromancer/02.Data"))
+                    AssetDatabase.CreateFolder("Assets/00.Necromancer", "02.Data");
                 
-                AssetDatabase.CreateFolder("Assets/Necromancer/02.Data", "SkillSO");
+                AssetDatabase.CreateFolder("Assets/00.Necromancer/02.Data", "SkillSO");
             }
 
             // 기획서 기반 20종 데이터 정의

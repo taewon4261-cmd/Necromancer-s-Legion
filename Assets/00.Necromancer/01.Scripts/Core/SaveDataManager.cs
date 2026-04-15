@@ -273,7 +273,7 @@ namespace Necromancer.Core
             catch (Exception e)
             {
                 Debug.LogError($"[SaveDataManager] LoadFromCloud failed: {e.Message}");
-                return false;
+                throw; // 에러 발생 시 예외를 던져서 상위에서 '데이터 없음'과 '통신 에러'를 구분할 수 있게 함
             }
         }
 

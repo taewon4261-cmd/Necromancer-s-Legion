@@ -293,6 +293,28 @@ namespace Necromancer
             SceneManager.LoadScene("GameScene");
         }
 
+        /// <summary>
+        /// [CLOUD] 클라우드 데이터 로드 후 각 매니저의 상태를 최신 데이터로 갱신합니다.
+        /// </summary>
+        public void RefreshSystemsAfterLoad()
+        {
+            Debug.Log("<color=cyan>[GameManager]</color> Cloud data detected. Refreshing all systems...");
+            
+            // 1. 리소스 매니저 재초기화 (소울 개수 등 반영)
+            if (Resources != null) 
+            {
+                Resources.Init();
+            }
+
+            // 2. 타이틀 UI가 있다면 현재 소울 개수 등 다시 표시
+            if (_titleUI != null)
+            {
+                _titleUI.SetupInitialUI();
+            }
+
+            Debug.Log("<color=green>[GameManager]</color> All systems synchronized with cloud data.");
+        }
+
         public void ToggleGameSpeed()
         {
             currentGameSpeed = currentGameSpeed <= 1.1f ? 1.5f : (currentGameSpeed <= 1.6f ? 2f : 1f);

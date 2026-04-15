@@ -203,11 +203,24 @@ namespace Necromancer.Systems
 
                 if (auth.CurrentUser != null && auth.CurrentUser.IsAnonymous)
                 {
-                    // [FIX] LinkWithCredentialAsync
                     auth.CurrentUser.LinkWithCredentialAsync(credential).ContinueWithOnMainThread(task => {
-                        bool success = !task.IsFaulted && !task.IsCanceled;
-                        string uid = (success && task.Result?.User != null) ? task.Result.User.UserId : null;
-                        DispatchAuthResult(success, uid, isLinking: true, exception: task.Exception);
+                        // 연동 실패 시 (예: 이미 가입된 구글 계정인 경우)
+                        if (task.IsFaulted || task.IsCanceled)
+                        {
+                            Debug.LogWarning($"<color=orange>[AuthManager]</color> Link failed (Credential likely in use). Trying SignIn instead...\nException: {task.Exception}");
+                            
+                            // 해당 구글 계정으로 일반 로그인 시도 (이전 데이터 복구)
+                            auth.SignInWithCredentialAsync(credential).ContinueWithOnMainThread(signInTask => {
+                                bool success = !signInTask.IsFaulted && !signInTask.IsCanceled;
+                                string uid = (success && signInTask.Result != null) ? signInTask.Result.UserId : null;
+                                DispatchAuthResult(success, uid, isLinking: false, exception: signInTask.Exception);
+                            });
+                        }
+                        else // 연동 성공 시
+                        {
+                            string uid = task.Result?.User != null ? task.Result.User.UserId : null;
+                            DispatchAuthResult(true, uid, isLinking: true, exception: null);
+                        }
                     });
                 }
                 else
@@ -233,8 +246,6 @@ namespace Necromancer.Systems
                 return;
             }
 
-            SaveLoginMethod("Google");
-            SetState(AuthState.LoggedIn);
             Debug.Log(isLinking
                 ? "<color=green>[AuthManager]</color> Account Linked Successfully!"
                 : "<b><color=green>[AuthManager] GOOGLE LOGIN SUCCESS!!</color></b> UID: " + uid);
@@ -249,24 +260,37 @@ namespace Necromancer.Systems
                     if (task.IsFaulted)
                     {
                         Debug.LogError($"[AuthManager] LoadFromCloud error: {task.Exception}");
+                        // [FIX] 데이터 로드 실패 시 로그인 상태로 넘어가지 않고 실패 상태로 유지하여 덮어쓰기 방지
+                        SetState(AuthState.Failed);
+                        OnLoginResult?.Invoke(false, uid);
                     }
                     else
                     {
                         Debug.Log($"[AuthManager] Cloud sync complete. HasData={task.Result}");
 
+                        // [FIX] 데이터 로드 성공 시 게임 시스템 전체 새로고침 (화면 반영)
+                        if (task.Result)
+                        {
+                            GameManager.Instance.RefreshSystemsAfterLoad();
+                        }
                         // [FIX] 첫 로그인이라 클라우드에 데이터가 없으면 즉시 문서 생성
-                        if (!task.Result)
+                        else
                         {
                             Debug.Log("[AuthManager] 첫 로그인 감지. Firestore에 문서를 즉시 생성합니다.");
                             _ = saveManager.SaveToCloud(uid);
                         }
-                    }
 
-                    OnLoginResult?.Invoke(true, uid);
+                        // [FIX] 모든 데이터 처리가 끝난 후(Load 완료 후)에만 로그인 상태로 전환 및 수단 저장
+                        SaveLoginMethod("Google");
+                        SetState(AuthState.LoggedIn);
+                        OnLoginResult?.Invoke(true, uid);
+                    }
                 });
             }
             else
             {
+                SaveLoginMethod("Google");
+                SetState(AuthState.LoggedIn);
                 OnLoginResult?.Invoke(true, uid);
             }
         }

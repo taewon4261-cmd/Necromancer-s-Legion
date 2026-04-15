@@ -11,7 +11,7 @@ namespace Necromancer.Editor
         public static void FixDatabases()
         {
             // 1. 데이터베이스 찾기
-            string dbPath = "Assets/Necromancer/02.Data/Generated/Master_WaveDatabase.asset";
+            string dbPath = "Assets/00.Necromancer/02.Data/Generated/Master_WaveDatabase.asset";
             WaveDatabase db = AssetDatabase.LoadAssetAtPath<WaveDatabase>(dbPath);
 
             if (db == null)
@@ -21,7 +21,7 @@ namespace Necromancer.Editor
             }
 
             // 2. 모든 스테이지 파일 찾기
-            string stagesFolder = "Assets/Necromancer/02.Data/Stages";
+            string stagesFolder = "Assets/00.Necromancer/02.Data/Stages";
             string[] guids = AssetDatabase.FindAssets("t:StageDataSO", new[] { stagesFolder });
 
             int count = 0;

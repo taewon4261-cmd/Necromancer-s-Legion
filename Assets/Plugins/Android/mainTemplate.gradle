@@ -3,6 +3,11 @@ apply plugin: 'com.android.library'
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
+    // [FIX] Firestore 26.1.1 requires limitedParallelism(Int,String) added in coroutines 1.8.0.
+    // Explicit implementation overrides any bundled older version in AARs.
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
 // Android Resolver Dependencies Start
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4' // Assets/GoogleMobileAds/Editor/GoogleMobileAdsDependencies.xml:12
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2' // Assets/GoogleMobileAds/Editor/GoogleMobileAdsDependencies.xml:17
@@ -15,11 +20,27 @@ dependencies {
     implementation 'com.google.firebase:firebase-auth:24.0.1' // Assets/Firebase/Editor/AuthDependencies.xml:16
     implementation 'com.google.firebase:firebase-auth-unity:13.9.0' // Assets/Firebase/Editor/AuthDependencies.xml:23
     implementation 'com.google.firebase:firebase-common:22.0.1' // Assets/Firebase/Editor/AppDependencies.xml:16
-    implementation 'com.google.firebase:firebase-firestore:26.1.1' // Assets/Firebase/Editor/FirestoreDependencies.xml:16
+    implementation 'com.google.firebase:firebase-firestore:25.1.1' // Assets/Firebase/Editor/FirestoreDependencies.xml:16
     implementation 'com.google.firebase:firebase-firestore-unity:13.9.0' // Assets/Firebase/Editor/FirestoreDependencies.xml:23
     implementation 'com.google.games:gpgs-plugin-support:2.1.0' // Assets/GooglePlayGames/com.google.play.games/Editor/GooglePlayGamesPluginDependencies.xml:11
 // Android Resolver Dependencies End
 **DEPS**}
+
+
+// [FIX] Firestore 26.1.1 은 limitedParallelism(Int,String) 이 추가된 coroutines 1.8.0+ 를 요구함.
+// R8 8.2.47 이 이미 적용되어 Kotlin 2.x StackOverflow 버그가 해결되었으므로 1.8.1 로 상향 고정.
+configurations.all {
+    resolutionStrategy {
+        force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
+        force 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
+    }
+}
 
 // Android Resolver Exclusions Start
 android {
@@ -32,21 +53,6 @@ android {
   }
 }
 // Android Resolver Exclusions End
-
-// [FIX] Kotlin 2.x + kotlinx-coroutines 1.9.x 가 AGP 7.4.2 의 D8 에서 StackOverflow를 유발하므로
-// Kotlin 1.9.22 / coroutines 1.7.3 으로 강제 고정 (android{} 바깥에서 적용해야 모든 configuration에 영향)
-configurations.all {
-    resolutionStrategy {
-        force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
-        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
-        force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
-        force 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
-        force 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
-        force 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-        force 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'
-    }
-}
-
 android {
     namespace "com.unity3d.player"
     ndkPath "**NDKPATH**"

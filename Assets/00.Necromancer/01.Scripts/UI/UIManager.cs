@@ -538,6 +538,7 @@ namespace Necromancer.UI
             if (GameManager.Instance.AdManager != null)
             {
                 GameManager.Instance.AdManager.ShowRewardedAd(
+                    false, // isDoubleReward: false (Skill Refresh)
                     () => ExecuteReroll(),
                     () => ShowAdErrorPopup("광고를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.")
                 );

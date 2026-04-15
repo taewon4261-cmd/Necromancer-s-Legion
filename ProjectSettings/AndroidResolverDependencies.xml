@@ -11,7 +11,7 @@
     <package>com.google.firebase:firebase-auth:24.0.1</package>
     <package>com.google.firebase:firebase-auth-unity:13.9.0</package>
     <package>com.google.firebase:firebase-common:22.0.1</package>
-    <package>com.google.firebase:firebase-firestore:26.1.1</package>
+    <package>com.google.firebase:firebase-firestore:25.1.1</package>
     <package>com.google.firebase:firebase-firestore-unity:13.9.0</package>
     <package>com.google.games:gpgs-plugin-support:2.1.0</package>
   </packages>

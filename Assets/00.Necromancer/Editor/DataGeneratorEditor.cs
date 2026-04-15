@@ -1,4 +1,4 @@
-// File: Assets/Necromancer/Editor/DataGeneratorEditor.cs
+// File: Assets/00.Necromancer/Editor/DataGeneratorEditor.cs
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
@@ -10,14 +10,14 @@ public class DataGeneratorEditor
     [MenuItem("Necromancer/Generate Enemy & Wave Data")]
     public static void GenerateData()
     {
-        string dataPath = "Assets/Necromancer/01.Scripts/Data/Generated";
+        string dataPath = "Assets/00.Necromancer/01.Scripts/Data/Generated";
         
         // 폴더가 없으면 자동 생성
-        if (!AssetDatabase.IsValidFolder("Assets/Necromancer/01.Scripts/Data"))
-            AssetDatabase.CreateFolder("Assets/Necromancer/01.Scripts", "Data");
+        if (!AssetDatabase.IsValidFolder("Assets/00.Necromancer/01.Scripts/Data"))
+            AssetDatabase.CreateFolder("Assets/00.Necromancer/01.Scripts", "Data");
             
         if (!AssetDatabase.IsValidFolder(dataPath))
-            AssetDatabase.CreateFolder("Assets/Necromancer/01.Scripts/Data", "Generated");
+            AssetDatabase.CreateFolder("Assets/00.Necromancer/01.Scripts/Data", "Generated");
 
         // 1. 적(Enemy) 데이터 10종 SO 일괄 생성
         List<EnemyData> enemyList = new List<EnemyData>();

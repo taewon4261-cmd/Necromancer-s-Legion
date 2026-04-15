@@ -137,14 +137,19 @@ namespace Necromancer
             if (currentWaveIndex < waveDatabase.waveList.Count - 1)
             {
                 // [BUG-FIX] 게임 시작 직후 또는 웨이브 전환 직후 찰나에 적이 0명인 것을 '클리어'로 오해하는 현상 방지
-                // 최소 3초는 지나야 하며, 게임 시작 직후(gameTime < 5s)에는 가속하지 않음
+                // 필드에 적이 한 명도 없고, 스폰 중이며, 현재 웨이브가 시작된 지 최소 5초는 지나야 가속
                 if (activeEnemyCount == 0 && isSpawning && gameTime > 5f)
                 {
-                    float nextStartTime = waveDatabase.waveList[currentWaveIndex + 1].startTime;
-                    if (gameTime < nextStartTime)
+                    float currentWaveStartTime = waveDatabase.waveList[currentWaveIndex].startTime;
+                    if (gameTime > currentWaveStartTime + 5f) // 현재 웨이브 시작 후 최소 5초 경과
                     {
-                        gameTime = nextStartTime; 
-                        Debug.Log($"<color=yellow>[WaveManager]</color> EARLY CLEAR! Jumping to next wave (Time: {gameTime}).");
+                        float nextStartTime = waveDatabase.waveList[currentWaveIndex + 1].startTime;
+                        if (gameTime < nextStartTime)
+                        {
+                            gameTime = nextStartTime; 
+                            Debug.Log($"<color=yellow>[WaveManager]</color> EARLY CLEAR! Jumping to next wave (Time: {gameTime}).");
+                            return; // [STABILITY] 한 번의 체크에 한 웨이브만 점프
+                        }
                     }
                 }
 

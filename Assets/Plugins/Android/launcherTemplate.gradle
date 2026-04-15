@@ -4,19 +4,25 @@ apply plugin: 'com.android.application'
 dependencies {
     implementation project(':unityLibrary')
     /* **DEPS** 제거 - androidlib 서브모듈들은 unityLibrary 소속이므로 launcher에서 직접 참조하면 빌드 오류 발생 */
+    // [FIX] Firestore 26.1.1 requires limitedParallelism(Int,String) added in coroutines 1.8.0.
+    // Explicit dependency ensures 1.8.1 is present in the final APK's classpath.
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
 }
 
-// [FIX] firebase-auth:24.0.1 이 끌어오는 kotlinx-coroutines:1.9.0 (Kotlin 2.x 메타데이터 포함) 이
-// AGP 7.4.2 의 D8 컴파일러에서 StackOverflowError를 유발하므로 1.7.3 으로 강제 다운그레이드
+// [FIX] Firestore 26.1.1 은 limitedParallelism(Int,String) 이 추가된 coroutines 1.8.0+ 를 요구함.
+// R8 8.2.47 이 이미 적용되어 Kotlin 2.x StackOverflow 버그가 해결되었으므로 1.8.1 로 상향 고정.
 configurations.all {
     resolutionStrategy {
         force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
         force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.22'
         force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.22'
         force 'org.jetbrains.kotlin:kotlin-stdlib-common:1.9.22'
-        force 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
-        force 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-        force 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+        force 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
     }
 }
 

@@ -6,23 +6,28 @@ using System.Collections.Generic;
 namespace Necromancer.Systems
 {
     /// <summary>
-    /// [INFRA] 애드몹(AdMob) 광고 관리자 (백그라운드 프리로딩 지원)
+    /// [INFRA] 애드몹(AdMob) 광고 관리자 (다중 광고 슬롯 및 독립적 프리로딩 지원)
     /// </summary>
     public class AdManager : MonoBehaviour
     {
         [Header("AdMob Settings")]
-        [SerializeField] private bool testMode = false; // 실제 광고 확인을 위해 기본값을 false로 변경
-        [SerializeField] private string androidRealAdUnitId = "ca-app-pub-3770611612840704/4228061831";
-        [SerializeField] private string iosRealAdUnitId = "unused"; // iOS는 아직 없으므로 unused 유지
-        [SerializeField] private GameObject noAdMessagePrefab; // 광고 없을 때 띄울 텍스트 프리팹
-        [SerializeField] private Transform uiCanvasParent;    // 메시지 상자가 생성될 부모 Canvas (성능 최적화용)
+        [SerializeField] private bool testMode = false;
+        
+        [Header("Ad Unit IDs (Android Real)")]
+        [SerializeField] private string skillRefreshAdUnitId = "ca-app-pub-3770611612840704/4228061831";
+        [SerializeField] private string doubleRewardAdUnitId = "ca-app-pub-3770611612840704/9975818749";
+
+        [Header("UI References")]
+        [SerializeField] private GameObject noAdMessagePrefab;
+        [SerializeField] private Transform uiCanvasParent;
 
         // AdMob 공식 테스트 ID
         private const string AndroidTestId = "ca-app-pub-3940256099942544/5224354917";
-        private const string IosTestId = "ca-app-pub-3940256099942544/1712485313";
 
-        private string adUnitId;
-        private RewardedAd rewardedAd;
+        // [SLOTS] 각 광고 단위별 독립적인 광고 객체 (주머니 2개)
+        private RewardedAd skillAd;
+        private RewardedAd resultAd;
+
         private Action onRewardSuccess;
         private Action onRewardFailed;
         private bool isAdShowing = false;
@@ -34,106 +39,97 @@ namespace Necromancer.Systems
                 gameObject.AddComponent<UnityMainThreadDispatcher>();
             }
 
-            // 플랫폼 및 테스트 모드에 따른 ID 설정
-#if UNITY_ANDROID
-            adUnitId = testMode ? AndroidTestId : androidRealAdUnitId;
-#elif UNITY_IPHONE
-            adUnitId = testMode ? IosTestId : iosRealAdUnitId;
-#else
-            adUnitId = "unused";
-#endif
-
-            Debug.Log($"<color=green>[AdManager]</color> Initializing with ID: {adUnitId} (TestMode: {testMode})");
+            Debug.Log("<color=green>[AdManager]</color> Initializing AdMob with Dual Slots...");
 
             MobileAds.Initialize(initStatus => {
                 Debug.Log("<color=green>[AdManager]</color> AdMob Initialized.");
-                UnityMainThreadDispatcher.Enqueue(() => LoadRewardedAd());
+                // 두 종류의 광고를 동시에 백그라운드에서 로드 시작
+                UnityMainThreadDispatcher.Enqueue(() => {
+                    LoadRewardedAd(false); // 스킬 리프레시 로드
+                    LoadRewardedAd(true);  // 결과창 2배 로드
+                });
             });
         }
 
         /// <summary>
-        /// 다음 광고를 미리 로드합니다. (백그라운드 병렬 로딩 가능)
+        /// 특정 광고 단위를 미리 로드합니다.
         /// </summary>
-        public void LoadRewardedAd()
+        public void LoadRewardedAd(bool isDoubleReward)
         {
-            // 현재 광고가 나오고 있는 중이면, 레퍼런스를 덮어쓰지 않기 위해 체크
             if (isAdShowing) return;
 
-            if (rewardedAd != null)
-            {
-                rewardedAd.Destroy();
-                rewardedAd = null;
-            }
+            string targetId = testMode ? AndroidTestId : (isDoubleReward ? doubleRewardAdUnitId : skillRefreshAdUnitId);
+            
+            // 기존 광고 객체 정리
+            if (isDoubleReward && resultAd != null) { resultAd.Destroy(); resultAd = null; }
+            else if (!isDoubleReward && skillAd != null) { skillAd.Destroy(); skillAd = null; }
 
-            Debug.Log("[AdManager] Pre-loading next ad in background...");
+            Debug.Log($"[AdManager] Pre-loading {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad...");
             var adRequest = new AdRequest();
 
-            RewardedAd.Load(adUnitId, adRequest, (RewardedAd ad, LoadAdError error) => {
+            RewardedAd.Load(targetId, adRequest, (RewardedAd ad, LoadAdError error) => {
                 if (error != null || ad == null)
                 {
-                    Debug.LogError($"[AdManager] Failed to pre-load ad: {error}");
+                    Debug.LogError($"[AdManager] Failed to load {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad: {error}");
                     return;
                 }
 
-                Debug.Log("[AdManager] Next ad pre-loaded and ready.");
-                rewardedAd = ad;
-                RegisterEventHandlers(rewardedAd);
+                Debug.Log($"[AdManager] {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad loaded and ready.");
+                
+                if (isDoubleReward) resultAd = ad;
+                else skillAd = ad;
+
+                RegisterEventHandlers(ad, isDoubleReward);
             });
         }
 
         /// <summary>
-        /// 광고를 보여주고 즉시 다음 광고 로드를 시작합니다.
+        /// 미리 로드된 특정 광고를 보여줍니다.
         /// </summary>
-        public void ShowRewardedAd(Action successCallback, Action failCallback)
+        public void ShowRewardedAd(bool isDoubleReward, Action successCallback, Action failCallback)
         {
             onRewardSuccess = successCallback;
             onRewardFailed = failCallback;
 
-            if (rewardedAd != null && rewardedAd.CanShowAd())
+            RewardedAd targetAd = isDoubleReward ? resultAd : skillAd;
+
+            if (targetAd != null && targetAd.CanShowAd())
             {
                 isAdShowing = true;
-                // [PAUSE] 광고 시작 → Ad 사유로 일시정지 (LevelUp 정지 중이라도 중첩 유지)
                 if (GameManager.Instance != null)
                     GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, true);
 
-                rewardedAd.Show((Reward reward) => {
+                targetAd.Show((Reward reward) => {
                     UnityMainThreadDispatcher.Enqueue(() => {
                         Debug.Log("<color=green>[AdManager]</color> Reward earned!");
                         onRewardSuccess?.Invoke();
                     });
                 });
-
-                // [PRE-LOAD] 광고가 뜨자마자 다음 광고를 백그라운드에서 받아오기 시작
-                // (일부 네트워크 상황을 고려하여 1초 정도의 짧은 딜레이 후 로드 시작도 가능하지만, 즉시 호출)
-                UnityMainThreadDispatcher.Enqueue(() => {
-                    // 현재 보여준 광고 객체와의 충돌을 피하기 위해
-                    // showing이 완료된 후 다시 로드될 수 있도록 flag와 함께 설계
-                });
             }
             else
             {
-                Debug.LogWarning("[AdManager] No ad ready.");
+                Debug.LogWarning($"[AdManager] {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad NOT ready. Loading now...");
+                LoadRewardedAd(isDoubleReward);
                 
-                // [FIX] 인스펙터에 연결된 Canvas 바로 사용 (최고 성능)
                 if (noAdMessagePrefab != null && uiCanvasParent != null)
                 {
                     GameObject msgBox = Instantiate(noAdMessagePrefab, uiCanvasParent);
-                    msgBox.transform.localPosition = Vector3.zero; // 중앙 정렬
+                    msgBox.transform.localPosition = Vector3.zero;
                 }
                 
                 onRewardFailed?.Invoke();
             }
         }
 
-        private void RegisterEventHandlers(RewardedAd ad)
+        private void RegisterEventHandlers(RewardedAd ad, bool isDoubleReward)
         {
             ad.OnAdFullScreenContentClosed += () => {
-                Debug.Log("[AdManager] Ad closed by user.");
+                Debug.Log($"[AdManager] {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad closed.");
                 isAdShowing = false;
                 UnityMainThreadDispatcher.Enqueue(() => {
                     if (GameManager.Instance != null)
                         GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, false);
-                    LoadRewardedAd();
+                    LoadRewardedAd(isDoubleReward); // 사용한 광고만 다시 로드
                 });
             };
 
@@ -144,21 +140,14 @@ namespace Necromancer.Systems
                     if (GameManager.Instance != null)
                         GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, false);
                     
-                    // [FIX] 인스펙터에 연결된 Canvas 바로 사용 (최고 성능)
                     if (noAdMessagePrefab != null && uiCanvasParent != null)
                     {
                         GameObject msgBox = Instantiate(noAdMessagePrefab, uiCanvasParent);
-                        msgBox.transform.localPosition = Vector3.zero; // 중앙 정렬
+                        msgBox.transform.localPosition = Vector3.zero;
                     }
 
                     onRewardFailed?.Invoke();
                 });
-            };
-
-            // 광고가 나타나면(Showing) 즉시 flag를 세워 리소스 관리
-            ad.OnAdFullScreenContentOpened += () => {
-                Debug.Log("[AdManager] Ad is now visible. Preparing next ad...");
-                // Note: 여기서 즉시 Load를 호출하여 백그라운드 작업을 시작하도록 유도 가능
             };
         }
     }

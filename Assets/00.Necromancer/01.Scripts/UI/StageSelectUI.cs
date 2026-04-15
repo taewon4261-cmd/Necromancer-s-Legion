@@ -25,8 +25,9 @@ namespace Necromancer.UI
         public Button nextButton;
         public Button closeOverlayButton; // 이제 쓸모없지만 필드는 비워둡니다.
 
-        // stageList는 여전히 필요하므로 필드로 유지
-        public List<StageDataSO> stageList = new List<StageDataSO>(); 
+        [Header("Stage Collection")]
+        // [ARCH] Resources.LoadAll 방식에서 인스펙터 직렬화 방식으로 변경 (QA 지시사항)
+        [SerializeField] private List<StageDataSO> stageList = new List<StageDataSO>(); 
 
         [Header("Current Selection")]
         public StageDataSO selectedStage;
@@ -109,15 +110,11 @@ namespace Necromancer.UI
 
         private void InitStageList()
         {
-            // 리스트 데이터를 가져옵니다. (스크롤 뷰가 없더라도 데이터를 로드해야 하므로 유지)
-            if (stageList == null || stageList.Count == 0)
+            // [ARCH] Resources.LoadAll 로직 삭제. 
+            // 이제 에디터 인스펙터에서 직접 Drag & Drop으로 데이터를 할당해야 합니다.
+            if (stageList != null && stageList.Count > 0)
             {
-                var loadedStages = Resources.LoadAll<StageDataSO>("Stages");
-                if (loadedStages != null && loadedStages.Length > 0)
-                {
-                    stageList = new List<StageDataSO>(loadedStages);
-                    stageList.Sort((a, b) => a.stageID.CompareTo(b.stageID));
-                }
+                stageList.Sort((a, b) => a.stageID.CompareTo(b.stageID));
             }
         }
 

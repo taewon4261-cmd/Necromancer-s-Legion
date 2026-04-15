@@ -74,11 +74,11 @@ public class ExpGem : MonoBehaviour
         {
             if (GameManager.Instance != null)
             {
-                // [UPGRADE] 경험치 획득량 보너스 적용
+                // [UPGRADE] 경험치 획득량 보너스 적용 (정수 퍼센트 -> 소수점 퍼센트 변환)
                 float bonus = 0f;
                 if (GameManager.Instance.Resources != null)
                 {
-                    bonus = GameManager.Instance.Resources.GetUpgradeValue(UpgradeStatType.ExpGain);
+                    bonus = GameManager.Instance.Resources.GetUpgradeValue(UpgradeStatType.ExpGain) * 0.01f;
                 }
                 float finalExp = expAmount * (1f + bonus);
 

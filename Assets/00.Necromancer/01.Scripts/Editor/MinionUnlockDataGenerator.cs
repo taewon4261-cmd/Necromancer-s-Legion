@@ -12,10 +12,10 @@ namespace Necromancer.Editor
     /// </summary>
     public class MinionUnlockDataGenerator
     {
-        private const string RESOURCES_PATH = "Assets/Resources/Minions";
-        private const string ICON_PATH      = "Assets/Necromancer/04.Sprites/MinionIcons";
+        private const string DATA_PATH = "Assets/00.Necromancer/02.Data/Minions";
+        private const string ICON_PATH = "Assets/00.Necromancer/04.Sprites/MinionIcons";
 
-        [MenuItem("Necromancer/Generate Minion Unlock SOs")]
+        [MenuItem("Necromancer/Generate Minion Unlock SOs (New Architecture)")]
         public static void GenerateAll()
         {
             EnsureFolders();
@@ -87,14 +87,14 @@ namespace Necromancer.Editor
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log("<color=gold><b>[MinionGenerator]</b></color> 6종 미니언 해금 에셋 생성/동기화 완료!");
+            Debug.Log("<color=gold><b>[MinionGenerator]</b></color> 6종 미니언 해금 에셋 생성/동기화 완료! (Path: 00.Necromancer/02.Data/Minions)");
         }
 
         private static void CreateOrUpdate(
             string fileName, string minionID, string minionTag, string minionName,
             string targetEnemyID, int soulCost, int essenceCost, MinionTier tier, string desc)
         {
-            string fullPath = $"{RESOURCES_PATH}/{fileName}.asset";
+            string fullPath = $"{DATA_PATH}/{fileName}.asset";
             MinionUnlockSO so = AssetDatabase.LoadAssetAtPath<MinionUnlockSO>(fullPath);
 
             if (so == null)
@@ -129,11 +129,14 @@ namespace Necromancer.Editor
 
         private static void EnsureFolders()
         {
-            if (!AssetDatabase.IsValidFolder("Assets/Resources"))
-                AssetDatabase.CreateFolder("Assets", "Resources");
+            if (!AssetDatabase.IsValidFolder("Assets/00.Necromancer"))
+                AssetDatabase.CreateFolder("Assets", "00.Necromancer");
 
-            if (!AssetDatabase.IsValidFolder(RESOURCES_PATH))
-                AssetDatabase.CreateFolder("Assets/Resources", "Minions");
+            if (!AssetDatabase.IsValidFolder("Assets/00.Necromancer/02.Data"))
+                AssetDatabase.CreateFolder("Assets/00.Necromancer", "02.Data");
+
+            if (!AssetDatabase.IsValidFolder(DATA_PATH))
+                AssetDatabase.CreateFolder("Assets/00.Necromancer/02.Data", "Minions");
         }
     }
 }

@@ -17,11 +17,11 @@ MonoBehaviour:
   statType: 6
   icon: {fileID: 21300000, guid: 75d963c3118fd6c4f8c11a47158fb495, type: 3}
   iconFrame: {fileID: 0}
-  description: "\uACBD\uD5D8\uCE58 \uD68D\uB4DD\uB7C9 \uC99D\uAC00"
+  description: "\uACBD\uD5D8\uCE58 \uD68D\uB4DD\uB7C9 +5% \uC99D\uAC00"
   requiredUpgrade: {fileID: 0}
   requiredLevel: 0
   currentLevel: 0
   maxLevel: 10
   baseCost: 900
-  costIncreaseFactor: 1.6
-  valuePerLevel: 10
+  costIncreaseFactor: 0.6
+  valuePerLevel: 5

@@ -62,14 +62,13 @@ namespace Necromancer.Core {
         /// <summary>
         /// 인게임에서 적을 처치하거나 보석을 먹어 소울을 획득할 때 호출
         /// </summary>
-        public void AddSoul(int a) { 
-            // [UPGRADE] 영혼 획득량 보너스 적용
-            float bonus = GetUpgradeValue(UpgradeStatType.SoulGain); // 예: 0.1 이면 10% 추가
-            int finalAmount = Mathf.RoundToInt(a * (1f + bonus));
+        public void AddSoul(int a) {
+            // [UPGRADE] 영혼 획득량 보너스 적용 (정수 퍼센트 -> 소수점 퍼센트 변환)
+            float bonus = GetUpgradeValue(UpgradeStatType.SoulGain) * 0.01f; 
+            int finalAmount = Mathf.Max(1, Mathf.RoundToInt(a * (1f + bonus)));
 
-            currentSessionSoul += finalAmount; 
+            currentSessionSoul += finalAmount;
             currentSoul += finalAmount; // [DATA-SAFETY] 이번 판 획득량을 즉시 전체 지갑에 합산
-
             // [SOUND] 소울 획득 효과음 재생
             if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
                 GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSoulGain);
