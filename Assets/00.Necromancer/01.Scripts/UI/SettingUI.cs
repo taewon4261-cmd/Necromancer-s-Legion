@@ -71,7 +71,11 @@ namespace Necromancer.UI
 
         private void OnLoginResult(bool success, string uid)
         {
-            if (!success) return;
+            if (!success)
+            {
+                ShowToast("구글 로그인에 실패했습니다.");
+                return;
+            }
             var state = GameManager.Instance?.Auth?.CurrentState;
             if (state == AuthState.LoggedIn)
                 ShowToast("구글 로그인 성공!");
@@ -204,11 +208,37 @@ namespace Necromancer.UI
             // [AUTH] 이미 구글 로그인 중이면 계정 변경, 아니면 연동 시도
             if (auth.CurrentState == AuthState.LoggedIn)
             {
-                auth.SwitchAccount();
+                if (GameManager.Instance.Popup != null)
+                {
+                    GameManager.Instance.Popup.ShowConfirmPopup(
+                        "다른 구글 계정으로 변경하시겠습니까?\n(기존 데이터가 있으면 불러옵니다)",
+                        onConfirm: () => auth.SwitchAccount(),
+                        onCancel: null,
+                        confirmLabel: "변경",
+                        cancelLabel: "취소"
+                    );
+                }
+                else
+                {
+                    auth.SwitchAccount();
+                }
             }
             else
             {
-                auth.LinkAccount();
+                if (GameManager.Instance.Popup != null)
+                {
+                    GameManager.Instance.Popup.ShowConfirmPopup(
+                        "구글 계정으로 로그인하시겠습니까?\n기존 데이터가 있으면 불러오고,\n없으면 현재 진행 데이터가 저장됩니다.",
+                        onConfirm: () => auth.LinkAccount(),
+                        onCancel: null,
+                        confirmLabel: "로그인",
+                        cancelLabel: "취소"
+                    );
+                }
+                else
+                {
+                    auth.LinkAccount();
+                }
             }
         }
 

@@ -28,6 +28,7 @@ namespace Necromancer
         [SerializeField] private SoundManager _sound;
         [SerializeField] private DebugConsole _debugConsole;
         [SerializeField] private Necromancer.Systems.AdManager _adManager;
+        [SerializeField] private Necromancer.Systems.PopupManager _popupManager;
         public Necromancer.Systems.AuthManager Auth;
 
 
@@ -49,7 +50,9 @@ namespace Necromancer
         public ResourceManager Resources => _resources;
         public CombatManager Combat => _combat;
         public SoundManager Sound => _sound;
-        public DebugConsole DebugConsole => _debugConsole;        public Necromancer.Systems.AdManager AdManager => _adManager;
+        public DebugConsole DebugConsole => _debugConsole;
+        public Necromancer.Systems.AdManager AdManager => _adManager;
+        public Necromancer.Systems.PopupManager Popup => _popupManager;
 
 
         public PoolManager poolManager => _poolManager;

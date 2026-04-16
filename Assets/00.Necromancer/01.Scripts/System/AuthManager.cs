@@ -1,3 +1,4 @@
+using Firebase;
 using Firebase.Auth;
 using Firebase.Extensions;
 using System.Threading.Tasks;
@@ -28,6 +29,7 @@ namespace Necromancer.Systems
         public bool IsFirebaseReady { get; private set; } = false; 
 
         private FirebaseAuth auth;
+        private bool _isLoginInProgress = false;
         public event Action<bool, string> OnLoginResult;
 
 
@@ -141,6 +143,12 @@ namespace Necromancer.Systems
 
         public void LoginWithGoogle()
         {
+            if (_isLoginInProgress)
+            {
+                Debug.LogWarning("[AuthManager] Login already in progress. Ignoring duplicate call.");
+                return;
+            }
+
             Debug.Log($"<color=orange>[AuthManager]</color> LoginWithGoogle Requested. (FirebaseReady: {IsFirebaseReady})");
 
             if (!IsFirebaseReady)
@@ -155,6 +163,8 @@ namespace Necromancer.Systems
                 return;
             }
 
+            _isLoginInProgress = true;
+
 #if GPGS
             Debug.Log("<color=cyan>[AuthManager]</color> Attempting GPGS ManuallyAuthenticate (Interactive)...");
             // [FIX] Authenticate 대신 ManuallyAuthenticate를 사용하여 계정 선택창 유도
@@ -167,12 +177,11 @@ namespace Necromancer.Systems
                 }
                 else
                 {
-                    // [FIX] Task를 사용하여 메인 스레드로 안전하게 복귀
-                    Task.Yield().GetAwaiter().OnCompleted(() => {
-                        Debug.LogWarning($"<color=red>[AuthManager]</color> GPGS Manually Login Failed! Status: {status}");
-                        SetState(AuthState.Failed);
-                        OnLoginResult?.Invoke(false, null);
-                    });
+                    // GPGS 콜백은 이미 메인 스레드에서 호출되므로 직접 처리
+                    Debug.LogWarning($"<color=red>[AuthManager]</color> GPGS Manually Login Failed! Status: {status}");
+                    _isLoginInProgress = false;
+                    SetState(AuthState.Failed);
+                    OnLoginResult?.Invoke(false, null);
                 }
             });
 #else
@@ -191,11 +200,10 @@ namespace Necromancer.Systems
 
                 if (string.IsNullOrEmpty(serverAuthCode))
                 {
-                    Task.Yield().GetAwaiter().OnCompleted(() => {
-                        Debug.LogError("[AuthManager] Failed to get Server Auth Code. Check Web Client ID in GPGS Setup.");
-                        SetState(AuthState.Failed);
-                        OnLoginResult?.Invoke(false, null);
-                    });
+                    // RequestServerSideAccess 콜백도 메인 스레드에서 호출되므로 직접 처리
+                    Debug.LogError("[AuthManager] Failed to get Server Auth Code. Check Web Client ID in GPGS Setup.");
+                    SetState(AuthState.Failed);
+                    OnLoginResult?.Invoke(false, null);
                     return;
                 }
 
@@ -204,23 +212,50 @@ namespace Necromancer.Systems
                 if (auth.CurrentUser != null && auth.CurrentUser.IsAnonymous)
                 {
                     auth.CurrentUser.LinkWithCredentialAsync(credential).ContinueWithOnMainThread(task => {
-                        // 연동 실패 시 (예: 이미 가입된 구글 계정인 경우)
-                        if (task.IsFaulted || task.IsCanceled)
+                        if (task.IsCanceled)
                         {
-                            Debug.LogWarning($"<color=orange>[AuthManager]</color> Link failed (Credential likely in use). Trying SignIn instead...\nException: {task.Exception}");
-                            
-                            // 해당 구글 계정으로 일반 로그인 시도 (이전 데이터 복구)
-                            auth.SignInWithCredentialAsync(credential).ContinueWithOnMainThread(signInTask => {
-                                bool success = !signInTask.IsFaulted && !signInTask.IsCanceled;
-                                string uid = (success && signInTask.Result != null) ? signInTask.Result.UserId : null;
-                                DispatchAuthResult(success, uid, isLinking: false, exception: signInTask.Exception);
-                            });
+                            DispatchAuthResult(false, null, false, null);
+                            return;
                         }
-                        else // 연동 성공 시
+
+                        if (task.IsFaulted)
                         {
-                            string uid = task.Result?.User != null ? task.Result.User.UserId : null;
-                            DispatchAuthResult(true, uid, isLinking: true, exception: null);
+                            // FirebaseAccountLinkException(CredentialAlreadyInUse) 감지
+                            bool isCredentialInUse = false;
+                            foreach (var innerEx in task.Exception.Flatten().InnerExceptions)
+                            {
+                                // 타입 우선 체크 (ErrorCode가 0일 수 있으므로)
+                                if (innerEx is FirebaseAccountLinkException)
+                                {
+                                    isCredentialInUse = true;
+                                    break;
+                                }
+                                if (innerEx is FirebaseException fe && (AuthError)fe.ErrorCode == AuthError.CredentialAlreadyInUse)
+                                {
+                                    isCredentialInUse = true;
+                                    break;
+                                }
+                            }
+
+                            if (isCredentialInUse)
+                            {
+                                // 이미 가입된 구글 계정 → 유저에게 선택권 부여
+                                Debug.LogWarning("<color=orange>[AuthManager]</color> CredentialAlreadyInUse: 충돌 팝업 표시.");
+                                _isLoginInProgress = false;
+                                ShowAccountCollisionPopup();
+                            }
+                            else
+                            {
+                                // 네트워크 에러 등 기타 실패
+                                Debug.LogError($"[AuthManager] Link failed with unexpected error: {task.Exception}");
+                                DispatchAuthResult(false, null, false, task.Exception);
+                            }
+                            return;
                         }
+
+                        // 연동 성공
+                        string uid = task.Result?.User != null ? task.Result.User.UserId : null;
+                        DispatchAuthResult(true, uid, isLinking: true, exception: null);
                     });
                 }
                 else
@@ -236,8 +271,56 @@ namespace Necromancer.Systems
 #endif
         }
 
+        private void ShowAccountCollisionPopup()
+        {
+            if (GameManager.Instance?.Popup == null)
+            {
+                Debug.LogError("[AuthManager] PopupManager가 GameManager에 연결되지 않았습니다! 인스펙터를 확인해주세요.");
+                SetState(AuthState.Guest);
+                return;
+            }
+
+            string msg = "이 구글 계정에 이미 연동된 게임 데이터가 존재합니다.\n" +
+                         "기존 계정 데이터를 불러오시겠습니까?\n" +
+                         "(현재 게스트 데이터는 유실될 수 있습니다.)";
+
+            GameManager.Instance.Popup.ShowConfirmPopup(
+                msg,
+                onConfirm: ConfirmSwitchToExistingAccount,
+                onCancel: () => {
+                    Debug.Log("[AuthManager] 구글 계정 연동 취소. 게스트 상태 유지.");
+                    SetState(AuthState.Guest);
+                },
+                confirmLabel: "불러오기",
+                cancelLabel:  "취소"
+            );
+        }
+
+        private void ConfirmSwitchToExistingAccount()
+        {
+#if GPGS
+            Debug.Log("[AuthManager] 유저가 기존 구글 계정 데이터 복구를 선택함. AuthCode 재발급 시도.");
+            PlayGamesPlatform.Instance.RequestServerSideAccess(true, newAuthCode => {
+                if (string.IsNullOrEmpty(newAuthCode))
+                {
+                    Debug.LogError("[AuthManager] 새 AuthCode 발급 실패.");
+                    DispatchAuthResult(false, null, false, null);
+                    return;
+                }
+
+                Credential newCredential = PlayGamesAuthProvider.GetCredential(newAuthCode);
+                auth.SignInWithCredentialAsync(newCredential).ContinueWithOnMainThread(signInTask => {
+                    bool success = !signInTask.IsFaulted && !signInTask.IsCanceled;
+                    string uid = (success && signInTask.Result != null) ? signInTask.Result.UserId : null;
+                    DispatchAuthResult(success, uid, isLinking: false, exception: signInTask.Exception);
+                });
+            });
+#endif
+        }
+
         private void DispatchAuthResult(bool success, string uid, bool isLinking, AggregateException exception)
         {
+            _isLoginInProgress = false;
             if (!success)
             {
                 SetState(AuthState.Failed);

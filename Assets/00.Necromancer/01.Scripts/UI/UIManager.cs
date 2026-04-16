@@ -556,10 +556,8 @@ namespace Necromancer.UI
 
         private void ShowAdErrorPopup(string message)
         {
-            // [STABILITY] 현재는 로그로 대체하며, 향후 마스터께서 전용 팝업 UI를 연결하시면 됩니다.
             Debug.LogWarning($"<color=red>[UIManager]</color> AD ERROR: {message}");
-            
-            // TODO: 실제 UI 팝업 창이 있다면 이곳에서 활성화 (예: errorPopup.Show(message))
+            GameManager.Instance?.Popup?.ShowMessagePopup(message);
         }
 
 

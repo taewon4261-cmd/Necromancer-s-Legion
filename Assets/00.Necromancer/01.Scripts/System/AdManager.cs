@@ -6,13 +6,10 @@ using System.Collections.Generic;
 namespace Necromancer.Systems
 {
     /// <summary>
-    /// [INFRA] 애드몹(AdMob) 광고 관리자 (다중 광고 슬롯 및 독립적 프리로딩 지원)
+    /// [INFRA] 애드몹(AdMob) 광고 관리자 (실제 광고 단위 ID 사용 버전)
     /// </summary>
     public class AdManager : MonoBehaviour
     {
-        [Header("AdMob Settings")]
-        [SerializeField] private bool testMode = false;
-        
         [Header("Ad Unit IDs (Android Real)")]
         [SerializeField] private string skillRefreshAdUnitId = "ca-app-pub-3770611612840704/4228061831";
         [SerializeField] private string doubleRewardAdUnitId = "ca-app-pub-3770611612840704/9975818749";
@@ -20,9 +17,6 @@ namespace Necromancer.Systems
         [Header("UI References")]
         [SerializeField] private GameObject noAdMessagePrefab;
         [SerializeField] private Transform uiCanvasParent;
-
-        // AdMob 공식 테스트 ID
-        private const string AndroidTestId = "ca-app-pub-3940256099942544/5224354917";
 
         // [SLOTS] 각 광고 단위별 독립적인 광고 객체 (주머니 2개)
         private RewardedAd skillAd;
@@ -39,7 +33,7 @@ namespace Necromancer.Systems
                 gameObject.AddComponent<UnityMainThreadDispatcher>();
             }
 
-            Debug.Log("<color=green>[AdManager]</color> Initializing AdMob with Dual Slots...");
+            Debug.Log("<color=green>[AdManager]</color> Initializing AdMob with Real IDs...");
 
             MobileAds.Initialize(initStatus => {
                 Debug.Log("<color=green>[AdManager]</color> AdMob Initialized.");
@@ -58,13 +52,14 @@ namespace Necromancer.Systems
         {
             if (isAdShowing) return;
 
-            string targetId = testMode ? AndroidTestId : (isDoubleReward ? doubleRewardAdUnitId : skillRefreshAdUnitId);
+            // 테스트 모드 제거: 실제 ID만 사용
+            string targetId = isDoubleReward ? doubleRewardAdUnitId : skillRefreshAdUnitId;
             
             // 기존 광고 객체 정리
             if (isDoubleReward && resultAd != null) { resultAd.Destroy(); resultAd = null; }
             else if (!isDoubleReward && skillAd != null) { skillAd.Destroy(); skillAd = null; }
 
-            Debug.Log($"[AdManager] Pre-loading {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad...");
+            Debug.Log($"[AdManager] Pre-loading {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad (ID: {targetId})...");
             var adRequest = new AdRequest();
 
             RewardedAd.Load(targetId, adRequest, (RewardedAd ad, LoadAdError error) => {

@@ -134,6 +134,7 @@ namespace Necromancer.UI
                 btnDoubleReward.interactable = true;
 
             Debug.LogWarning("[ResultUI] 광고 시청 실패 또는 취소. 버튼 재활성화.");
+            GameManager.Instance?.Popup?.ShowMessagePopup("광고를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.");
         }
 
         /// <summary>

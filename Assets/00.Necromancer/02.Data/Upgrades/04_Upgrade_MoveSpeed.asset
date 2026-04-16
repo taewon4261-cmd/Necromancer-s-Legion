@@ -23,5 +23,5 @@ MonoBehaviour:
   currentLevel: 0
   maxLevel: 5
   baseCost: 800
-  costIncreaseFactor: 0.8
+  costIncreaseFactor: 1.8
   valuePerLevel: 0.2
