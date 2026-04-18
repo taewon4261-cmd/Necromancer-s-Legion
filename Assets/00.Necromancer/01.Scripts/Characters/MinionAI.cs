@@ -106,6 +106,9 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
             attackDamage = baseDmgVal * sManager.globalMinionDamageBonusRatio;
             moveSpeed = baseSpeedVal * sManager.globalMinionSpeedBonusRatio;
             
+            // [NEW] 소환 유지 시간 보너스 적용 (기본 10초 + 업그레이드 수치)
+            this.lifeTime = 10f + sManager.globalMinionDurationBonus;
+
             // [NEW] 공격 속도를 쿨타임으로 변환 (예: 공속 2.0 -> 0.5초 쿨타임)
             float finalAtkSpeed = baseAtkSpeedVal * sManager.globalMinionAttackSpeedBonusRatio;
             this.hitCooldown = (finalAtkSpeed > 0) ? (1f / finalAtkSpeed) : 1f;

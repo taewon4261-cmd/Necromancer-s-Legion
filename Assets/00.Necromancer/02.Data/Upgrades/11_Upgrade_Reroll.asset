@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3de13da3839d83e4cac256fe493d509c, type: 3}
   m_Name: 11_Upgrade_Reroll
   m_EditorClassIdentifier: 
-  upgradeName: "\uC218\uD638\uC758 \uC601\uD63C (Minion HP)"
+  upgradeName: "\uC218\uD638\uC758 \uC601\uD63C"
   saveKey: Upgrade_MinionHP_Lv
   statType: 7
   icon: {fileID: 21300000, guid: 14ed569ee2e59244aa6a45022550136f, type: 3}

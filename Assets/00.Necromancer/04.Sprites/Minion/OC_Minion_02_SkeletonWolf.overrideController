@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!221 &22100000
+AnimatorOverrideController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: OC_Minion_02_SkeletonWolf
+  m_Controller: {fileID: 9100000, guid: fbc2ecf825a57ca44a67b72968b51b2a, type: 2}
+  m_Clips:
+  - m_OriginalClip: {fileID: 7400000, guid: 9d7e402909c460e458fd3b1947a71678, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 71fb95bec3ea79f448b072bec5c1b317, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 77dc685a76aa50a41b78ce9d8a21a039, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 17d5c073ee4ec074baf9ca832d4d7d5c, type: 2}
+  - m_OriginalClip: {fileID: 7400000, guid: 2497d72878d935542ae6ff8cfdda6e3a, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 5174eedca62a93f4686fedebb9b438bc, type: 2}

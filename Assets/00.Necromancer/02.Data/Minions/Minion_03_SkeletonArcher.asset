@@ -15,7 +15,7 @@ MonoBehaviour:
   minionID: SkeletonArcher
   minionTag: SkeletonArcher
   minionIcon: {fileID: 21300000, guid: 157c907495984ef408bbcc81f0ee1d39, type: 3}
-  animatorController: {fileID: 22100000, guid: 052b619bdb4a9fb48b4e044a7df9458b, type: 2}
+  animatorController: {fileID: 22100000, guid: b06dfc1c456ed224eaa6403f59aee376, type: 2}
   unlockCost_Soul: 1500
   unlockCost_Essence: 300
   targetEnemyID: SkeletonArcher

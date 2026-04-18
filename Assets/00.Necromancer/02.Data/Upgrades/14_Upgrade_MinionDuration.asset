@@ -10,19 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3de13da3839d83e4cac256fe493d509c, type: 3}
-  m_Name: 12_Upgrade_CDR
+  m_Name: 14_Upgrade_MinionDuration
   m_EditorClassIdentifier: 
-  upgradeName: "\uAD11\uBD84"
-  saveKey: Upgrade_MinionAttackSpeed_Lv
-  statType: 11
-  icon: {fileID: 21300000, guid: aff2497a5968c784f89bd1f0ebd55218, type: 3}
+  upgradeName: "\uC18C\uD658 \uC720\uC9C0 \uC2DC\uAC04"
+  saveKey: Upgrade_MinionDuration_Lv
+  statType: 16
+  icon: {fileID: 21300000, guid: 6f55d66a2422c854c9ce1900bcdfcc93, type: 3}
   iconFrame: {fileID: 0}
-  description: "\uBBF8\uB2C8\uC5B8\uC758 \uACF5\uACA9 \uC18D\uB3C4\uB97C \uB808\uBCA8\uB2F9
-    10% \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."
+  description: "\uB2E4\uD06C \uB9AC\uC804\uC758 \uC18C\uD658 \uC720\uC9C0 \uC2DC\uAC04\uC744
+    1\uCD08 \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."
   requiredUpgrade: {fileID: 0}
   requiredLevel: 0
   currentLevel: 0
   maxLevel: 10
-  baseCost: 1500
-  costIncreaseFactor: 1.5
+  baseCost: 2000
+  costIncreaseFactor: 1.2
   valuePerLevel: 1

@@ -45,6 +45,40 @@ namespace Necromancer
         [SerializeField] private List<Necromancer.Data.MinionUnlockSO> _minionUnlockDataList = new List<Necromancer.Data.MinionUnlockSO>();
         public List<Necromancer.Data.MinionUnlockSO> minionUnlockDataList => _minionUnlockDataList;
 
+        [ContextMenu("Sync Minion Data")]
+        public void SyncMinionData()
+        {
+#if UNITY_EDITOR
+            string[] guids = UnityEditor.AssetDatabase.FindAssets("t:MinionUnlockSO", new string[] { "Assets/00.Necromancer/02.Data/Minions" });
+            _minionUnlockDataList.Clear();
+
+            for (int i = 0; i < guids.Length; i++)
+            {
+                string path = UnityEditor.AssetDatabase.GUIDToAssetPath(guids[i]);
+                Necromancer.Data.MinionUnlockSO so = UnityEditor.AssetDatabase.LoadAssetAtPath<Necromancer.Data.MinionUnlockSO>(path);
+                if (so != null)
+                    _minionUnlockDataList.Add(so);
+            }
+
+            // 파일명 기준 오름차순 정렬 (버블 정렬)
+            for (int i = 0; i < _minionUnlockDataList.Count - 1; i++)
+            {
+                for (int j = 0; j < _minionUnlockDataList.Count - 1 - i; j++)
+                {
+                    if (string.Compare(_minionUnlockDataList[j].name, _minionUnlockDataList[j + 1].name) > 0)
+                    {
+                        var temp = _minionUnlockDataList[j];
+                        _minionUnlockDataList[j] = _minionUnlockDataList[j + 1];
+                        _minionUnlockDataList[j + 1] = temp;
+                    }
+                }
+            }
+
+            UnityEditor.EditorUtility.SetDirty(this);
+            Debug.Log($"<color=gold>[GameManager]</color> {_minionUnlockDataList.Count}개의 MinionUnlockSO 데이터가 동기화되었습니다.");
+#endif
+        }
+
         // --- [Direct Access Properties] ---
         public SaveDataManager SaveData => _saveData;
         public ResourceManager Resources => _resources;

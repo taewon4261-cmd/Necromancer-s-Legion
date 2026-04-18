@@ -19,7 +19,8 @@ namespace Necromancer
         Resurrection,
         UnlockArcher,       
         UnlockMage,         
-        UnlockGiant          
+        UnlockGiant,
+        MinionDuration
     }
 
     /// <summary>

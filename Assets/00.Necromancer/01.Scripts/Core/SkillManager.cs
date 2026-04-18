@@ -49,6 +49,7 @@ namespace Necromancer
         public float globalMinionDamageBonusRatio = 1f;
         public float globalMinionSpeedBonusRatio = 1f;
         public float globalMinionAttackSpeedBonusRatio = 1f; // [NEW] 미니언 공격 속도 버프
+        public float globalMinionDurationBonus = 0f; // [NEW] 미니언 소환 유지 시간 보너스
         public int currentMaxMinions = 50;
         public int globalExtraProjectiles = 0; 
         public float vampiricChance = 0f;
@@ -91,6 +92,7 @@ namespace Necromancer
                 globalMinionSpeedBonusRatio = 1f + (side.GetUpgradeValue(UpgradeStatType.MinionSpeed) * 0.05f);
                 globalMinionHpBonusRatio = 1f + (side.GetUpgradeValue(UpgradeStatType.MinionHealth) * 0.1f);
                 globalMinionAttackSpeedBonusRatio = 1f + (side.GetUpgradeValue(UpgradeStatType.MinionAttackSpeed) * 0.1f);
+                globalMinionDurationBonus = side.GetUpgradeValue(UpgradeStatType.MinionDuration);
                 
                 // 유틸리티 업그레이드
                 currentMaxMinions = 50 + Mathf.FloorToInt(side.GetUpgradeValue(UpgradeStatType.StartMinionCount));

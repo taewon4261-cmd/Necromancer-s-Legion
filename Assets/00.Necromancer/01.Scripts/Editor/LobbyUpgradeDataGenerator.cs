@@ -34,9 +34,10 @@ namespace Necromancer.Editor
                 new UpgradeDataSpec("08_Upgrade_Magnet", "영혼 갈무리", "Upgrade_MagnetRange_Lv", UpgradeStatType.MagnetRange, "보석 자석 흡수 범위 +0.5m 증가", 5, 600, 1.5f, 0.5f),
                 new UpgradeDataSpec("09_Upgrade_MinionDamage", "군단의 분노", "Upgrade_MinionDamage_Lv", UpgradeStatType.MinionDamage, "모든 미니언 공격력 +2 증가", 50, 1200, 1.9f, 2.0f),
                 new UpgradeDataSpec("10_Upgrade_MinionSpeed", "군단의 진격", "Upgrade_MinionSpeed_Lv", UpgradeStatType.MinionSpeed, "모든 미니언 이동 속도 +0.3 증가", 10, 1100, 1.9f, 0.3f),
-                new UpgradeDataSpec("11_Upgrade_Reroll", "수호의 영혼 (Minion HP)", "Upgrade_MinionHP_Lv", UpgradeStatType.MinionHealth, "미니언의 최대 체력을 레벨당 10% 증가시킵니다.", 50, 1000, 1.5f, 1.0f),
-                new UpgradeDataSpec("12_Upgrade_CDR", "광분 (Minion AtkSpeed)", "Upgrade_MinionAttackSpeed_Lv", UpgradeStatType.MinionAttackSpeed, "미니언의 공격 속도를 레벨당 10% 증가시킵니다.", 10, 1500, 1.5f, 1.0f),
-                new UpgradeDataSpec("13_Upgrade_SkullPact", "묘지기의 서약", "Upgrade_StartMinionCount_Lv", UpgradeStatType.StartMinionCount, "시작 시 기본 미니언 수 +1마리 증가", 5, 1200, 1.8f, 1.0f)
+                new UpgradeDataSpec("11_Upgrade_Reroll", "수호의 영혼", "Upgrade_MinionHP_Lv", UpgradeStatType.MinionHealth, "미니언의 최대 체력을 레벨당 10% 증가시킵니다.", 50, 1000, 1.5f, 1.0f),
+                new UpgradeDataSpec("12_Upgrade_CDR", "광분", "Upgrade_MinionAttackSpeed_Lv", UpgradeStatType.MinionAttackSpeed, "미니언의 공격 속도를 레벨당 10% 증가시킵니다.", 10, 1500, 1.5f, 1.0f),
+                new UpgradeDataSpec("13_Upgrade_SkullPact", "묘지기의 서약", "Upgrade_StartMinionCount_Lv", UpgradeStatType.StartMinionCount, "시작 시 기본 미니언 수 +1마리 증가", 5, 1200, 1.8f, 1.0f),
+                new UpgradeDataSpec("14_Upgrade_MinionDuration", "소환 유지 시간", "Upgrade_MinionDuration_Lv", UpgradeStatType.MinionDuration, "다크 리전의 소환 유지 시간을 1초 증가시킵니다.", 10, 2000, 1.2f, 1.0f)
             };
 
             foreach (var spec in dataList)
@@ -63,7 +64,7 @@ namespace Necromancer.Editor
             }
 
             AssetDatabase.SaveAssets();
-            Debug.Log("<color=green><b>[UPGRADE DATA SYNC]</b></color> 13종의 업그레이드 에셋이 테이블 사양에 맞춰 자동 동기화되었습니다.");
+            Debug.Log($"<color=green><b>[UPGRADE DATA SYNC]</b></color> {dataList.Count}종의 업그레이드 에셋이 테이블 사양에 맞춰 자동 동기화되었습니다.");
         }
 
         private struct UpgradeDataSpec
