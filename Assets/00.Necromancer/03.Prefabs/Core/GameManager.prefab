@@ -286,6 +286,50 @@ MonoBehaviour:
       type: 3}
     size: 100
     batchSize: 30
+--- !u!1 &1409728963684472077
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2802200720410909649}
+  - component: {fileID: 8072309310297587708}
+  m_Layer: 0
+  m_Name: LevelManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2802200720410909649
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1409728963684472077}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5521724465700664552}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8072309310297587708
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1409728963684472077}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c26315ec1ab3d8247843aa0cb4d4587e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1697176078313282221
 GameObject:
   m_ObjectHideFlags: 0
@@ -653,7 +697,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8b7246ccb3a847349bb040dd0b67b53b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  testMode: 1
   skillRefreshAdUnitId: ca-app-pub-3770611612840704/4228061831
   doubleRewardAdUnitId: ca-app-pub-3770611612840704/9975818749
   noAdMessagePrefab: {fileID: 0}
@@ -731,7 +774,6 @@ GameObject:
   m_Component:
   - component: {fileID: 5521724465700664552}
   - component: {fileID: 2435100814045926009}
-  - component: {fileID: 1951357893337763916}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -767,6 +809,7 @@ Transform:
   - {fileID: 4504129458837751676}
   - {fileID: 701722769247831886}
   - {fileID: 6590960984366171431}
+  - {fileID: 2802200720410909649}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2435100814045926009
@@ -788,6 +831,7 @@ MonoBehaviour:
   _debugConsole: {fileID: 293355105053137642}
   _adManager: {fileID: 8491276329709891338}
   _popupManager: {fileID: 8395375053184076173}
+  _levelManager: {fileID: 8072309310297587708}
   Auth: {fileID: 2786132494251319040}
   _poolManager: {fileID: 3109314625104592819}
   _waveManager: {fileID: 5443290973572342523}
@@ -806,28 +850,9 @@ MonoBehaviour:
   playerTransform: {fileID: 0}
   playerController: {fileID: 0}
   magnetRadius: 5
-  baseReviveChance: 30
-  minionPoolTag: Minion
   enemyPoolTag: Enemy
   currentGameSpeed: 1
   currentStage: {fileID: 0}
-  currentLevel: 1
-  currentExp: 0
-  maxExp: 100
---- !u!114 &1951357893337763916
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6178726164652871663}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c675a3946e4f0404cbdf5c63d737581a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  settingPanel: {fileID: 3895624759034320344, guid: 194c693b5880ca6499e6e90daf2788b2,
-    type: 3}
 --- !u!1 &6203404416022060908
 GameObject:
   m_ObjectHideFlags: 0
@@ -1551,6 +1576,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   allUnits: []
+  baseReviveChance: 30
+  minionPoolTag: Minion
   gridCellSize: 2
 --- !u!1 &8370487274140990583
 GameObject:
@@ -1838,6 +1865,7 @@ MonoBehaviour:
   globalMinionDamageBonusRatio: 1
   globalMinionSpeedBonusRatio: 1
   globalMinionAttackSpeedBonusRatio: 1
+  globalMinionDurationBonus: 0
   currentMaxMinions: 50
   globalExtraProjectiles: 0
   vampiricChance: 0

@@ -29,6 +29,7 @@ namespace Necromancer
         [SerializeField] private DebugConsole _debugConsole;
         [SerializeField] private Necromancer.Systems.AdManager _adManager;
         [SerializeField] private Necromancer.Systems.PopupManager _popupManager;
+        [SerializeField] private LevelManager _levelManager;
         public Necromancer.Systems.AuthManager Auth;
 
 
@@ -87,6 +88,7 @@ namespace Necromancer
         public DebugConsole DebugConsole => _debugConsole;
         public Necromancer.Systems.AdManager AdManager => _adManager;
         public Necromancer.Systems.PopupManager Popup => _popupManager;
+        public LevelManager LevelManager => _levelManager;
 
 
         public PoolManager poolManager => _poolManager;
@@ -97,8 +99,6 @@ namespace Necromancer
         public TitleUIController titleUI => _titleUI;
         public UnitManager unitManager => _unitManager;
 
-        public static event Action<float, float> OnExpChanged;
-        public static event Action<List<SkillData>> OnLevelUp;
         public static event Action<int, int, string> OnWaveStarted;
         public static event Action<int> OnSoulChanged;        // 로비 UI용 — 전체 보유량(currentSoul)
         public static event Action<int> OnSessionSoulChanged; // 인게임 HUD용 — 세션 획득량(currentSessionSoul)
@@ -114,12 +114,8 @@ namespace Necromancer
         public Transform playerTransform;
         public PlayerController playerController;
         public float magnetRadius = 3f;
-        public float baseReviveChance = 30f;
         public bool IsGameOver { get; private set; }
-        public string minionPoolTag = "Minion"; // [AUTOMATION] 범용 미니언 풀 태그
         public string enemyPoolTag = "Enemy";   // [AUTOMATION] 범용 몬스터 풀 태그
-
-        private List<Necromancer.Data.MinionUnlockSO> unlockedMinionDatas = new List<Necromancer.Data.MinionUnlockSO>(); // [AUTOMATION] 해금된 데이터 풀
 
         public float currentGameSpeed = 1f;
         public StageDataSO currentStage;
@@ -141,9 +137,10 @@ namespace Necromancer
         }
         // ─────────────────────────────────────────────────────────────────────
 
-        public int currentLevel = 1;
-        public float currentExp = 0f;
-        public float maxExp = 200f;
+        // [SRP] 레벨·경험치 상태는 LevelManager가 전담합니다. 하위 호환을 위해 위임 프로퍼티를 유지합니다.
+        public int currentLevel => _levelManager != null ? _levelManager.currentLevel : 1;
+        public float currentExp => _levelManager != null ? _levelManager.currentExp : 0f;
+        public float maxExp => _levelManager != null ? _levelManager.maxExp : 200f;
 
         private void Awake()
         {
@@ -199,11 +196,11 @@ namespace Necromancer
                 IsGameOver = false;
                 if (Sound != null) Sound.ResumeSFX();
 
-                if (Resources != null) 
+                if (Resources != null)
                 {
                     Resources.currentSessionSoul = 0;
                     BroadcastSoul(0);
-                    UpdateUnlockedMinionPool(); // [STABILITY] 세션 시작 시 해금 풀 최신화
+                    if (unitManager != null) unitManager.UpdateUnlockedMinionPool(); // [STABILITY] 세션 시작 시 해금 풀 최신화
                 }
 
                 // [STABILITY] 플레이어 참조 갱신 및 유닛 매니저 재등록 (Ghost Unit Fix)
@@ -230,7 +227,7 @@ namespace Necromancer
                 if (uiManager != null) uiManager.Init();
 
                 // [UPGRADE] 시작 미니언 소환 (Type 10)
-                SpawnInitialMinions();
+                if (unitManager != null) unitManager.SpawnInitialMinions();
 
                 if (Sound != null && Sound.gameBGM != null) Sound.PlayBGM(Sound.gameBGM);
 
@@ -255,8 +252,7 @@ namespace Necromancer
                 playerController = null;
                 currentStage = null;
                 IsGameOver = false;
-                currentExp = 0f;
-                currentLevel = 1;
+                _levelManager?.Reset();
 
                 if (Sound != null)
                 {
@@ -274,17 +270,17 @@ namespace Necromancer
         /// </summary>
         public void CleanupGameSession()
         {
-            // 1. 사운드 셧다운
-            if (Sound != null) Sound.StopAllSFX(true);
+            // 1. [비동기 차단] 웨이브 루프를 먼저 중단 — 정리 도중 새 적이 소환되는 것을 방지
+            if (waveManager != null) waveManager.StopSpawning();
 
-            // 2. 물리 오브젝트 회수 (풀링 시스템)
-            if (poolManager != null) poolManager.ClearAllActiveObjects();
-
-            // 3. 논리 유닛 목록 초기화
+            // 2. 논리 유닛 목록 초기화 — Wave 중단 후 allUnits 순회가 안전함
             if (unitManager != null) unitManager.ClearAll();
 
-            // 4. 웨이브 로직 중단
-            if (waveManager != null) waveManager.StopSpawning();
+            // 3. 물리 오브젝트 회수 (풀링 시스템)
+            if (poolManager != null) poolManager.ClearAllActiveObjects();
+
+            // 4. 사운드 셧다운
+            if (Sound != null) Sound.StopAllSFX(true);
 
             // 5. 트윈 및 시간 복구 — 모든 정지 사유를 일괄 해소 후 timeScale·배속 복원
             DOTween.KillAll();
@@ -366,144 +362,8 @@ namespace Necromancer
             if (_activePauseSources.Count == 0) Time.timeScale = currentGameSpeed;
         }
 
-        public void AddExp(float amount)
-        {
-            currentExp += amount;
-            OnExpChanged?.Invoke(currentExp, maxExp);
-            if (currentExp >= maxExp)
-            {
-                currentExp -= maxExp;
-                currentLevel++;
-                maxExp = 200f + (currentLevel * 50f);
-                if (skillManager != null)
-                {
-                    var options = skillManager.GetRandomSkillsForLevelUp(3);
-                    if (options != null && options.Count > 0)
-                    {
-                        OnLevelUp?.Invoke(options);
-                        SetPause(PauseSource.LevelUp, true);
-                    }
-                }
-            }
-        }
-
-        public void TryReviveAsMinion(Vector3 pos)
-        {
-            float bonus = Resources != null ? Resources.GetUpgradeValue(UpgradeStatType.Resurrection) : 0f;     
-            if (UnityEngine.Random.Range(0f, 100f) <= Mathf.Min(baseReviveChance + bonus, 90f))
-            {
-                if (poolManager != null)
-                {
-                    // [AUTOMATION] 무조건 범용 Tag("Minion")로 소환
-                    GameObject minionObj = poolManager.Get(minionPoolTag, pos, Quaternion.identity);
-                    if (minionObj != null && minionObj.TryGetComponent<MinionAI>(out var ai))
-                    {
-                        // 해금된 데이터 중 랜덤 선택 (없으면 null로 가며, AI 내부에서 기본값으로 처리됨)
-                        Necromancer.Data.MinionUnlockSO selectedData = null;
-                        if (unlockedMinionDatas.Count > 0)
-                        {
-                            selectedData = unlockedMinionDatas[UnityEngine.Random.Range(0, unlockedMinionDatas.Count)];
-                        }
-
-                        // [DATA-DRIVEN] 데이터 주입 (애니메이션/스탯 자동 설정)
-                        ai.Initialize(selectedData);
-                        
-                        // [SOUND] 미니언 생성 효과음 재생
-                        if (Sound != null) Sound.PlaySFX(Sound.sfxCreateMinion);
-
-                        Debug.Log($"<color=green>[GameManager]</color> Automated Minion Spawned: {(selectedData != null ? selectedData.minionName : "Basic")}");
-                    }
-                }
-            }
-        }
-
-        
-        /// <summary>
-        /// [LOGIC] 현재 스테이지 ID에 따라 드랍할 미니언 해금 데이터를 반환합니다. (Master's Directive)
-        /// 1-10: Minion 2, 11-20: Minion 3, 21-30: Minion 4, 31-40: Minion 5, 41-50: Minion 6
-        /// </summary>
-        public Necromancer.Data.MinionUnlockSO GetMinionDataForCurrentStage()
-        {
-            if (currentStage == null || minionUnlockDataList == null || minionUnlockDataList.Count == 0) return null;
-
-            int stageID = currentStage.stageID;
-            int minionIndex = 0;
-
-            if (stageID >= 1 && stageID <= 10) minionIndex = 1;      // Minion_02
-            else if (stageID >= 11 && stageID <= 20) minionIndex = 2; // Minion_03
-            else if (stageID >= 21 && stageID <= 30) minionIndex = 3; // Minion_04
-            else if (stageID >= 31 && stageID <= 40) minionIndex = 4; // Minion_05
-            else if (stageID >= 41) minionIndex = 5;                  // Minion_06
-
-            // 리스트 범위를 벗어나지 않도록 방어
-            if (minionIndex >= 0 && minionIndex < minionUnlockDataList.Count)
-            {
-                var data = minionUnlockDataList[minionIndex];
-                
-                // [NEW] 이미 해금된 미니언이라면 정수 드랍용 데이터 반환 안 함 (중복 파밍 방지)
-                if (data != null && Resources != null && Resources.IsMinionUnlocked(data.minionID))
-                {
-                    return null;
-                }
-                
-                return data;
-            }
-
-            return null;
-        }
-
-        private void UpdateUnlockedMinionPool()
-        {
-            Debug.Log("<color=yellow>[GameManager]</color> Updating Dynamic Minion Pool...");
-            if (unlockedMinionDatas == null) unlockedMinionDatas = new List<Necromancer.Data.MinionUnlockSO>();
-            unlockedMinionDatas.Clear();
-            
-            // 1. 기본 미니언(전사) 데이터 찾아서 추가 (ID: SkeletonWarrior)
-            var warriorData = _minionUnlockDataList.Find(x => x.minionID == "SkeletonWarrior");
-            if (warriorData != null) unlockedMinionDatas.Add(warriorData);
-
-            if (Resources == null || SaveData == null || SaveData.Data == null) return;
-
-            // 2. 해금된 다른 미니언 데이터 추가
-            foreach (var data in _minionUnlockDataList)
-            {
-                if (data == null || data.minionID == "SkeletonWarrior") continue;
-
-                if (Resources.IsMinionUnlocked(data.minionID))
-                {
-                    unlockedMinionDatas.Add(data);
-                }
-            }
-
-            Debug.Log($"<color=green>[GameManager]</color> Dynamic Pool Updated. Unlocked Types: {unlockedMinionDatas.Count}");
-        }
-
-        private void SpawnInitialMinions()
-        {
-            if (Resources == null || poolManager == null || playerTransform == null) return;
-
-            int count = Mathf.FloorToInt(Resources.GetUpgradeValue(UpgradeStatType.StartMinionCount));
-            if (count <= 0) return;
-
-            Debug.Log($"[GameManager] Spawning {count} initial minions from lobby upgrade.");
-
-            for (int i = 0; i < count; i++)
-            {
-                // 플레이어 주변 랜덤 위치
-                Vector3 spawnPos = playerTransform.position + (Vector3)UnityEngine.Random.insideUnitCircle * 2f;
-                
-                GameObject minionObj = poolManager.Get(minionPoolTag, spawnPos, Quaternion.identity);
-                if (minionObj != null && minionObj.TryGetComponent<MinionAI>(out var ai))
-                {
-                    // 기본 워리어 데이터 또는 해금된 풀 중 하나 선택
-                    Necromancer.Data.MinionUnlockSO selectedData = null;
-                    if (unlockedMinionDatas.Count > 0)
-                        selectedData = unlockedMinionDatas[0]; // 보통 첫 번째가 워리어
-
-                    ai.Initialize(selectedData);
-                }
-            }
-        }
+        /// <summary>[SRP] 경험치 추가 — 실제 처리는 LevelManager에 위임합니다. 콜사이트 무변경.</summary>
+        public void AddExp(float amount) => _levelManager?.AddExp(amount);
 
         public void OnStageClear()
         {

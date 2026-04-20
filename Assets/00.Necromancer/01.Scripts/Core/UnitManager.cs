@@ -1,6 +1,7 @@
 
 using System.Collections.Generic;
 using UnityEngine;
+using Necromancer.Core;
 
 namespace Necromancer
 {
@@ -15,6 +16,11 @@ namespace Necromancer
         // [STABILITY] 프레임 중간에 리스트가 수정되어 에러나는 것을 방지하기 위한 버퍼
         private List<UnitBase> pendingRegister = new List<UnitBase>(64);
         private List<UnitBase> pendingUnregister = new List<UnitBase>(64);
+
+        [Header("Minion Spawn Settings")]
+        public float baseReviveChance = 30f;
+        public string minionPoolTag = "Minion";
+        private List<Necromancer.Data.MinionUnlockSO> unlockedMinionDatas = new List<Necromancer.Data.MinionUnlockSO>();
 
         [Header("Grid Partitioning Settings")]
         [Tooltip("격자 한 칸의 크기 (유닛의 평균 탐색 반경 고려)")]
@@ -216,6 +222,123 @@ namespace Necromancer
                             }
                         }
                     }
+                }
+            }
+        }
+
+        #endregion
+
+        #region Minion Spawn & Revive
+
+        /// <summary>
+        /// [SRP] 해금된 미니언 데이터 풀을 최신화합니다. 세션 시작 시 GameManager에서 호출됩니다.
+        /// </summary>
+        public void UpdateUnlockedMinionPool()
+        {
+            Debug.Log("<color=yellow>[UnitManager]</color> Updating Dynamic Minion Pool...");
+            if (unlockedMinionDatas == null) unlockedMinionDatas = new List<Necromancer.Data.MinionUnlockSO>();
+            unlockedMinionDatas.Clear();
+
+            var gm = GameManager.Instance;
+            if (gm == null || gm.minionUnlockDataList == null) return;
+
+            // 1. 기본 미니언(전사) 데이터 찾아서 추가 (ID: SkeletonWarrior)
+            var warriorData = gm.minionUnlockDataList.Find(x => x.minionID == "SkeletonWarrior");
+            if (warriorData != null) unlockedMinionDatas.Add(warriorData);
+
+            if (gm.Resources == null || gm.SaveData == null || gm.SaveData.Data == null) return;
+
+            // 2. 해금된 다른 미니언 데이터 추가
+            foreach (var data in gm.minionUnlockDataList)
+            {
+                if (data == null || data.minionID == "SkeletonWarrior") continue;
+                if (gm.Resources.IsMinionUnlocked(data.minionID))
+                    unlockedMinionDatas.Add(data);
+            }
+
+            Debug.Log($"<color=green>[UnitManager]</color> Dynamic Pool Updated. Unlocked Types: {unlockedMinionDatas.Count}");
+        }
+
+        /// <summary>
+        /// [SRP] 사망한 적을 확률에 따라 미니언으로 부활시킵니다.
+        /// </summary>
+        public void TryReviveAsMinion(Vector3 pos)
+        {
+            var gm = GameManager.Instance;
+            float bonus = (gm != null && gm.Resources != null) ? gm.Resources.GetUpgradeValue(UpgradeStatType.Resurrection) : 0f;
+            if (UnityEngine.Random.Range(0f, 100f) <= Mathf.Min(baseReviveChance + bonus, 90f))
+            {
+                if (gm != null && gm.poolManager != null)
+                {
+                    GameObject minionObj = gm.poolManager.Get(minionPoolTag, pos, Quaternion.identity);
+                    if (minionObj != null && minionObj.TryGetComponent<MinionAI>(out var ai))
+                    {
+                        Necromancer.Data.MinionUnlockSO selectedData = null;
+                        if (unlockedMinionDatas.Count > 0)
+                            selectedData = unlockedMinionDatas[UnityEngine.Random.Range(0, unlockedMinionDatas.Count)];
+
+                        ai.Initialize(selectedData);
+
+                        if (gm.Sound != null) gm.Sound.PlaySFX(gm.Sound.sfxCreateMinion);
+                        Debug.Log($"<color=green>[UnitManager]</color> Revived Minion: {(selectedData != null ? selectedData.minionName : "Basic")}");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// [SRP] 현재 스테이지 ID에 따라 드랍할 미니언 해금 데이터를 반환합니다.
+        /// 1-10: Minion_02, 11-20: Minion_03, 21-30: Minion_04, 31-40: Minion_05, 41+: Minion_06
+        /// </summary>
+        public Necromancer.Data.MinionUnlockSO GetMinionDataForCurrentStage()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null || gm.currentStage == null || gm.minionUnlockDataList == null || gm.minionUnlockDataList.Count == 0) return null;
+
+            int stageID = gm.currentStage.stageID;
+            int minionIndex = 0;
+
+            if (stageID >= 1 && stageID <= 10) minionIndex = 1;
+            else if (stageID >= 11 && stageID <= 20) minionIndex = 2;
+            else if (stageID >= 21 && stageID <= 30) minionIndex = 3;
+            else if (stageID >= 31 && stageID <= 40) minionIndex = 4;
+            else if (stageID >= 41) minionIndex = 5;
+
+            if (minionIndex >= 0 && minionIndex < gm.minionUnlockDataList.Count)
+            {
+                var data = gm.minionUnlockDataList[minionIndex];
+                // 이미 해금된 미니언이라면 중복 드랍 방지
+                if (data != null && gm.Resources != null && gm.Resources.IsMinionUnlocked(data.minionID))
+                    return null;
+                return data;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// [SRP] 게임 시작 시 로비 업그레이드에 따른 초기 미니언을 소환합니다.
+        /// </summary>
+        public void SpawnInitialMinions()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null || gm.Resources == null || gm.poolManager == null || gm.playerTransform == null) return;
+
+            int count = Mathf.FloorToInt(gm.Resources.GetUpgradeValue(UpgradeStatType.StartMinionCount));
+            if (count <= 0) return;
+
+            Debug.Log($"[UnitManager] Spawning {count} initial minions from lobby upgrade.");
+
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 spawnPos = gm.playerTransform.position + (Vector3)UnityEngine.Random.insideUnitCircle * 2f;
+                GameObject minionObj = gm.poolManager.Get(minionPoolTag, spawnPos, Quaternion.identity);
+                if (minionObj != null && minionObj.TryGetComponent<MinionAI>(out var ai))
+                {
+                    Necromancer.Data.MinionUnlockSO selectedData = null;
+                    if (unlockedMinionDatas.Count > 0)
+                        selectedData = unlockedMinionDatas[0]; // 보통 첫 번째가 워리어
+                    ai.Initialize(selectedData);
                 }
             }
         }

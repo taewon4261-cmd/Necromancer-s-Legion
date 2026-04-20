@@ -211,7 +211,8 @@ namespace Necromancer
                     isMinionUpdateNeeded = true;
                     break;
                 case SkillType.EchoOfResurrection:
-                    GameManager.Instance.baseReviveChance += 10f;
+                    if (GameManager.Instance.unitManager != null)
+                        GameManager.Instance.unitManager.baseReviveChance += 10f;
                     break;
                 case SkillType.VampiricTeeth:
                     if (vampiricChance <= 0f) vampiricChance = 0.3f; // 처음 배울 때 30% 고정

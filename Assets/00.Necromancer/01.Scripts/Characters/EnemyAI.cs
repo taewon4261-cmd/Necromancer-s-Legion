@@ -295,7 +295,7 @@ public class EnemyAI : UnitBase
         // [RULE] 확률 체크 및 스테이지별 미니언 데이터 가져오기
         if (Random.value < dropRate)
         {
-            var minionData = GameManager.Instance.GetMinionDataForCurrentStage();
+            var minionData = GameManager.Instance.unitManager?.GetMinionDataForCurrentStage();
             if (minionData == null) return;
 
             if (GameManager.Instance.poolManager != null)
@@ -322,7 +322,7 @@ protected override void Die()
             {
                 GameManager.Instance.poolManager.Get("ExpGem", transform.position, Quaternion.identity);
             }
-            GameManager.Instance.TryReviveAsMinion(transform.position);
+            GameManager.Instance.unitManager?.TryReviveAsMinion(transform.position);
         }
 
         if (GameManager.Instance != null && GameManager.Instance.poolManager != null)

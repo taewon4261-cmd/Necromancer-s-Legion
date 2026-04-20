@@ -382,7 +382,7 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
             // 기본 미니언(SO 없음)은 GameManager.minionPoolTag("Minion")로 fallback
             string poolTag = (minionData != null && !string.IsNullOrEmpty(minionData.minionTag))
                 ? minionData.minionTag
-                : GameManager.Instance.minionPoolTag;
+                : GameManager.Instance.unitManager?.minionPoolTag ?? "Minion";
             GameManager.Instance.poolManager.Release(poolTag, gameObject);
         }
         else

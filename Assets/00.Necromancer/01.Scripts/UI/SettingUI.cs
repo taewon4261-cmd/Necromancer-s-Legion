@@ -295,15 +295,15 @@ namespace Necromancer.UI
 
         public void OnClick_MainMenu()
         {
-            // [DATA-SAFETY] 나가기 전 현재까지 얻은 소울 강제 커밋 & 저장
-            if (GameManager.Instance != null && GameManager.Instance.Resources != null)
+            if (GameManager.Instance != null)
             {
-                GameManager.Instance.Resources.CommitSessionSoul();
+                // [DATA-SAFETY] 나가기 전 현재까지 얻은 소울 강제 커밋 & 저장
+                GameManager.Instance.Resources?.CommitSessionSoul();
+
+                // [CLEANUP] Wave/Unit/Pool/Sound 정리 및 timeScale 복원을 CleanupGameSession에 위임
+                GameManager.Instance.CleanupGameSession();
             }
 
-            // DOTween 등 모든 트윈 정지 및 씬 이동
-            DG.Tweening.DOTween.KillAll();
-            Time.timeScale = 1f;
             UnityEngine.SceneManagement.SceneManager.LoadScene("TitleScene");
             Debug.Log("<color=green>[SettingUI]</color> Intermediate Save and Redirecting to TitleScene.");
         }
