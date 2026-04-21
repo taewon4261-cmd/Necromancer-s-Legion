@@ -39,6 +39,10 @@ namespace Necromancer.Core
         [Header("Resources")]
         public int currentSoul = 0;
         public int unlockedStageLevel = 1;
+        public int currentStamina = 10;
+        public long lastStaminaUpdateTimeTicks = 0;
+        public int staminaAdsWatchedToday = 0;
+        public string lastStaminaAdDate = "";
         public List<string> unlockedMinionIDs = new List<string>() { "Minion_01" };
         public string lastLoginMethod = "None"; // [AUTH] "None", "Guest", "Google"
         public bool hasSeenTutorial = false;   // [TUTORIAL] 최초 실행 가이드 노출 여부

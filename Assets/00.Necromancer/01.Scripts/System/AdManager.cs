@@ -13,14 +13,16 @@ namespace Necromancer.Systems
         [Header("Ad Unit IDs (Android Real)")]
         [SerializeField] private string skillRefreshAdUnitId = "ca-app-pub-3770611612840704/4228061831";
         [SerializeField] private string doubleRewardAdUnitId = "ca-app-pub-3770611612840704/9975818749";
+        [SerializeField] private string staminaAdUnitId = "ca-app-pub-3940256099942544/5224354917"; // [FIX] 추가: 피로도 회복 광고 (테스트 ID)
 
         [Header("UI References")]
         [SerializeField] private GameObject noAdMessagePrefab;
         [SerializeField] private Transform uiCanvasParent;
 
-        // [SLOTS] 각 광고 단위별 독립적인 광고 객체 (주머니 2개)
+        // [SLOTS] 각 광고 단위별 독립적인 광고 객체
         private RewardedAd skillAd;
         private RewardedAd resultAd;
+        private RewardedAd staminaAd; // [FIX] 추가
 
         private Action onRewardSuccess;
         private Action onRewardFailed;
@@ -37,56 +39,70 @@ namespace Necromancer.Systems
 
             MobileAds.Initialize(initStatus => {
                 Debug.Log("<color=green>[AdManager]</color> AdMob Initialized.");
-                // 두 종류의 광고를 동시에 백그라운드에서 로드 시작
+                // 종류별 광고를 동시에 백그라운드에서 로드 시작
                 UnityMainThreadDispatcher.Enqueue(() => {
-                    LoadRewardedAd(false); // 스킬 리프레시 로드
-                    LoadRewardedAd(true);  // 결과창 2배 로드
+                    LoadRewardedAd(AdUnitType.SkillRefresh);
+                    LoadRewardedAd(AdUnitType.DoubleReward);
+                    LoadRewardedAd(AdUnitType.Stamina);
                 });
             });
         }
 
+        public enum AdUnitType { SkillRefresh, DoubleReward, Stamina }
+
         /// <summary>
         /// 특정 광고 단위를 미리 로드합니다.
         /// </summary>
-        public void LoadRewardedAd(bool isDoubleReward)
+        public void LoadRewardedAd(AdUnitType type)
         {
             if (isAdShowing) return;
 
-            // 테스트 모드 제거: 실제 ID만 사용
-            string targetId = isDoubleReward ? doubleRewardAdUnitId : skillRefreshAdUnitId;
+            string targetId = "";
+            switch (type)
+            {
+                case AdUnitType.SkillRefresh: targetId = skillRefreshAdUnitId; if (skillAd != null) { skillAd.Destroy(); skillAd = null; } break;
+                case AdUnitType.DoubleReward: targetId = doubleRewardAdUnitId; if (resultAd != null) { resultAd.Destroy(); resultAd = null; } break;
+                case AdUnitType.Stamina:      targetId = staminaAdUnitId;      if (staminaAd != null) { staminaAd.Destroy(); staminaAd = null; } break;
+            }
             
-            // 기존 광고 객체 정리
-            if (isDoubleReward && resultAd != null) { resultAd.Destroy(); resultAd = null; }
-            else if (!isDoubleReward && skillAd != null) { skillAd.Destroy(); skillAd = null; }
-
-            Debug.Log($"[AdManager] Pre-loading {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad (ID: {targetId})...");
+            Debug.Log($"[AdManager] Pre-loading {type} ad (ID: {targetId})...");
             var adRequest = new AdRequest();
 
             RewardedAd.Load(targetId, adRequest, (RewardedAd ad, LoadAdError error) => {
                 if (error != null || ad == null)
                 {
-                    Debug.LogError($"[AdManager] Failed to load {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad: {error}");
+                    Debug.LogError($"[AdManager] Failed to load {type} ad: {error}");
                     return;
                 }
 
-                Debug.Log($"[AdManager] {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad loaded and ready.");
+                Debug.Log($"[AdManager] {type} ad loaded and ready.");
                 
-                if (isDoubleReward) resultAd = ad;
-                else skillAd = ad;
+                switch (type)
+                {
+                    case AdUnitType.SkillRefresh: skillAd = ad; break;
+                    case AdUnitType.DoubleReward: resultAd = ad; break;
+                    case AdUnitType.Stamina:      staminaAd = ad; break;
+                }
 
-                RegisterEventHandlers(ad, isDoubleReward);
+                RegisterEventHandlers(ad, type);
             });
         }
 
         /// <summary>
         /// 미리 로드된 특정 광고를 보여줍니다.
         /// </summary>
-        public void ShowRewardedAd(bool isDoubleReward, Action successCallback, Action failCallback)
+        public void ShowRewardedAd(AdUnitType type, Action successCallback, Action failCallback)
         {
             onRewardSuccess = successCallback;
             onRewardFailed = failCallback;
 
-            RewardedAd targetAd = isDoubleReward ? resultAd : skillAd;
+            RewardedAd targetAd = null;
+            switch (type)
+            {
+                case AdUnitType.SkillRefresh: targetAd = skillAd; break;
+                case AdUnitType.DoubleReward: targetAd = resultAd; break;
+                case AdUnitType.Stamina:      targetAd = staminaAd; break;
+            }
 
             if (targetAd != null && targetAd.CanShowAd())
             {
@@ -96,15 +112,15 @@ namespace Necromancer.Systems
 
                 targetAd.Show((Reward reward) => {
                     UnityMainThreadDispatcher.Enqueue(() => {
-                        Debug.Log("<color=green>[AdManager]</color> Reward earned!");
+                        Debug.Log("<color=green>[AdManager]</color> Reward earned for " + type);
                         onRewardSuccess?.Invoke();
                     });
                 });
             }
             else
             {
-                Debug.LogWarning($"[AdManager] {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad NOT ready. Loading now...");
-                LoadRewardedAd(isDoubleReward);
+                Debug.LogWarning($"[AdManager] {type} ad NOT ready. Loading now...");
+                LoadRewardedAd(type);
                 
                 if (noAdMessagePrefab != null && uiCanvasParent != null)
                 {
@@ -116,20 +132,34 @@ namespace Necromancer.Systems
             }
         }
 
-        private void RegisterEventHandlers(RewardedAd ad, bool isDoubleReward)
+        /// <summary>
+        /// 특정 광고 타입이 현재 재생 가능한 상태인지 확인합니다.
+        /// </summary>
+        public bool IsAdReady(AdUnitType type)
+        {
+            switch (type)
+            {
+                case AdUnitType.SkillRefresh: return skillAd != null && skillAd.CanShowAd();
+                case AdUnitType.DoubleReward: return resultAd != null && resultAd.CanShowAd();
+                case AdUnitType.Stamina:      return staminaAd != null && staminaAd.CanShowAd();
+                default: return false;
+            }
+        }
+
+        private void RegisterEventHandlers(RewardedAd ad, AdUnitType type)
         {
             ad.OnAdFullScreenContentClosed += () => {
-                Debug.Log($"[AdManager] {(isDoubleReward ? "DoubleReward" : "SkillRefresh")} ad closed.");
+                Debug.Log($"[AdManager] {type} ad closed.");
                 isAdShowing = false;
                 UnityMainThreadDispatcher.Enqueue(() => {
                     if (GameManager.Instance != null)
                         GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, false);
-                    LoadRewardedAd(isDoubleReward); // 사용한 광고만 다시 로드
+                    LoadRewardedAd(type); // 사용한 광고만 다시 로드
                 });
             };
 
             ad.OnAdFullScreenContentFailed += (AdError error) => {
-                Debug.LogError($"[AdManager] Ad failed to show: {error}");
+                Debug.LogError($"[AdManager] Ad ({type}) failed to show: {error}");
                 isAdShowing = false;
                 UnityMainThreadDispatcher.Enqueue(() => {
                     if (GameManager.Instance != null)

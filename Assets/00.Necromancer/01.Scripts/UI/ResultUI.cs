@@ -88,7 +88,7 @@ namespace Necromancer.UI
                 return;
             }
 
-            adManager.ShowRewardedAd(true, OnDoubleSuccess, OnDoubleFailed);
+            adManager.ShowRewardedAd(AdManager.AdUnitType.DoubleReward, OnDoubleSuccess, OnDoubleFailed);
         }
 
         /// <summary>

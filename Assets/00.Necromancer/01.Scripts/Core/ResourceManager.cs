@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 namespace Necromancer.Core {
@@ -8,6 +9,23 @@ namespace Necromancer.Core {
         public int currentSoul;
         public int currentSessionSoul; // 이번 판에서 얻은 실시간 소울 (UI 표현용)
         public int unlockedStageLevel;
+
+        [Header("Stamina System")]
+        public const int MAX_STAMINA = 10;
+        public const int STAMINA_RECOVERY_SECONDS = 1800; // 30분
+        public const int STAMINA_COST = 1;
+        public const int MAX_DAILY_STAMINA_ADS = 5;
+
+        public int currentStamina;
+        public int staminaAdsWatchedToday;
+        private string lastStaminaAdDate;
+        private long lastStaminaUpdateTimeTicks;
+
+        /// <summary>
+        /// 다음 피로도 회복까지 남은 시간(초)을 반환합니다.
+        /// </summary>
+        public float SecondsUntilNextStamina { get; private set; }
+
         // [INSPECTOR] Resources.LoadAll 대신 Inspector 직렬화 사용 (Resources 폴더 의존 제거)
         [SerializeField] private List<LobbyUpgradeSO> upgradeSOConfig = new List<LobbyUpgradeSO>();
         private List<LobbyUpgradeSO> upgradeList = new List<LobbyUpgradeSO>();
@@ -29,6 +47,13 @@ namespace Necromancer.Core {
                 var data = GameManager.Instance.SaveData.Data;
                 currentSoul = data.currentSoul;
                 unlockedStageLevel = data.unlockedStageLevel;
+                currentStamina = data.currentStamina;
+                lastStaminaUpdateTimeTicks = data.lastStaminaUpdateTimeTicks;
+                staminaAdsWatchedToday = data.staminaAdsWatchedToday;
+                lastStaminaAdDate = data.lastStaminaAdDate;
+
+                // [STAMINA] 초기화 시점에 한 번 갱신 (UTC 날짜 체크 포함)
+                UpdateStamina();
             }
             // [INSPECTOR] Inspector에서 직접 연결된 SO 리스트 사용 (Resources 폴더 불필요)
             upgradeList = upgradeSOConfig;
@@ -47,6 +72,116 @@ namespace Necromancer.Core {
             GameManager.BroadcastSoul(currentSoul);
             Debug.Log($"<color=green>[ResourceManager]</color> Initialization complete. Broadcasted soul: {currentSoul}");
         }
+
+        /// <summary>
+        /// 피로도를 현재 시간 기준으로 자동 회복시킵니다. (UTC 기준 일일 초기화 포함)
+        /// </summary>
+        public void UpdateStamina()
+        {
+            // [STAMINA-ADS] UTC 기준 일일 초기화 로직
+            string todayUtc = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            if (lastStaminaAdDate != todayUtc)
+            {
+                staminaAdsWatchedToday = 0;
+                lastStaminaAdDate = todayUtc;
+                SaveStamina(true); // 날짜 변경 시 즉시 물리 저장
+            }
+
+            if (currentStamina >= MAX_STAMINA)
+            {
+                SecondsUntilNextStamina = STAMINA_RECOVERY_SECONDS;
+                lastStaminaUpdateTimeTicks = DateTime.UtcNow.Ticks;
+                SaveStamina();
+                return;
+            }
+
+            DateTime now = DateTime.UtcNow;
+            DateTime lastUpdate = new DateTime(lastStaminaUpdateTimeTicks);
+            
+            // 앱 최초 실행이거나 데이터가 없는 경우 현재 시간으로 설정
+            if (lastStaminaUpdateTimeTicks == 0)
+            {
+                lastStaminaUpdateTimeTicks = now.Ticks;
+                SaveStamina();
+                return;
+            }
+
+            // [SECURITY] 시간 역행 방지: 마지막 업데이트 시간이 현재보다 미래라면 현재 시간으로 보정
+            if (lastUpdate > now)
+            {
+                Debug.LogWarning("[ResourceManager] Time rollback detected. Resetting stamina update time.");
+                lastStaminaUpdateTimeTicks = now.Ticks;
+                lastUpdate = now;
+            }
+
+            TimeSpan elapsed = now - lastUpdate;
+            double totalSeconds = elapsed.TotalSeconds;
+
+            if (totalSeconds >= STAMINA_RECOVERY_SECONDS)
+            {
+                int recoverAmount = (int)(totalSeconds / STAMINA_RECOVERY_SECONDS);
+                currentStamina = Mathf.Min(MAX_STAMINA, currentStamina + recoverAmount);
+                
+                // 마지막 업데이트 시간을 회복된 시점으로 보정 (남은 초 유지)
+                lastStaminaUpdateTimeTicks = lastUpdate.AddSeconds(recoverAmount * STAMINA_RECOVERY_SECONDS).Ticks;
+                
+                SaveStamina(true);
+            }
+
+            // UI 표시용 남은 시간 계산
+            double remainingSeconds = STAMINA_RECOVERY_SECONDS - (totalSeconds % STAMINA_RECOVERY_SECONDS);
+            SecondsUntilNextStamina = (float)remainingSeconds;
+        }
+
+        public bool HasEnoughStamina(int amount) => currentStamina >= amount;
+
+        public void ConsumeStamina(int amount)
+        {
+            if (currentStamina >= amount)
+            {
+                int prevStamina = currentStamina;
+                currentStamina -= amount;
+
+                // [UX] 최대치(10) 이상이었다가 9 이하로 내려가는 시점에 타이머를 0부터 리셋
+                if (prevStamina >= MAX_STAMINA && currentStamina < MAX_STAMINA)
+                {
+                    lastStaminaUpdateTimeTicks = DateTime.UtcNow.Ticks;
+                    Debug.Log("<color=cyan>[Stamina]</color> Stamina dropped to < 10. Timer Reset.");
+                }
+
+                SaveStamina(true); // 소모 시 즉시 물리 저장
+            }
+        }
+
+        /// <summary>
+        /// 광고 시청 후 피로도를 추가합니다. (최대치 초과 허용 및 횟수 기록)
+        /// </summary>
+        public void AddStamina(int amount)
+        {
+            currentStamina += amount; // [UX] 최대치 제한 제거 (예: 11/10 가능)
+            staminaAdsWatchedToday++;
+            lastStaminaAdDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            
+            SaveStamina(true); // 보상 지급 시 즉시 물리 저장 및 클라우드 동기화 트리거
+        }
+
+        private void SaveStamina(bool forcePhysicalSave = false)
+        {
+            if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
+            {
+                var data = GameManager.Instance.SaveData.Data;
+                data.currentStamina = currentStamina;
+                data.lastStaminaUpdateTimeTicks = lastStaminaUpdateTimeTicks;
+                data.staminaAdsWatchedToday = staminaAdsWatchedToday;
+                data.lastStaminaAdDate = lastStaminaAdDate;
+
+                if (forcePhysicalSave)
+                {
+                    GameManager.Instance.SaveData.Save(); // 로컬 파일 + 클라우드 자동 동기화
+                }
+            }
+        }
+
         public float GetUpgradeValue(UpgradeStatType t) => upgradeList?.Where(u => u != null && u.statType == t).Sum(u => u.GetTotalStatValue()) ?? 0f;
         public bool IsStageUnlocked(int id) => id <= unlockedStageLevel;
         public void UnlockLevel(int id) { 
