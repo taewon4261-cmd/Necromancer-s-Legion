@@ -15,6 +15,8 @@ namespace Necromancer
     {
         // [ARCHITECT] 중앙 집중형 업데이트 매니저 및 격자 분할을 위한 보조 데이터
         [HideInInspector] public Vector2Int CurrentGridPos = new Vector2Int(-999, -999);
+        [HideInInspector] public int allUnitsIndex = -1;
+
         [HideInInspector] public Vector3 LastGridUpdatePos = new Vector3(-9999, -9999, -9999);
         [HideInInspector] public bool IsStunned = false;
         
@@ -39,7 +41,7 @@ namespace Necromancer
 
         public bool IsDead => isDead;
         protected bool isDead = false;
-        private Coroutine hitFlashCoroutine;
+                private CancellationTokenSource _hitFlashCts;
         private CancellationTokenSource _poisonFlashCts;
 
         public event global::System.Action<float, float> OnHealthChanged; // (current, max)
@@ -78,6 +80,11 @@ namespace Necromancer
             if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
                 GameManager.Instance.unitManager.UnregisterUnit(this);
 
+            // 피격 반짝임 취소
+            _hitFlashCts?.Cancel();
+            _hitFlashCts?.Dispose();
+            _hitFlashCts = null;
+
             // 독 반짝임 취소
             _poisonFlashCts?.Cancel();
             _poisonFlashCts?.Dispose();
@@ -92,6 +99,8 @@ namespace Necromancer
         {
             if (isDead) return;
             
+            if (activeModifiers.Count == 0) return;
+
             // Modifier 업데이트 (스킬 효과 탈중앙화)
             for (int i = activeModifiers.Count - 1; i >= 0; i--)
             {
@@ -136,8 +145,10 @@ namespace Necromancer
             // 피격 반짝임 연출 (이미지 없는 경우 대응)
             if (gameObject.activeInHierarchy)
             {
-                if (hitFlashCoroutine != null) StopCoroutine(hitFlashCoroutine);
-                hitFlashCoroutine = StartCoroutine(HitFlashRoutine());
+                _hitFlashCts?.Cancel();
+                _hitFlashCts?.Dispose();
+                _hitFlashCts = new CancellationTokenSource();
+                HitFlashAsync(_hitFlashCts.Token).Forget();
             }
 
             OnHealthChanged?.Invoke(currentHp, maxHp);
@@ -148,15 +159,7 @@ namespace Necromancer
             }
         }
 
-        private IEnumerator HitFlashRoutine()
-        {
-            if (unitSprite == null) yield break;
 
-            unitSprite.color = hitColor;
-            yield return new WaitForSeconds(hitDuration);
-            unitSprite.color = Color.white;
-            hitFlashCoroutine = null;
-        }
 
         // 독(Poison) 틱마다 호출되는 초록 반짝임 (UniTask)
         public void TriggerPoisonFlash()
@@ -185,6 +188,25 @@ namespace Necromancer
             catch (System.OperationCanceledException)
             {
                 if (unitSprite != null) unitSprite.color = Color.white;
+            }
+        }
+
+        private async UniTaskVoid HitFlashAsync(CancellationToken ct)
+        {
+            try
+            {
+                if (unitSprite == null) return;
+                unitSprite.color = hitColor;
+                await UniTask.Delay(System.TimeSpan.FromSeconds(hitDuration), cancellationToken: ct);
+                if (unitSprite != null) unitSprite.color = Color.white;
+            }
+            catch (System.OperationCanceledException)
+            {
+                if (unitSprite != null) unitSprite.color = Color.white;
+            }
+            finally
+            {
+                _hitFlashCts = null;
             }
         }
 

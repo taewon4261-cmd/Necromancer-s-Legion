@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
+using DG.Tweening;
+
 
 namespace Necromancer
 {
@@ -49,10 +51,11 @@ public class PlayerController : UnitBase
 
     [Header("Skill Visuals (Optional - Assign in Inspector for better performance)")]
     [SerializeField] private GameObject auraVisualObject; // [NEW] 인스펙터에서 직접 연결 가능
-    private Transform auraVisualInstance; 
+        // Removed auraVisualInstance to use auraVisualObject directly 
 
     private bool isRegenActive = false;
-    private readonly List<UnitBase> auraBuffer = new List<UnitBase>(16); // [PERF] GC 방지용 재사용 버퍼
+        private readonly List<UnitBase> auraBuffer = new List<UnitBase>(16);
+    private Tweener auraPulseTweener; // [PERF] GC 방지용 재사용 버퍼
 
     protected override void Awake()
     {
@@ -141,6 +144,7 @@ public class PlayerController : UnitBase
         
         HandleInput();
         UpdateAnimation();
+        CheckSlam();
     }
 
     public override void ManualFixedUpdate(float fixedDeltaTime)
@@ -247,70 +251,38 @@ public class PlayerController : UnitBase
         bool wasEnabled = isAuraEnabled;
         isAuraEnabled = enable;
         
-        // [NEW] 비주얼 오브젝트 관리
         UpdateAuraVisual(enable);
 
         if (isAuraEnabled && !wasEnabled)
         {
             DeathAuraLoopAsync().Forget();
-            DeathAuraVisualPulseAsync().Forget(); // 펄싱 애니메이션 시작
+            
+            if (auraVisualObject != null)
+            {
+                auraVisualObject.transform.localScale = Vector3.one * 7f;
+                auraPulseTweener = auraVisualObject.transform.DOScale(Vector3.one * 7.7f, 0.5f)
+                    .SetLoops(-1, LoopType.Yoyo)
+                    .SetEase(Ease.InOutSine)
+                    .SetLink(auraVisualObject);
+            }
+        }
+        else if (!isAuraEnabled && auraPulseTweener != null)
+        {
+            auraPulseTweener.Kill();
+            auraPulseTweener = null;
         }
         Debug.Log($"[Player] 죽음의 오라 상태: {enable}");
     }
 
     private void UpdateAuraVisual(bool enable)
     {
-        if (enable)
+        if (auraVisualObject != null)
         {
-            // 1. 인스펙터에서 미리 할당된 오브젝트가 있다면 우선 사용
-            if (auraVisualInstance == null && auraVisualObject != null)
-            {
-                auraVisualInstance = auraVisualObject.transform;
-                // 범위에 맞춰 스케일 고정 (반경 3.5 -> 7.0)
-                auraVisualInstance.localScale = Vector3.one * 7f;
-            }
-
-            // 2. 할당된 것도 없고 생성된 것도 없다면 그때만 자동 생성 (Safe-net)
-            if (auraVisualInstance == null)
-            {
-                GameObject auraGo = new GameObject("DeathAura_Visual");
-                auraGo.transform.SetParent(this.transform);
-                auraGo.transform.localPosition = Vector3.zero;
-
-                var sr = auraGo.AddComponent<SpriteRenderer>();
-                sr.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
-                if (sr.sprite == null) sr.sprite = Resources.GetBuiltinResource<Sprite>("UI/Skin/UISprite.psd");
-                
-                sr.color = new Color(0.6f, 0.1f, 0.9f, 0.15f);
-                sr.sortingOrder = -1;
-                
-                auraGo.transform.localScale = Vector3.one * 7f;
-                auraVisualInstance = auraGo.transform;
-            }
-            auraVisualInstance.gameObject.SetActive(true);
-        }
-        else if (auraVisualInstance != null)
-        {
-            auraVisualInstance.gameObject.SetActive(false);
+            auraVisualObject.SetActive(enable);
         }
     }
 
-    private async UniTaskVoid DeathAuraVisualPulseAsync()
-    {
-        var token = gameObject.GetCancellationTokenOnDestroy();
-        Vector3 baseScale = Vector3.one * 7f;
 
-        while (!isDead && isAuraEnabled && !token.IsCancellationRequested)
-        {
-            if (auraVisualInstance != null)
-            {
-                // 소생하는 느낌의 부드러운 펄싱 효과
-                float sinValue = (Mathf.Sin(Time.time * 2f) + 1f) / 2f; // 0 ~ 1 사이 반복
-                auraVisualInstance.localScale = baseScale * (0.95f + sinValue * 0.1f);
-            }
-            await UniTask.Yield(PlayerLoopTiming.Update, token);
-        }
-    }
 
     private async UniTaskVoid DeathAuraLoopAsync()
     {
@@ -363,41 +335,30 @@ public class PlayerController : UnitBase
         {
             movement = virtualJoystick.InputVector;
         }
-        movement.Normalize(); 
+        movement.Normalize();
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        // 처음 닿았을 때 즉각 타격
-        HandleSlam(collision);
-    }
-
-    private void OnTriggerStay2D(Collider2D collision)
-    {
-        // [OPTIMIZATION] 플레이어의 트리거 연산도 5프레임마다 한 번만 수행하여 부하 절감
-        if (Time.frameCount % 5 != 0) return;
-        
-        // 머물러 있을 때의 타격 (쿨타임 체크 포함)
-        HandleSlam(collision);
-    }
-
-    private void HandleSlam(Collider2D collision)
+    private void CheckSlam()
     {
         if (isDead || Time.time < lastSlamTime + slamCooldown) return;
 
-        if (collision.CompareTag("Enemy"))
+        if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
         {
-            if (collision.TryGetComponent(out IDamageable target))
+            auraBuffer.Clear();
+            GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, 1.0f, auraBuffer);
+            for (int i = 0; i < auraBuffer.Count; i++)
             {
-                target.ApplyDamage(bodySlamDamage, this);
-                
-                // [REGISTRY PATTERN] 본체 몸통 박치기 시에도 스킬 효과 적용
-                if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
+                var unit = auraBuffer[i];
+                if (unit != null && unit is EnemyAI && !unit.IsDead)
                 {
-                    GameManager.Instance.skillManager.ApplyAttackEffects(target.Unit);
+                    unit.ApplyDamage(bodySlamDamage, this);
+                    if (GameManager.Instance.skillManager != null)
+                    {
+                        GameManager.Instance.skillManager.ApplyAttackEffects(unit);
+                    }
+                    lastSlamTime = Time.time;
+                    break;
                 }
-                
-                lastSlamTime = Time.time;
             }
         }
     }

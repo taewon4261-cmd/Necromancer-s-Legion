@@ -90,15 +90,7 @@ namespace Necromancer.UI
             int cur = res.currentStamina;
             int max = ResourceManager.MAX_STAMINA;
 
-            string timerStr = "";
-            if (cur < max)
-            {
-                int min = (int)(res.SecondsUntilNextStamina / 60);
-                int sec = (int)(res.SecondsUntilNextStamina % 60);
-                timerStr = $" ({min:D2}:{sec:D2})";
-            }
-
-            staminaText.text = $"⚡ {cur}/{max}{timerStr}";
+            staminaText.text = $" {cur}/{max}";
         }
 
         private void OnAddStaminaClicked()

@@ -29,6 +29,7 @@ namespace Necromancer
         [SerializeField] private DebugConsole _debugConsole;
         [SerializeField] private Necromancer.Systems.AdManager _adManager;
         [SerializeField] private Necromancer.Systems.PopupManager _popupManager;
+        [SerializeField] private Necromancer.Systems.NotificationManager _notificationManager;
         [SerializeField] private LevelManager _levelManager;
         public Necromancer.Systems.AuthManager Auth;
 
@@ -88,6 +89,7 @@ namespace Necromancer
         public DebugConsole DebugConsole => _debugConsole;
         public Necromancer.Systems.AdManager AdManager => _adManager;
         public Necromancer.Systems.PopupManager Popup => _popupManager;
+        public Necromancer.Systems.NotificationManager Notification => _notificationManager;
         public LevelManager LevelManager => _levelManager;
 
 
@@ -298,6 +300,7 @@ namespace Necromancer
             if (Resources != null) Resources.Init();
             if (Combat != null) Combat.Init();
             if (Sound != null) Sound.Init();
+            if (_notificationManager != null) _notificationManager.Init();
             // [CRITICAL] Auth는 AdManager보다 반드시 먼저 초기화
             // MobileAds.Initialize()가 렌더 스레드에서 예외를 던지면 C# try-catch로 잡히지 않아
             // 뒤에 위치한 Auth.Init()이 호출되지 않는 문제 방지

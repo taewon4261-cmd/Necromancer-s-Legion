@@ -44,7 +44,8 @@ public class EnemyAI : UnitBase
     [Header("Targeting Settings")]
     private UnitBase currentTarget; // 실질적인 추격/공격 대상
     private const float MINION_SCAN_RANGE = 4.0f; // 일반 몹이 한눈 팔 범위
-    private List<UnitBase> nearbyBuffer = new List<UnitBase>(16);
+        private static readonly List<UnitBase> sharedNearbyBuffer = new List<UnitBase>(32);
+    public float attackRange = 1.2f;
     private bool hasCountedDeath;
 
     // --- [스킬 연동: Modifier 패턴으로 대체됨] ---
@@ -179,6 +180,7 @@ public class EnemyAI : UnitBase
         }
 
         MoveWithSeparation();
+        CheckAttack();
     }
 
     private void MoveWithSeparation()
@@ -198,9 +200,9 @@ public class EnemyAI : UnitBase
             // UnitManager의 격자 시스템으로 주변 유닛만 O(1)에 가깝게 추출 (GC Free)
             if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
             {
-                GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, separationRadius, nearbyBuffer);
+                                GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, separationRadius, sharedNearbyBuffer);
             }
-            var neighbors = nearbyBuffer;
+            var neighbors = sharedNearbyBuffer;
 
             for (int i = 0; i < neighbors.Count; i++)
             {
@@ -226,45 +228,28 @@ public class EnemyAI : UnitBase
         rb.velocity = Vector2.SmoothDamp(rb.velocity, targetVelocity, ref currentVelocity, movementSmoothTime);
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
+    private void CheckAttack()
     {
-        // [STABILITY] 스치기 불사 해결: 처음 닿는 순간에는 프레임 필터링 없이 무조건 타격 시도
-        TryAttack(collision, true);
-    }
+        if (currentTarget == null) return;
 
-    private void OnTriggerStay2D(Collider2D collision)
-    {
-        // 머물러 있을 동안에는 성능을 위해 5프레임마다 한 번씩만 데미지 시도
-        TryAttack(collision, false);
-    }
+        // [OPTIMIZED] 물리 트리거 대신 논리적 거리 연산으로 대체
+        float sqrDist = (currentTarget.transform.position - transform.position).sqrMagnitude;
+        float attackRange = 1.0f; // 적의 기본 공격 범위 (콜라이더 대체 반경)
 
-    private void TryAttack(Collider2D collision, bool isInitialContact)
-    {
-        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) return;
-
-        // [OPTIMIZATION] 첫 타격이 아닐 때만 5프레임 최적화 적용
-        // 디버깅 로그는 유지하되, 프레임 필터링은 다시 복구하여 성능 확보
-        if (!isInitialContact && Time.frameCount % 5 != 0) return;
-        
-        if (Time.time < lastHitTime + hitCooldown) return;
-
-        if (collision.CompareTag("Player") || collision.CompareTag("Minion"))
+        if (sqrDist <= attackRange * attackRange)
         {
-            // [Zero-Search] GetComponent<UnitBase> 대신 인터페이스 레이어 사용 (O(1) 접근)
-            if (collision.TryGetComponent(out IDamageable targetUnit))
+            if (Time.time >= lastHitTime + hitCooldown)
             {
-                if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
-                targetUnit.ApplyDamage(attackDamage, this);
-                lastHitTime = Time.time;
-
-                // [SOUND] 일반 공격(적 공격) 효과음 재생
-                if (GameManager.Instance != null && GameManager.Instance.Sound != null)
+                if (currentTarget.gameObject.TryGetComponent(out IDamageable targetUnit))
                 {
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxNormalAttackCraw);
+                    targetUnit.ApplyDamage(attackDamage, this);
+                    lastHitTime = Time.time;
+
+                    if (unitAnimator != null)
+                    {
+                        unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
+                    }
                 }
-                
-                // 디버그 로그 (성공 시만 출력하여 가독성 확보)
-                Debug.Log($"[HitSuccess] {gameObject.name} -> {collision.name} (isInitial: {isInitialContact}, Damage: {attackDamage})");
             }
         }
     }
@@ -355,16 +340,16 @@ protected override void Die()
                 // 2. 일반형: 우선순위가 높은 대상을 스캔 (O(1) 격자 활용)
                 if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
                 {
-                    GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, MINION_SCAN_RANGE, nearbyBuffer);
+                                        GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, MINION_SCAN_RANGE, sharedNearbyBuffer);
                 }
 
                 UnitBase bestTarget = null;
                 int highestPriority = -1;
                 float minSqrDist = Mathf.Infinity;
 
-                for (int i = 0; i < nearbyBuffer.Count; i++)
+                for (int i = 0; i < sharedNearbyBuffer.Count; i++)
                 {
-                    var unit = nearbyBuffer[i];
+                    var unit = sharedNearbyBuffer[i];
                     if (unit == null || unit.IsDead) continue;
 
                     // [LOGIC] 우선순위 결정 (미니언은 데이터 기반, 플레이어는 고정값 1)

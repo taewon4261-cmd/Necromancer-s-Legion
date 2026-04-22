@@ -61,7 +61,7 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
 
     // [OPTIMIZATION] 타겟팅용 버퍼
     private float scanRange = 10.0f;
-    private List<UnitBase> nearbyBuffer = new List<UnitBase>(16);
+        private static readonly List<UnitBase> sharedNearbyBuffer = new List<UnitBase>(32);
 
     protected override void Awake()
     {
@@ -139,20 +139,21 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
 
         UpdateAnimation();
 
-        // [PERF] 텔레포트 체크는 ScanForTargetAsync(300ms 주기)로 이전 — ManualUpdate(매 프레임) 불필요
-
         if (Time.time > spawnTime + lifeTime)
         {
             Die();
         }
 
-        // [NEW] 원거리 공격 로직 (업데이트 루프에서 쿨타임 체크)
-        if (attackRange > 1.8f && currentTarget != null)
+        // [OPTIMIZED] 공격 로직 (업데이트 루프에서 쿨타임 체크 및 거리 기반)
+        if (currentTarget != null)
         {
             float sqrDist = (currentTarget.position - transform.position).sqrMagnitude;
             if (sqrDist <= attackRange * attackRange)
             {
-                TryRangedAttack();
+                if (attackRange > 1.8f)
+                    TryRangedAttack();
+                else
+                    TryMeleeAttack();
             }
         }
     }
@@ -196,15 +197,15 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
 
             if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
             {
-                GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, scanRange, nearbyBuffer);
+                                GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, scanRange, sharedNearbyBuffer);
             }
 
             float closestSqrDist = scanRange * scanRange;
             UnitBase newTarget = null;
 
-            for (int i = 0; i < nearbyBuffer.Count; i++)
+            for (int i = 0; i < sharedNearbyBuffer.Count; i++)
             {
-                var unit = nearbyBuffer[i];
+                var unit = sharedNearbyBuffer[i];
                 if (unit == null || unit.IsDead || unit is MinionAI || unit is PlayerController) continue;
 
                 float sqrDist = (transform.position - unit.transform.position).sqrMagnitude;
@@ -271,56 +272,11 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
         return hitCooldown;
     }
 
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        // [CHECK] 근거리 미니언인 경우에만 접촉 공격 수행
-        if (attackRange <= 1.8f)
-            TryAttack(collision, true);
-    }
 
-    private void OnTriggerStay2D(Collider2D collision)
-    {
-        if (attackRange <= 1.8f)
-            TryAttack(collision, false);
-    }
 
-    private void TryAttack(Collider2D collision, bool isInitialContact)
-    {
-        if (isDead || (GameManager.Instance != null && GameManager.Instance.IsGameOver)) return;
-        if (!isInitialContact && Time.frameCount % 5 != 0) return;
-        if (Time.time < lastHitTime + GetEffectiveCooldown()) return;
 
-        if (collision.CompareTag("Enemy"))
-        {
-            if (collision.TryGetComponent(out IDamageable targetUnit))
-            {
-                SkillManager sManager = GameManager.Instance.skillManager;
-                float finalDamage = attackDamage;
 
-                if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
-                targetUnit.ApplyDamage(finalDamage, this);
 
-                if (GameManager.Instance != null && GameManager.Instance.Sound != null)
-                {
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxNormalAttackCraw);
-                }
-                
-                // [NEW] 흡혈(Vampiric Teeth) 효과 적용
-                if (sManager != null && sManager.vampiricChance > 0f)
-                {
-                    if (Random.value < sManager.vampiricChance)
-                    {
-                        float healAmount = sManager.vampiricHealAmount; // 업그레이드 수치 반영 (3, 6, 9...)
-                        this.currentHp = Mathf.Min(currentHp + healAmount, maxHp);
-                    }
-                }
-
-                if (targetUnit.IsDead) AddLifeTime(0.2f);
-                lastHitTime = Time.time;
-                if (sManager != null) sManager.ApplyAttackEffects(targetUnit.Unit);
-            }
-        }
-    }
 
     private void TryRangedAttack()
     {
@@ -348,9 +304,40 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
                     proj.Fire(finalDir, attackDamage, this); // 'this' (본체)를 주인으로 전달
                 }
             }
+        }
+    }
+
+    private void TryMeleeAttack()
+    {
+        if (Time.time < lastHitTime + GetEffectiveCooldown()) return;
+        if (currentTarget == null) return;
+
+        if (currentTarget.TryGetComponent(out IDamageable targetUnit))
+        {
+            SkillManager sManager = GameManager.Instance.skillManager;
+            float finalDamage = attackDamage;
 
             if (unitAnimator != null) unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
+            targetUnit.ApplyDamage(finalDamage, this);
+
+            if (GameManager.Instance != null && GameManager.Instance.Sound != null)
+            {
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxNormalAttackCraw);
+            }
+            
+            // [NEW] 흡혈(Vampiric Teeth) 효과 적용
+            if (sManager != null && sManager.vampiricChance > 0f)
+            {
+                if (Random.value < sManager.vampiricChance)
+                {
+                    float healAmount = sManager.vampiricHealAmount;
+                    this.currentHp = Mathf.Min(currentHp + healAmount, maxHp);
+                }
+            }
+
+            if (targetUnit.IsDead) AddLifeTime(0.2f);
             lastHitTime = Time.time;
+            if (sManager != null) sManager.ApplyAttackEffects(targetUnit.Unit);
         }
     }
 

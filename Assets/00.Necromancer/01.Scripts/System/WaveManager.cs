@@ -108,23 +108,39 @@ namespace Necromancer
         private void RecycleDistantEnemies()
         {
             if (playerTransform == null || GameManager.Instance == null) return;
-            if (GameManager.Instance.unitManager == null || GameManager.Instance.poolManager == null) return;
+            var unitMgr = GameManager.Instance.unitManager;
+            if (unitMgr == null || GameManager.Instance.poolManager == null) return;
 
-            var units = GameManager.Instance.unitManager.allUnits;
-            float sqrDespawnRadius = despawnRadius * despawnRadius;
             Vector3 playerPos = playerTransform.position;
+            Vector2Int playerGrid = unitMgr.WorldToGrid(playerPos);
+            float sqrDespawnRadius = despawnRadius * despawnRadius;
+            
+            // [OPTIMIZATION] 플레이어 주변의 완전히 안전한 격자(거리 측정 불필요) 범위 계산
+            int safeRange = Mathf.FloorToInt(despawnRadius / unitMgr.gridCellSize) - 1;
+            if (safeRange < 0) safeRange = 0;
 
-            // [STABILITY] 리스트 순회 중 제거 방지를 위해 역순 처리
-            for (int i = units.Count - 1; i >= 0; i--)
+            foreach (var kvp in unitMgr.UnitGrid)
             {
-                var unit = units[i];
-                if (unit == null || unit is not EnemyAI) continue;
-
-                float sqrDist = (unit.transform.position - playerPos).sqrMagnitude;
-                if (sqrDist > sqrDespawnRadius)
+                Vector2Int cell = kvp.Key;
+                
+                // 완전히 반경 안에 들어오는 격자는 요소 순회 및 거리 계산을 통째로 생략
+                if (Mathf.Abs(cell.x - playerGrid.x) <= safeRange && Mathf.Abs(cell.y - playerGrid.y) <= safeRange)
                 {
-                    // [BUG-FIX] 단순히 SetActive(false)가 아니라 풀로 명확히 반납해야 함
-                    GameManager.Instance.poolManager.Release("Enemy", unit.gameObject);
+                    continue;
+                }
+
+                // 외곽 및 경계에 있는 격자의 유닛들만 거리 판정 및 회수 처리
+                var list = kvp.Value;
+                for (int i = list.Count - 1; i >= 0; i--)
+                {
+                    var unit = list[i];
+                    if (unit == null || unit is not EnemyAI) continue;
+
+                    float sqrDist = (unit.transform.position - playerPos).sqrMagnitude;
+                    if (sqrDist > sqrDespawnRadius)
+                    {
+                        GameManager.Instance.poolManager.Release("Enemy", unit.gameObject);
+                    }
                 }
             }
         }

@@ -2,20 +2,23 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Necromancer.Systems;
+
 namespace Necromancer.Core {
-    public class ResourceManager : MonoBehaviour {
+    public class ResourceManager : MonoBehaviour 
+    {
         public static ResourceManager Instance;
 
         public int currentSoul;
         public int currentSessionSoul; // 이번 판에서 얻은 실시간 소울 (UI 표현용)
         public int unlockedStageLevel;
 
-        [Header("Stamina System")]
         public const int MAX_STAMINA = 10;
         public const int STAMINA_RECOVERY_SECONDS = 1800; // 30분
         public const int STAMINA_COST = 1;
         public const int MAX_DAILY_STAMINA_ADS = 5;
 
+        [Header("Stamina System")]
         public int currentStamina;
         public int staminaAdsWatchedToday;
         private string lastStaminaAdDate;
@@ -71,6 +74,12 @@ namespace Necromancer.Core {
             // [STABILITY] 모든 데이터 로드 및 업그레이드 레벨 동기화가 완료된 후 강제 브로드캐스트
             GameManager.BroadcastSoul(currentSoul);
             Debug.Log($"<color=green>[ResourceManager]</color> Initialization complete. Broadcasted soul: {currentSoul}");
+
+            // [NOTIF] 초기화 시점에 기존 알림 취소
+            if (GameManager.Instance != null && GameManager.Instance.Notification != null)
+            {
+                GameManager.Instance.Notification.CancelAllNotifications();
+            }
         }
 
         /// <summary>
@@ -219,14 +228,46 @@ namespace Necromancer.Core {
             GameManager.BroadcastSessionSoul(currentSessionSoul); // 인게임 HUD — 세션 획득량 (0부터 시작)
         }
 
+        private void OnApplicationPause(bool pause)
+        {
+            if (pause)
+            {
+                // [NOTIF] 백그라운드 전환 시 알림 예약
+                ScheduleStaminaNotification();
+            }
+            else
+            {
+                // [NOTIF] 포그라운드 복귀 시 알림 취소 및 스태미나 갱신
+                UpdateStamina();
+                if (GameManager.Instance != null && GameManager.Instance.Notification != null)
+                {
+                    GameManager.Instance.Notification.CancelAllNotifications();
+                }
+            }
+        }
+
         private void OnApplicationQuit()
         {
+            // [NOTIF] 앱 종료 시 알림 예약
+            ScheduleStaminaNotification();
+
             // 강제 종료 시에도 데이터 유실을 막기 위한 최후의 방어선
             if (GameManager.Instance != null && GameManager.Instance.SaveData != null)
             {
                 GameManager.Instance.SaveData.Data.currentSoul = currentSoul;
                 GameManager.Instance.SaveData.Save();
                 Debug.Log("<color=orange>[ResourceManager]</color> Application quitting. Forced Save executed.");
+            }
+        }
+
+        private void ScheduleStaminaNotification()
+        {
+            if (currentStamina < MAX_STAMINA && GameManager.Instance != null && GameManager.Instance.Notification != null)
+            {
+                int staminaNeeded = MAX_STAMINA - currentStamina;
+                float totalSeconds = ((staminaNeeded - 1) * STAMINA_RECOVERY_SECONDS) + SecondsUntilNextStamina;
+                
+                GameManager.Instance.Notification.ScheduleStaminaNotification(Mathf.RoundToInt(totalSeconds));
             }
         }
 

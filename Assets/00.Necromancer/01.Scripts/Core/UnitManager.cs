@@ -28,6 +28,7 @@ namespace Necromancer
         
         // 격자 좌표별 유닛 리스트 (공간 분할)
         private Dictionary<Vector2Int, List<UnitBase>> unitGrid = new Dictionary<Vector2Int, List<UnitBase>>(128);
+        public Dictionary<Vector2Int, List<UnitBase>> UnitGrid => unitGrid;
 
         private void Awake()
         {
@@ -40,10 +41,9 @@ namespace Necromancer
         public void RegisterUnit(UnitBase unit)
         {
             // 즉시 추가하지 않고 대기열에 삽입하여 루프 안전성 확보
-            if (!allUnits.Contains(unit) && !pendingRegister.Contains(unit))
+            if (unit.allUnitsIndex == -1 && !pendingRegister.Contains(unit))
             {
                 pendingRegister.Add(unit);
-                // [CAUTION] 등록 직후에는 아직 allUnits에 없으므로, 한 프레임 뒤부터 업데이트됨
             }
             
             // 제거 대기열에 있다면 취소
@@ -85,24 +85,37 @@ namespace Necromancer
             }
 
             // 2. [STABILITY] 루프가 끝난 뒤 대기열 처리 (Collection Modified Error 방지)
-            if (pendingUnregister.Count > 0)
+                        if (pendingUnregister.Count > 0)
             {
                 for (int i = 0; i < pendingUnregister.Count; i++)
                 {
                     var unit = pendingUnregister[i];
-                    allUnits.Remove(unit);
+                    int index = unit.allUnitsIndex;
+                    if (index >= 0 && index < allUnits.Count && allUnits[index] == unit)
+                    {
+                        int lastIndex = allUnits.Count - 1;
+                        if (index < lastIndex)
+                        {
+                            var lastUnit = allUnits[lastIndex];
+                            allUnits[index] = lastUnit;
+                            lastUnit.allUnitsIndex = index;
+                        }
+                        allUnits.RemoveAt(lastIndex);
+                        unit.allUnitsIndex = -1;
+                    }
                     RemoveFromGrid(unit);
                 }
                 pendingUnregister.Clear();
             }
 
-            if (pendingRegister.Count > 0)
+                        if (pendingRegister.Count > 0)
             {
                 for (int i = 0; i < pendingRegister.Count; i++)
                 {
                     var unit = pendingRegister[i];
-                    if (!allUnits.Contains(unit))
+                    if (unit.allUnitsIndex == -1)
                     {
+                        unit.allUnitsIndex = allUnits.Count;
                         allUnits.Add(unit);
                         UpdateGridPosition(unit, true);
                     }
@@ -142,7 +155,7 @@ namespace Necromancer
 
         #region Spatial Partitioning (Grid)
 
-        private Vector2Int WorldToGrid(Vector3 worldPos)
+        public Vector2Int WorldToGrid(Vector3 worldPos)
         {
             return new Vector2Int(
                 Mathf.FloorToInt(worldPos.x / gridCellSize),
