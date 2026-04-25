@@ -14,8 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minionID: SkeletonKnight
   minionTag: SkeletonKnight
-  minionIcon: {fileID: 21300000, guid: 9a1ba9d793e2bf44bb1e6cb02eaf3c84, type: 3}
-  animatorController: {fileID: 22100000, guid: 40e129af0473eee478e53f22e95d1aa1, type: 2}
+  minionIcon:
+    m_AssetGUID: 9a1ba9d793e2bf44bb1e6cb02eaf3c84
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
+  animatorController:
+    m_AssetGUID: 40e129af0473eee478e53f22e95d1aa1
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
   unlockCost_Soul: 2000
   unlockCost_Essence: 900
   targetEnemyID: SkeletonKnight

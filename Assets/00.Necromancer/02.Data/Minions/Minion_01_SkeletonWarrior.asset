@@ -14,8 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minionID: SkeletonWarrior
   minionTag: SkeletonWarrior
-  minionIcon: {fileID: 21300000, guid: a40d5b8f44f96134e9de189329e6c2cb, type: 3}
-  animatorController: {fileID: 22100000, guid: d1de650f3a0ce3d46a71811b432aa57a, type: 2}
+  minionIcon:
+    m_AssetGUID: a40d5b8f44f96134e9de189329e6c2cb
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 1
+  animatorController:
+    m_AssetGUID: d1de650f3a0ce3d46a71811b432aa57a
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
   unlockCost_Soul: 0
   unlockCost_Essence: 0
   targetEnemyID: SkeletonWarrior

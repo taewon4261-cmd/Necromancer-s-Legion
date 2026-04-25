@@ -1,0 +1,211 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: RemoteGroups
+  m_EditorClassIdentifier: 
+  m_GroupName: RemoteGroups
+  m_Data:
+    m_SerializedData: []
+  m_GUID: b953aeb18bd053e47b35cc507005f30a
+  m_SerializeEntries:
+  - m_GUID: 0c0c7dbc0475e544d941bc0878565607
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_08.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1062bea6b406bf141b747bf2dbfa80b0
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/OC_Minion_04_SkeletonMage.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 157c907495984ef408bbcc81f0ee1d39
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/Minion_03_Icon.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 17a6afd717cbda442bff3814ed0f3795
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/OC_Minion_05_SkeletonGiant.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 20412ba61ffed5841860a12bb4bf7051
+    m_Address: Assets/00.Necromancer/03.Prefabs/Core/Essence.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 23202d6582a4b58409370e84499b2f2c
+    m_Address: Assets/00.Necromancer/03.Prefabs/Core/Player.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 272e97b5dcaf1464ba702fa22c2a12f6
+    m_Address: Assets/00.Necromancer/03.Prefabs/Core/BoneProjectile.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 34bf130f02e0c064eaf6b94936e5d14e
+    m_Address: Assets/00.Necromancer/06.Sounds/GameBGM.mp3
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 404a1e787ea3ff64ba894eb4bf55e044
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_01.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 40e129af0473eee478e53f22e95d1aa1
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/OC_Minion_06_SkeletonKnight.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 43046c892795033459d52a36437d2f2d
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/Minion_02_Icon.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4598b73e9f501a94b80618cd4db8e920
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_04.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 504db298d3809f741b45d9ffbee1c01f
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_03.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 529894a45cfb358459b833713c86cf1d
+    m_Address: Assets/00.Necromancer/03.Prefabs/Core/MinionHpCanvas.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 5fe0bdb0768f29948bf1d5630402d206
+    m_Address: Assets/00.Necromancer/03.Prefabs/Core/EnemyHpCanvas.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 617af14860dce9e4685c26182857e2fb
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_09.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 67e83271d88bcc447b5da4318e881218
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/Minion_04_Icon.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 69173d3b22187cf469479552a0581909
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_06.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6917db371a6256b42a11ccab2afa129c
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_07.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6b9ef74c3ec77bd46aa318d73a8d3868
+    m_Address: Assets/00.Necromancer/03.Prefabs/Core/Enemy.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6ec7191723998cb418c0a4f2c91d4c63
+    m_Address: Assets/00.Necromancer/03.Prefabs/Core/Minion.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 8160c8b83503fb042a3b8d15f5dd8087
+    m_Address: Assets/00.Necromancer/03.Prefabs/Core/ExpGem.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9a1ba9d793e2bf44bb1e6cb02eaf3c84
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/Minion_06_Icon.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a40d5b8f44f96134e9de189329e6c2cb
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/Minion_01_Icon.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b06dfc1c456ed224eaa6403f59aee376
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/OC_Minion_03_SkeletonArcher.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b20b90d670562734e9d87ffd27841b35
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_02.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b3e94e7c2f89964468e40e617861e89b
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_05.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c64c391e2077e834bb218615c3715781
+    m_Address: Assets/00.Necromancer/04.Sprites/Enemy/OC_Enemy_10.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d1de650f3a0ce3d46a71811b432aa57a
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/OC_Minion_01_SkeletonWarrior.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d7403abace4a21f44a631e72ec269c98
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/Minion_05_Icon.png
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: d88b6c05bb060e54c8229f0fce2f8a0e
+    m_Address: Assets/00.Necromancer/04.Sprites/Minion/OC_Minion_02_SkeletonWolf.overrideController
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - remote
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 45d8743c4812e4a45bd1e24532364058, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: e49462761333adf44a36c1dad8ee7024, type: 2}
+    - {fileID: 11400000, guid: 59cf8ab0c7ce4fb418376defe93dfba3, type: 2}

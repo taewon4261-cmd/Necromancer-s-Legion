@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace Necromancer.Data
 {
@@ -12,10 +13,10 @@ namespace Necromancer.Data
     public class MinionUnlockSO : ScriptableObject
     {
         [Header("Identity")]
-        public string minionID;      // 데이터 식별용 고유 ID (예: "Minion_02_Archer")
-        public string minionTag;     // PoolManager 호출 시 사용할 프리팹 태그 (자동화 시 무시 가능)
-        public Sprite minionIcon;    // 상점 그리드에 표시될 아이콘
-        public RuntimeAnimatorController animatorController; // [NEW] 인게임 애니메이션 컨트롤러
+        public string minionID;
+        public string minionTag;
+        public AssetReferenceSprite minionIcon;                               // Addressables 간접 참조
+        public AssetReferenceT<RuntimeAnimatorController> animatorController; // Addressables 간접 참조
 
         [Header("Unlock Costs")]
         public int unlockCost_Soul;     // 해금에 필요한 소울

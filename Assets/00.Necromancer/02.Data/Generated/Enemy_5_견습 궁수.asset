@@ -16,7 +16,11 @@ MonoBehaviour:
   enemyName: "\uACAC\uC2B5 \uAD81\uC218"
   poolTag: Enemy
   enemyPrefab: {fileID: 0}
-  animatorController: {fileID: 22100000, guid: 92916ce0cbcdec94eb0db4ff9a5d8d9f, type: 2}
+  animatorController:
+    m_AssetGUID: b3e94e7c2f89964468e40e617861e89b
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
   maxHp: 13
   moveSpeed: 1.2
   attackDamage: 10

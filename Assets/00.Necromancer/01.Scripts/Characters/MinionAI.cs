@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 
@@ -28,6 +30,9 @@ public int TargetPriority => (minionData != null) ? minionData.targetPriority : 
 [Header("Inspector References (Zero-Search)")]
 [SerializeField] private Rigidbody2D rb;
 
+private AsyncOperationHandle<RuntimeAnimatorController> _animHandle;
+private CancellationTokenSource _loadCts;
+
 private Transform currentTarget;
 private float lastHitTime;
 private float spawnTime;
@@ -36,22 +41,45 @@ private CancellationTokenSource lifetimeCts;
 
 /// <summary>
 /// [AUTOMATION] 소환 시 데이터를 주입받아 외형과 스탯을 동적으로 설정합니다.
+/// 애니메이터는 비동기로 로드됩니다 (캐시된 번들이므로 보통 1~2프레임 이내).
 /// </summary>
 public void Initialize(Necromancer.Data.MinionUnlockSO data)
 {
     this.minionData = data;
 
-    // 1. 외형 변경 (애니메이터 교체)
-    if (data != null && data.animatorController != null && unitAnimator != null)
+    // 스탯 재계산 및 체력 회복 (즉시)
+    ApplyGlobalBuffs();
+    this.currentHp = this.maxHp;
+
+    // 애니메이터: 비동기 로드 시작 (이전 로드 취소 후 새로 시작)
+    _loadCts?.Cancel();
+    _loadCts?.Dispose();
+    _loadCts = new CancellationTokenSource();
+    LoadAnimatorAsync(_loadCts.Token).Forget();
+}
+
+private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
+{
+    if (minionData?.animatorController == null || unitAnimator == null) return;
+
+    // 이전 핸들 해제
+    if (_animHandle.IsValid())
     {
-        unitAnimator.runtimeAnimatorController = data.animatorController;
+        Addressables.Release(_animHandle);
+        _animHandle = default;
     }
 
-    // 2. 스탯 재계산 및 전역 버프 적용
-    ApplyGlobalBuffs();
+    _animHandle = minionData.animatorController.LoadAssetAsync<RuntimeAnimatorController>();
+    while (!_animHandle.IsDone)
+    {
+        if (ct.IsCancellationRequested) return;
+        await UniTask.Yield();
+    }
 
-    // 3. 체력 완전 회복 (새로운 데이터 기반)
-    this.currentHp = this.maxHp;
+    if (_animHandle.Status == AsyncOperationStatus.Succeeded && unitAnimator != null)
+        unitAnimator.runtimeAnimatorController = _animHandle.Result;
+    else if (_animHandle.Status != AsyncOperationStatus.Succeeded)
+        Debug.LogWarning($"[MinionAI] AnimatorController 로드 실패: {minionData.minionID}");
 }
 
     // [OPTIMIZATION] 물리 쿼리용 버퍼 및 레이어 마스크
@@ -121,10 +149,21 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
     {
         base.OnDisable();
         SkillManager.OnMinionStatsChanged -= ApplyGlobalBuffs;
-        
+
         lifetimeCts?.Cancel();
         lifetimeCts?.Dispose();
         lifetimeCts = null;
+
+        // 로드 취소 및 핸들 해제
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+
+        if (_animHandle.IsValid())
+        {
+            Addressables.Release(_animHandle);
+            _animHandle = default;
+        }
     }
 
     public override void ManualUpdate(float deltaTime)

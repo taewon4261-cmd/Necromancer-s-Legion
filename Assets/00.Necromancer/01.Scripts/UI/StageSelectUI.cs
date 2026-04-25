@@ -30,33 +30,42 @@ namespace Necromancer.UI
 
         [Header("Stage Collection")]
         // [ARCH] Resources.LoadAll 방식에서 인스펙터 직렬화 방식으로 변경 (QA 지시사항)
-        [SerializeField] private List<StageDataSO> stageList = new List<StageDataSO>(); 
+        [SerializeField] private List<StageDataSO> stageList = new List<StageDataSO>();
 
         [Header("Current Selection")]
         public StageDataSO selectedStage;
         private int currentIndex = 0;
 
+        private float _staminaCheckTimer = 0f;
+        private float _adCheckTimer = 0f;
+        private const float STAMINA_CHECK_INTERVAL = 1f;
+        private const float AD_CHECK_INTERVAL = 2f;
+
         private void OnEnable()
         {
-            // 패널이 열릴 때마다 현재 인덱스의 스테이지 정보를 갱신합니다.
             if (stageList == null || stageList.Count == 0) InitStageList();
             if (stageList != null && stageList.Count > 0)
                 SelectStage(stageList[currentIndex]);
+
+            // 패널이 열리는 시점에 즉시 한 번 갱신 (앱 복귀 시 오프라인 회복 반영)
+            if (GameManager.Instance?.Resources != null)
+            {
+                GameManager.Instance.Resources.UpdateStamina();
+                UpdateStaminaUI();
+            }
+            _staminaCheckTimer = 0f;
+            _adCheckTimer = 0f;
         }
 
         private void Start()
         {
             if (startButton != null) startButton.onClick.AddListener(OnStartButtonClicked);
-            // backButton은 TitleUIController.btnStageSelectBack에서 BackToMainMenu()로 바인딩합니다.
-
             if (btnAddStamina != null) btnAddStamina.onClick.AddListener(OnAddStaminaClicked);
 
             if (prevButton != null) prevButton.onClick.AddListener(MovePrev);
             if (nextButton != null) nextButton.onClick.AddListener(MoveNext);
-            // closeOverlayButton.onClick.AddListener(OnCloseLockOverlay) 제거됨
-            
+
             InitStageList();
-            // PopulateList() 호출 제거됨
 
             if (stageList != null && stageList.Count > 0)
             {
@@ -67,18 +76,24 @@ namespace Necromancer.UI
 
         private void Update()
         {
-            // [STAMINA] 주기적으로 피로도 회복 시간 및 상태 갱신
-            if (GameManager.Instance != null && GameManager.Instance.Resources != null)
+            if (GameManager.Instance?.Resources == null) return;
+
+            // 1초마다 UTC 기반 피로도 재계산 (매 프레임 DateTime/디스크 연산 방지)
+            _staminaCheckTimer += Time.deltaTime;
+            if (_staminaCheckTimer >= STAMINA_CHECK_INTERVAL)
             {
+                _staminaCheckTimer = 0f;
                 GameManager.Instance.Resources.UpdateStamina();
                 UpdateStaminaUI();
             }
 
-            // [UX] 광고 로드 상태에 따라 버튼 활성화 제어
-            if (btnAddStamina != null && GameManager.Instance.AdManager != null)
+            // 2초마다 광고 준비 상태 확인 (SDK 매 프레임 호출 방지)
+            _adCheckTimer += Time.deltaTime;
+            if (_adCheckTimer >= AD_CHECK_INTERVAL)
             {
-                bool isAdReady = GameManager.Instance.AdManager.IsAdReady(Systems.AdManager.AdUnitType.Stamina);
-                btnAddStamina.interactable = isAdReady;
+                _adCheckTimer = 0f;
+                if (btnAddStamina != null && GameManager.Instance.AdManager != null)
+                    btnAddStamina.interactable = GameManager.Instance.AdManager.IsAdReady(Systems.AdManager.AdUnitType.Stamina);
             }
         }
 
@@ -95,7 +110,7 @@ namespace Necromancer.UI
 
         private void OnAddStaminaClicked()
         {
-            if (GameManager.Instance.AdManager == null || GameManager.Instance.Popup == null) return;
+            if (GameManager.Instance?.AdManager == null || GameManager.Instance?.Popup == null) return;
 
             // [SOUND] 버튼 클릭음
             if (GameManager.Instance.Sound != null)
@@ -119,25 +134,21 @@ namespace Necromancer.UI
                 message,
                 () => {
                     // 확인(광고 시청)
-                    GameManager.Instance.AdManager.ShowRewardedAd(Systems.AdManager.AdUnitType.Stamina, 
+                    GameManager.Instance.AdManager.ShowRewardedAd(
+                        Necromancer.Systems.AdManager.AdUnitType.Stamina,
                         () => {
                             // 광고 성공: 피로도 1 회복
                             GameManager.Instance.Resources.AddStamina(1);
                             UpdateStaminaUI(); // 즉시 UI 갱신 (피로도 숫자 반영)
                             Debug.Log("<color=green>[StageSelectUI]</color> Stamina rewarded via Ad.");
-                        }, 
-                        () => {
-                            // 광고 실패 또는 취소
-                            Debug.LogWarning("[StageSelectUI] Stamina Ad failed or canceled.");
-                        }
+                        },
+                        () => Debug.LogWarning("[StageSelectUI] Stamina Ad failed or canceled.")
                     );
                 },
                 null,
                 "시청하기", "취소"
             );
-            }
-
-        // PopulateList() 메서드 제거됨
+        }
 
 
         public void MoveNext()
@@ -251,42 +262,34 @@ namespace Necromancer.UI
         {
             if (selectedStage == null) return;
 
-            // [STABILITY] 버튼클릭 시점에 다시 한 번 잠금 여부 확인 (소리 피드백을 위해)
             bool isUnlocked = GameManager.Instance.Resources.IsStageUnlocked(selectedStage.stageID);
             if (!isUnlocked)
             {
-                // [SOUND] 잠긴 스테이지 시작 시도 효과음
-                if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
+                if (GameManager.Instance?.Sound != null)
                     GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
-                }
-                
 #if UNITY_ANDROID || UNITY_IOS
                 Handheld.Vibrate();
 #endif
                 return;
             }
 
-            Debug.Log($"<color=cyan>[StageSelectUI]</color> Starting Game with Stage: {selectedStage.stageName}");
-            
-            // [STAMINA] 피로도 체크 및 차감
+            // [STAMINA] 피로도 부족 시 입장 차단
             if (!GameManager.Instance.Resources.HasEnoughStamina(ResourceManager.STAMINA_COST))
             {
-                if (GameManager.Instance.Sound != null)
+                if (GameManager.Instance?.Sound != null)
                     GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
-                
-                Debug.LogWarning("[StageSelectUI] Not enough stamina!");
+
+                GameManager.Instance?.Popup?.ShowMessagePopup("피로도가 부족합니다.\n30분마다 1씩 회복됩니다.");
                 return;
             }
 
             GameManager.Instance.Resources.ConsumeStamina(ResourceManager.STAMINA_COST);
             GameManager.Instance.SaveData.Save();
 
-            // GameManager를 통해 게임 시작 및 난이도 설정
+            Debug.Log($"<color=cyan>[StageSelectUI]</color> Starting Game with Stage: {selectedStage.stageName}");
+            
             GameManager.Instance.Combat.SetupStageModifiers(selectedStage);
             GameManager.Instance.StartGame(selectedStage);
         }
-
-
-
     }
 }

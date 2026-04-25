@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
+using UnityEngine.AddressableAssets;
 using Necromancer.Data;
 
 namespace Necromancer.Editor
@@ -112,12 +113,13 @@ namespace Necromancer.Editor
             so.tier               = tier;
             so.description        = desc;
 
-            // 아이콘 자동 바인딩 (파일명에 minionID 포함된 Sprite 탐색)
+            // 아이콘 자동 바인딩 (AssetReferenceSprite)
             string[] guids = AssetDatabase.FindAssets(fileName, new[] { ICON_PATH });
             if (guids.Length > 0)
             {
-                string spritePath = AssetDatabase.GUIDToAssetPath(guids[0]);
-                so.minionIcon = AssetDatabase.LoadAssetAtPath<Sprite>(spritePath);
+                string spriteGuid = guids[0];
+                if (so.minionIcon == null || so.minionIcon.AssetGUID != spriteGuid)
+                    so.minionIcon = new AssetReferenceSprite(spriteGuid);
             }
             else
             {

@@ -1,0 +1,111 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 468a46d0ae32c3544b7d98094e6448a9, type: 3}
+  m_Name: AddressableAssetSettings
+  m_EditorClassIdentifier: 
+  m_DefaultGroup: dd574640215434c48b293ab98189c1dd
+  m_currentHash:
+    serializedVersion: 2
+    Hash: 41230807f05f36d80d7276f4e803b052
+  m_OptimizeCatalogSize: 0
+  m_BuildRemoteCatalog: 1
+  m_BundleLocalCatalog: 0
+  m_CatalogRequestsTimeout: 0
+  m_DisableCatalogUpdateOnStart: 0
+  m_IgnoreUnsupportedFilesInBuild: 0
+  m_UniqueBundleIds: 0
+  m_NonRecursiveBuilding: 1
+  m_CCDEnabled: 0
+  m_maxConcurrentWebRequests: 3
+  m_ContiguousBundles: 1
+  m_StripUnityVersionFromBundleBuild: 0
+  m_DisableVisibleSubAssetRepresentations: 0
+  m_ShaderBundleNaming: 0
+  m_ShaderBundleCustomNaming: 
+  m_MonoScriptBundleNaming: 0
+  m_CheckForContentUpdateRestrictionsOption: 0
+  m_MonoScriptBundleCustomNaming: 
+  m_RemoteCatalogBuildPath:
+    m_Id: 325bfdb9f5a13014f99819ea492154af
+  m_RemoteCatalogLoadPath:
+    m_Id: dc7d4425dd802f64093e8cd14f0cbdbf
+  m_ContentStateBuildPathProfileVariableName: <default settings path>
+  m_CustomContentStateBuildPath: 
+  m_ContentStateBuildPath: 
+  m_BuildAddressablesWithPlayerBuild: 0
+  m_overridePlayerVersion: '[UnityEditor.PlayerSettings.bundleVersion]'
+  m_GroupAssets:
+  - {fileID: 11400000, guid: 0cf01d6d971c99844869e4fe7bbb5055, type: 2}
+  - {fileID: 11400000, guid: 85d6c8ba94fa2424a9cf7c215601363c, type: 2}
+  - {fileID: 11400000, guid: 928666d7e3cc66c41aadb33bc5444c8f, type: 2}
+  m_BuildSettings:
+    m_CompileScriptsInVirtualMode: 0
+    m_CleanupStreamingAssetsAfterBuilds: 1
+    m_LogResourceManagerExceptions: 1
+    m_BundleBuildPath: Temp/com.unity.addressables/AssetBundles
+  m_ProfileSettings:
+    m_Profiles:
+    - m_InheritedParent: 
+      m_Id: c532036b765be8c4ab9025393bbea217
+      m_ProfileName: Default
+      m_Values:
+      - m_Id: 139f2923c887f7b46aa559c97d0949ef
+        m_Value: '[UnityEditor.EditorUserBuildSettings.activeBuildTarget]'
+      - m_Id: 325bfdb9f5a13014f99819ea492154af
+        m_Value: ServerData/[BuildTarget]
+      - m_Id: 6c9d7d1a880abf04791d0d2ad6adbced
+        m_Value: '[UnityEngine.AddressableAssets.Addressables.BuildPath]/[BuildTarget]'
+      - m_Id: 8a1d2f81ac576af48ab742e4dc64bb16
+        m_Value: '{UnityEngine.AddressableAssets.Addressables.RuntimePath}/[BuildTarget]'
+      - m_Id: dc7d4425dd802f64093e8cd14f0cbdbf
+        m_Value: https://necromancer-9df03.web.app/[BuildTarget]
+    m_ProfileEntryNames:
+    - m_Id: 139f2923c887f7b46aa559c97d0949ef
+      m_Name: BuildTarget
+      m_InlineUsage: 0
+    - m_Id: 325bfdb9f5a13014f99819ea492154af
+      m_Name: Remote.BuildPath
+      m_InlineUsage: 0
+    - m_Id: 6c9d7d1a880abf04791d0d2ad6adbced
+      m_Name: Local.BuildPath
+      m_InlineUsage: 0
+    - m_Id: 8a1d2f81ac576af48ab742e4dc64bb16
+      m_Name: Local.LoadPath
+      m_InlineUsage: 0
+    - m_Id: dc7d4425dd802f64093e8cd14f0cbdbf
+      m_Name: Remote.LoadPath
+      m_InlineUsage: 0
+    m_ProfileVersion: 1
+  m_LabelTable:
+    m_LabelNames:
+    - default
+    - remote
+  m_SchemaTemplates: []
+  m_GroupTemplateObjects:
+  - {fileID: 11400000, guid: d0172e302f0bc5746be375f461f00359, type: 2}
+  m_InitializationObjects: []
+  m_CertificateHandlerType:
+    m_AssemblyName: 
+    m_ClassName: 
+  m_ActivePlayerDataBuilderIndex: 3
+  m_DataBuilders:
+  - {fileID: 11400000, guid: a551ce7c7568e6f43a6c6956be917c2d, type: 2}
+  - {fileID: 11400000, guid: b17741508f6cf9647bb119bc6af65a6e, type: 2}
+  - {fileID: 11400000, guid: 1dc80eaf4fdd21b45937f0bd4e829520, type: 2}
+  - {fileID: 11400000, guid: 0f87754aff195a74683755d033f316c5, type: 2}
+  m_ActiveProfileId: c532036b765be8c4ab9025393bbea217
+  m_HostingServicesManager:
+    m_HostingServiceInfos: []
+    m_Settings: {fileID: 11400000}
+    m_NextInstanceId: 0
+    m_RegisteredServiceTypeRefs: []
+    m_PingTimeoutInMilliseconds: 5000

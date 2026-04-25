@@ -30,6 +30,7 @@ namespace Necromancer
         [SerializeField] private Necromancer.Systems.AdManager _adManager;
         [SerializeField] private Necromancer.Systems.PopupManager _popupManager;
         [SerializeField] private Necromancer.Systems.NotificationManager _notificationManager;
+        [SerializeField] private Necromancer.Systems.DownloadManager _downloadManager;
         [SerializeField] private LevelManager _levelManager;
         public Necromancer.Systems.AuthManager Auth;
 
@@ -90,6 +91,7 @@ namespace Necromancer
         public Necromancer.Systems.AdManager AdManager => _adManager;
         public Necromancer.Systems.PopupManager Popup => _popupManager;
         public Necromancer.Systems.NotificationManager Notification => _notificationManager;
+        public Necromancer.Systems.DownloadManager Download => _downloadManager;
         public LevelManager LevelManager => _levelManager;
 
 
@@ -189,6 +191,9 @@ namespace Necromancer
 
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            // DownloadScene은 DownloadSceneController가 자체 처리하므로 별도 초기화 불필요
+            if (scene.name == "DownloadScene") return;
+
             bool isGameScene = scene.name == "GameScene" || (GameObject.FindObjectOfType<PlayerController>() != null);
             if (isGameScene)
             {
@@ -201,6 +206,7 @@ namespace Necromancer
                 if (Resources != null)
                 {
                     Resources.currentSessionSoul = 0;
+                    Resources.currentSessionEssences.Clear(); // 세션 정수 기록 초기화
                     BroadcastSoul(0);
                     if (unitManager != null) unitManager.UpdateUnlockedMinionPool(); // [STABILITY] 세션 시작 시 해금 풀 최신화
                 }
@@ -296,6 +302,7 @@ namespace Necromancer
 
         private void InitAllManagers()
         {
+            if (Download != null) Download.Init();
             if (SaveData != null) SaveData.Init();
             if (Resources != null) Resources.Init();
             if (Combat != null) Combat.Init();
@@ -359,7 +366,7 @@ namespace Necromancer
             OnSpeedChanged?.Invoke(currentGameSpeed);
         }
 
-        /// <summary>모든 정지 사유가 없을 때 배속을 복원합니다. SetPause 사용 권장.</summary>
+        /// <summary>모든 정지 사유가 없을 때 배속을 복원합니다. SetPause 사용 권장SetPause 사용 권장.</summary>
         public void ResumeGameSpeed()
         {
             if (_activePauseSources.Count == 0) Time.timeScale = currentGameSpeed;

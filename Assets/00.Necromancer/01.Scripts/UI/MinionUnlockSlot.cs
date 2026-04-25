@@ -2,7 +2,10 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using TMPro;
+using Cysharp.Threading.Tasks;
 using Necromancer.Data;
 using Necromancer.Core;
 using DG.Tweening;
@@ -32,6 +35,7 @@ namespace Necromancer.UI
         private MinionAltarUI owner;
         private Color originalBorderColor = Color.white;
         private Tween shakeTween;
+        private AsyncOperationHandle<Sprite> _iconHandle;
 
         public MinionUnlockSO Data { get; private set; }
 
@@ -54,7 +58,7 @@ namespace Necromancer.UI
             // 기본 정보 세팅
             if (nameText != null) nameText.text = Data.minionName;
             if (descriptionText != null) descriptionText.text = Data.description;
-            if (iconImage != null) iconImage.sprite = Data.minionIcon;
+            LoadIconAsync().Forget();
             
             if (bgImage != null)
             {
@@ -158,6 +162,30 @@ namespace Necromancer.UI
                 Refresh();
                 owner.RefreshAllSlots(); // [CONSISTENCY] SendMessageUpwards 대신 명시적 호출
             }
+        }
+
+        private async UniTaskVoid LoadIconAsync()
+        {
+            if (Data?.minionIcon == null || iconImage == null) return;
+
+            if (_iconHandle.IsValid())
+            {
+                Addressables.Release(_iconHandle);
+                _iconHandle = default;
+            }
+
+            _iconHandle = Data.minionIcon.LoadAssetAsync<Sprite>();
+            while (!_iconHandle.IsDone)
+                await UniTask.Yield();
+
+            if (_iconHandle.Status == AsyncOperationStatus.Succeeded && iconImage != null)
+                iconImage.sprite = _iconHandle.Result;
+        }
+
+        private void OnDestroy()
+        {
+            if (_iconHandle.IsValid())
+                Addressables.Release(_iconHandle);
         }
 
         private void PlayFailFeedback()

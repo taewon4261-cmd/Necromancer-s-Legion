@@ -13,20 +13,17 @@ namespace Necromancer.Core {
         public int currentSessionSoul; // 이번 판에서 얻은 실시간 소울 (UI 표현용)
         public int unlockedStageLevel;
 
+        [Header("Stamina System")]
         public const int MAX_STAMINA = 10;
         public const int STAMINA_RECOVERY_SECONDS = 1800; // 30분
         public const int STAMINA_COST = 1;
         public const int MAX_DAILY_STAMINA_ADS = 5;
 
-        [Header("Stamina System")]
         public int currentStamina;
         public int staminaAdsWatchedToday;
         private string lastStaminaAdDate;
         private long lastStaminaUpdateTimeTicks;
 
-        /// <summary>
-        /// 다음 피로도 회복까지 남은 시간(초)을 반환합니다.
-        /// </summary>
         public float SecondsUntilNextStamina { get; private set; }
 
         // [INSPECTOR] Resources.LoadAll 대신 Inspector 직렬화 사용 (Resources 폴더 의존 제거)
@@ -37,6 +34,9 @@ namespace Necromancer.Core {
         private int essenceCountSinceLastSave = 0;
         private const int ESSENCE_AUTOSAVE_THRESHOLD = 5;
 
+        // 이번 세션(판)에서 얻은 정수 - 결과창 표시용, 저장 안 함
+        public Dictionary<string, int> currentSessionEssences { get; private set; } = new Dictionary<string, int>();
+
         private void Awake()
         {
             if (Instance == null) Instance = this;
@@ -44,8 +44,9 @@ namespace Necromancer.Core {
         }
 
         public void Init() {
-            currentSessionSoul = 0;       // 새로운 세션 시작 시 획득량 초기화
-            essenceCountSinceLastSave = 0; // 자동 저장 카운터 리셋
+            currentSessionSoul = 0;
+            essenceCountSinceLastSave = 0;
+            currentSessionEssences.Clear(); // 세션 정수 기록 초기화
             if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null) {
                 var data = GameManager.Instance.SaveData.Data;
                 currentSoul = data.currentSoul;
@@ -55,7 +56,6 @@ namespace Necromancer.Core {
                 staminaAdsWatchedToday = data.staminaAdsWatchedToday;
                 lastStaminaAdDate = data.lastStaminaAdDate;
 
-                // [STAMINA] 초기화 시점에 한 번 갱신 (UTC 날짜 체크 포함)
                 UpdateStamina();
             }
             // [INSPECTOR] Inspector에서 직접 연결된 SO 리스트 사용 (Resources 폴더 불필요)
@@ -82,18 +82,14 @@ namespace Necromancer.Core {
             }
         }
 
-        /// <summary>
-        /// 피로도를 현재 시간 기준으로 자동 회복시킵니다. (UTC 기준 일일 초기화 포함)
-        /// </summary>
         public void UpdateStamina()
         {
-            // [STAMINA-ADS] UTC 기준 일일 초기화 로직
             string todayUtc = DateTime.UtcNow.ToString("yyyy-MM-dd");
             if (lastStaminaAdDate != todayUtc)
             {
                 staminaAdsWatchedToday = 0;
                 lastStaminaAdDate = todayUtc;
-                SaveStamina(true); // 날짜 변경 시 즉시 물리 저장
+                SaveStamina(true);
             }
 
             if (currentStamina >= MAX_STAMINA)
@@ -106,8 +102,7 @@ namespace Necromancer.Core {
 
             DateTime now = DateTime.UtcNow;
             DateTime lastUpdate = new DateTime(lastStaminaUpdateTimeTicks);
-            
-            // 앱 최초 실행이거나 데이터가 없는 경우 현재 시간으로 설정
+
             if (lastStaminaUpdateTimeTicks == 0)
             {
                 lastStaminaUpdateTimeTicks = now.Ticks;
@@ -115,7 +110,6 @@ namespace Necromancer.Core {
                 return;
             }
 
-            // [SECURITY] 시간 역행 방지: 마지막 업데이트 시간이 현재보다 미래라면 현재 시간으로 보정
             if (lastUpdate > now)
             {
                 Debug.LogWarning("[ResourceManager] Time rollback detected. Resetting stamina update time.");
@@ -130,14 +124,10 @@ namespace Necromancer.Core {
             {
                 int recoverAmount = (int)(totalSeconds / STAMINA_RECOVERY_SECONDS);
                 currentStamina = Mathf.Min(MAX_STAMINA, currentStamina + recoverAmount);
-                
-                // 마지막 업데이트 시간을 회복된 시점으로 보정 (남은 초 유지)
                 lastStaminaUpdateTimeTicks = lastUpdate.AddSeconds(recoverAmount * STAMINA_RECOVERY_SECONDS).Ticks;
-                
                 SaveStamina(true);
             }
 
-            // UI 표시용 남은 시간 계산
             double remainingSeconds = STAMINA_RECOVERY_SECONDS - (totalSeconds % STAMINA_RECOVERY_SECONDS);
             SecondsUntilNextStamina = (float)remainingSeconds;
         }
@@ -151,27 +141,22 @@ namespace Necromancer.Core {
                 int prevStamina = currentStamina;
                 currentStamina -= amount;
 
-                // [UX] 최대치(10) 이상이었다가 9 이하로 내려가는 시점에 타이머를 0부터 리셋
                 if (prevStamina >= MAX_STAMINA && currentStamina < MAX_STAMINA)
                 {
                     lastStaminaUpdateTimeTicks = DateTime.UtcNow.Ticks;
-                    Debug.Log("<color=cyan>[Stamina]</color> Stamina dropped to < 10. Timer Reset.");
+                    Debug.Log("<color=cyan>[Stamina]</color> Stamina dropped below max. Timer Reset.");
                 }
 
-                SaveStamina(true); // 소모 시 즉시 물리 저장
+                SaveStamina(true);
             }
         }
 
-        /// <summary>
-        /// 광고 시청 후 피로도를 추가합니다. (최대치 초과 허용 및 횟수 기록)
-        /// </summary>
         public void AddStamina(int amount)
         {
-            currentStamina += amount; // [UX] 최대치 제한 제거 (예: 11/10 가능)
+            currentStamina += amount;
             staminaAdsWatchedToday++;
             lastStaminaAdDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
-            
-            SaveStamina(true); // 보상 지급 시 즉시 물리 저장 및 클라우드 동기화 트리거
+            SaveStamina(true);
         }
 
         private void SaveStamina(bool forcePhysicalSave = false)
@@ -185,9 +170,7 @@ namespace Necromancer.Core {
                 data.lastStaminaAdDate = lastStaminaAdDate;
 
                 if (forcePhysicalSave)
-                {
-                    GameManager.Instance.SaveData.Save(); // 로컬 파일 + 클라우드 자동 동기화
-                }
+                    GameManager.Instance.SaveData.Save();
             }
         }
 
@@ -316,6 +299,11 @@ namespace Necromancer.Core {
                 data.minionEssences[enemyID] = 0;
 
             data.minionEssences[enemyID] += amount;
+
+            // 세션 기록 (결과창 표시용)
+            if (!currentSessionEssences.ContainsKey(enemyID))
+                currentSessionEssences[enemyID] = 0;
+            currentSessionEssences[enemyID] += amount;
 
             // [DATA-SAFETY] 5개 누적마다 자동 저장 — 크래시 시 최대 4개만 유실
             essenceCountSinceLastSave += amount;

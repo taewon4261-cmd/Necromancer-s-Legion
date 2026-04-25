@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Linq;
 using Necromancer.Core;
 using Necromancer.Systems;
 using UnityEngine.SceneManagement;
@@ -22,6 +23,9 @@ namespace Necromancer.UI
         [Header("2배 보상 광고")]
         [SerializeField] private Button btnDoubleReward;
         [SerializeField] private TextMeshProUGUI tmpDoubleBtnLabel;
+
+        [Header("세션 정수 목록")]
+        [SerializeField] private TextMeshProUGUI tmpEssenceList;  // 획득 정수 전체를 한 칸에 표시
 
         // 이번 판에서 획득한 소울 (보너스 지급 기준값)
         private int _currentEarnedSoul;
@@ -61,12 +65,42 @@ namespace Necromancer.UI
             if (tmpSoulCount != null)
                 tmpSoulCount.text = $"획득한 소울: {soulCount:N0}";
 
+            PopulateEssenceList();
+
             // 2배 버튼 초기 상태 설정
             if (btnDoubleReward != null)
                 btnDoubleReward.interactable = true;
 
             if (tmpDoubleBtnLabel != null)
                 tmpDoubleBtnLabel.text = "2배 받기 (광고)";
+        }
+
+        /// <summary>
+        /// 이번 세션에서 획득한 정수를 한 텍스트 칸에 종류별로 표시합니다.
+        /// </summary>
+        private void PopulateEssenceList()
+        {
+            if (tmpEssenceList == null) return;
+
+            var sessionEssences = GameManager.Instance?.Resources?.currentSessionEssences;
+
+            if (sessionEssences == null || sessionEssences.Count == 0)
+            {
+                tmpEssenceList.text = "획득한 정수 없음";
+                return;
+            }
+
+            var minionList = GameManager.Instance.minionUnlockDataList;
+            var sb = new System.Text.StringBuilder();
+
+            foreach (var kv in sessionEssences.OrderByDescending(x => x.Value))
+            {
+                var minionData = minionList?.FirstOrDefault(m => m != null && m.targetEnemyID == kv.Key);
+                string name = minionData != null ? minionData.minionName : kv.Key;
+                sb.AppendLine($"{name}의 정수  x{kv.Value}");
+            }
+
+            tmpEssenceList.text = sb.ToString().TrimEnd();
         }
 
         /// <summary>
@@ -88,7 +122,7 @@ namespace Necromancer.UI
                 return;
             }
 
-            adManager.ShowRewardedAd(AdManager.AdUnitType.DoubleReward, OnDoubleSuccess, OnDoubleFailed);
+            adManager.ShowRewardedAd(Necromancer.Systems.AdManager.AdUnitType.DoubleReward, OnDoubleSuccess, OnDoubleFailed);
         }
 
         /// <summary>

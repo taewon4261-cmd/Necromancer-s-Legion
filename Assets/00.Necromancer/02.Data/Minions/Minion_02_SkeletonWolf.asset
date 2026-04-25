@@ -14,8 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minionID: SkeletonWolf
   minionTag: SkeletonWolf
-  minionIcon: {fileID: 21300000, guid: 43046c892795033459d52a36437d2f2d, type: 3}
-  animatorController: {fileID: 22100000, guid: d88b6c05bb060e54c8229f0fce2f8a0e, type: 2}
+  minionIcon:
+    m_AssetGUID: 43046c892795033459d52a36437d2f2d
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
+  animatorController:
+    m_AssetGUID: d88b6c05bb060e54c8229f0fce2f8a0e
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
   unlockCost_Soul: 300
   unlockCost_Essence: 150
   targetEnemyID: SkeletonWolf

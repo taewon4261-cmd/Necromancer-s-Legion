@@ -1,5 +1,6 @@
 // File: Assets/Necromancer/01.Scripts/Data/EnemyData.cs
 using UnityEngine;
+using UnityEngine.AddressableAssets;
 
 namespace Necromancer
 {
@@ -17,7 +18,7 @@ namespace Necromancer
         public GameObject enemyPrefab;
 
         [Tooltip("인게임 애니메이션 컨트롤러")]
-        public RuntimeAnimatorController animatorController; // [NEW]
+        public AssetReferenceT<RuntimeAnimatorController> animatorController; // Addressables 간접 참조
 
         [Header("Base Stats")]
         public float maxHp = 10f;

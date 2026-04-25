@@ -59,8 +59,6 @@ namespace Necromancer.UI
             // [ARCHITECTURAL PURITY] ESC 입력 감지는 이제 GameManager에서 통합 관리합니다.
         }
 
-        // [ARCHITECTURAL PURITY] 입력 감지는 GameManager로 이관되었습니다.
-
         public void ToggleSettings()
         {
             if (settingUI == null)
@@ -120,6 +118,25 @@ namespace Necromancer.UI
             {
                 inGameUIInstance = Instantiate(inGameUIPrefab, transform);
                 inGameUIInstance.name = "[InGameUI_Root]";
+                
+                // [BUG-FIX] 프리팹 자체가 비활성화 상태인 경우를 대비해 생성 즉시 강제 활성화
+                inGameUIInstance.SetActive(true);
+            }
+            else if (inGameUIInstance == null && inGameUIPrefab == null)
+            {
+                // [BUG-FIX] 프리팹 참조가 끊겼을 때를 대비한 씬 탐색 폴백
+                InGameHUD existingHUD = Object.FindFirstObjectByType<InGameHUD>();
+                if (existingHUD != null)
+                {
+                    inGameUIInstance = existingHUD.gameObject;
+                    Debug.LogWarning("<color=yellow>[UIManager]</color> InGameUIPrefab is NULL! Found existing HUD in scene as fallback.");
+                }
+                else
+                {
+                    // 이 메시지가 뜨면 100% 인스펙터 연결 문제입니다.
+                    Debug.LogError("<color=red>[UIManager] CRITICAL ERROR:</color> 'In Game UI Prefab' is NOT assigned in GameManager! " +
+                        "Please drag the 'InGameUI_Root' prefab into the UIManager component in the Inspector.");
+                }
             }
 
             if (inGameUIInstance != null)
@@ -134,7 +151,7 @@ namespace Necromancer.UI
                 InGameHUD hud = inGameUIInstance.GetComponent<InGameHUD>();
                 if (hud != null)
                 {
-                    expFillBar = hud.expFillBar;
+                    expFillBar    = hud.expFillBar;
                     textTimer = hud.textTimer;
                     textWave = hud.textWave;
                     textSoul = hud.textSoul;
@@ -255,9 +272,6 @@ namespace Necromancer.UI
             CheckAndShowTutorial();
         }
 
-        /// <summary>
-        /// hasSeenTutorial이 false일 때만 패널을 열고 게임을 일시정지합니다.
-        /// </summary>
         private void CheckAndShowTutorial()
         {
             var saveData = GameManager.Instance?.SaveData?.Data;
@@ -267,9 +281,6 @@ namespace Necromancer.UI
             ShowTutorial();
         }
 
-        /// <summary>
-        /// 튜토리얼 패널을 엽니다. SettingUI의 도움말 버튼에서도 호출합니다.
-        /// </summary>
         public void ShowTutorial()
         {
             if (tutorialPanel == null)
@@ -283,9 +294,6 @@ namespace Necromancer.UI
             Debug.Log("<color=cyan>[UIManager]</color> Tutorial panel opened.");
         }
 
-        /// <summary>
-        /// 튜토리얼 확인 버튼 클릭 시 호출. Inspector에서 버튼 OnClick에 연결하세요.
-        /// </summary>
         public void OnClick_CloseTutorial()
         {
             if (tutorialPanel != null)
@@ -308,15 +316,16 @@ namespace Necromancer.UI
         {
             if (inGameUIInstance != null)
             {
+                // 인스턴스 이벤트는 Clear 시점에 명시적으로 해제
                 Destroy(inGameUIInstance);
                 inGameUIInstance = null;
-                expFillBar = null;
-                textTimer = null;
-                textWave = null;
-                levelUpPanel = null;
-                resultUI = null;
-                dangerOverlay = null;
-                cachedPlayer = null;
+                expFillBar     = null;
+                textTimer      = null;
+                textWave       = null;
+                levelUpPanel   = null;
+                resultUI       = null;
+                dangerOverlay  = null;
+                cachedPlayer   = null;
                 Debug.Log("<color=orange>[UIManager]</color> In-Game UI Instance Cleared.");
             }
         }
@@ -439,7 +448,6 @@ namespace Necromancer.UI
                         else
                         {
                             Debug.LogWarning($"<color=yellow>[UIManager]</color> Skill '{currentOptions[i].skillName}' (index {i}) has NO ICON assigned!");
-                            // 아이콘이 없으면 기본적으로 렌더링되지 않거나 투명해질 수 있으므로, 색상 조절로 피드백 제공
                             skillCardIcons[i].sprite = null; 
                             skillCardIcons[i].color = new Color(1, 1, 1, 0.2f); 
                         }
@@ -518,9 +526,6 @@ namespace Necromancer.UI
             SceneManager.LoadScene("TitleScene");
         }
 
-        /// <summary>
-        /// 스킬 새로고침 (1회 무료, 이후 광고 시청)
-        /// </summary>
         public void OnClick_RerollWithAds()
         {
             if (GameManager.Instance == null || GameManager.Instance.skillManager == null) return;
@@ -539,7 +544,7 @@ namespace Necromancer.UI
             if (GameManager.Instance.AdManager != null)
             {
                 GameManager.Instance.AdManager.ShowRewardedAd(
-                    AdManager.AdUnitType.SkillRefresh,
+                    Necromancer.Systems.AdManager.AdUnitType.SkillRefresh,
                     () => ExecuteReroll(),
                     () => ShowAdErrorPopup("광고를 불러올 수 없습니다.\n잠시 후 다시 시도해주세요.")
                 );
@@ -560,8 +565,5 @@ namespace Necromancer.UI
             Debug.LogWarning($"<color=red>[UIManager]</color> AD ERROR: {message}");
             GameManager.Instance?.Popup?.ShowMessagePopup(message);
         }
-
-
-
     }
 }

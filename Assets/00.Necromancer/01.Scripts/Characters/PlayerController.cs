@@ -36,10 +36,6 @@ public class PlayerController : UnitBase
     public float slamCooldown = 0.5f;
     private float lastSlamTime;
 
-    [Header("Persistent Stats (Data Binding)")]
-    private float bonusHealth;
-    private float bonusMagnetRange;
-
     [Header("Magnet Setup")]
     [SerializeField] private CircleCollider2D magnetCollider;
 
@@ -50,12 +46,12 @@ public class PlayerController : UnitBase
     private float auraRadius = 3.5f; // [UPGRADE] ApplyUpgradedStats에서 AuraRange 업그레이드 적용 대상
 
     [Header("Skill Visuals (Optional - Assign in Inspector for better performance)")]
-    [SerializeField] private GameObject auraVisualObject; // [NEW] 인스펙터에서 직접 연결 가능
-        // Removed auraVisualInstance to use auraVisualObject directly 
+    [SerializeField] private GameObject auraVisualObject;
 
     private bool isRegenActive = false;
-        private readonly List<UnitBase> auraBuffer = new List<UnitBase>(16);
-    private Tweener auraPulseTweener; // [PERF] GC 방지용 재사용 버퍼
+    private readonly List<UnitBase> auraBuffer = new List<UnitBase>(16); // 오라 데미지 전용 버퍼
+    private readonly List<UnitBase> slamBuffer  = new List<UnitBase>(8);  // 박치기 판정 전용 버퍼
+    private Tweener auraPulseTweener;
 
     protected override void Awake()
     {
@@ -109,7 +105,7 @@ public class PlayerController : UnitBase
         var side = GameManager.Instance.Resources;
         
         // [1] Player Base Stats
-        maxHp += side.GetUpgradeValue(UpgradeStatType.Health); 
+        maxHp += side.GetUpgradeValue(UpgradeStatType.Health);
         currentHp = maxHp;
         moveSpeed += side.GetUpgradeValue(UpgradeStatType.MoveSpeed);
         
@@ -141,7 +137,7 @@ public class PlayerController : UnitBase
     {
         base.ManualUpdate(deltaTime);
         if (isDead) return;
-        
+
         HandleInput();
         UpdateAnimation();
         CheckSlam();
@@ -155,7 +151,7 @@ public class PlayerController : UnitBase
 
     private void Move()
     {
-        if (isKnockbackActive) return; // 넉백 중에는 입력 이동 무시
+        if (isKnockbackActive) return;
         rb.velocity = movement * moveSpeed;
     }
 
@@ -344,18 +340,16 @@ public class PlayerController : UnitBase
 
         if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
         {
-            auraBuffer.Clear();
-            GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, 1.0f, auraBuffer);
-            for (int i = 0; i < auraBuffer.Count; i++)
+            slamBuffer.Clear();
+            GameManager.Instance.unitManager.GetNearbyUnitsNonAlloc(transform.position, 1.0f, slamBuffer);
+            for (int i = 0; i < slamBuffer.Count; i++)
             {
-                var unit = auraBuffer[i];
+                var unit = slamBuffer[i];
                 if (unit != null && unit is EnemyAI && !unit.IsDead)
                 {
                     unit.ApplyDamage(bodySlamDamage, this);
                     if (GameManager.Instance.skillManager != null)
-                    {
                         GameManager.Instance.skillManager.ApplyAttackEffects(unit);
-                    }
                     lastSlamTime = Time.time;
                     break;
                 }

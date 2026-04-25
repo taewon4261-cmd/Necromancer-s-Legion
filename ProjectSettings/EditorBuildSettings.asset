@@ -6,9 +6,14 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/00.Necromancer/00.Scenes/DownloadScene.unity
+    guid: e44a2a85951e1114db98301258c76774
+  - enabled: 1
     path: Assets/00.Necromancer/00.Scenes/TitleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
     path: Assets/00.Necromancer/00.Scenes/GameScene.unity
     guid: 6d14ae66c0aabb249b187ab8039cc194
-  m_configObjects: {}
+  m_configObjects:
+    com.unity.addressableassets: {fileID: 11400000, guid: a107a83606338cc41aac99ec5b038d13,
+      type: 2}

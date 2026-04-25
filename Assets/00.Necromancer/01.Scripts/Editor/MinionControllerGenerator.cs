@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
+using UnityEngine.AddressableAssets;
 using System.Collections.Generic;
 using Necromancer.Data;
 
@@ -94,10 +95,11 @@ namespace Necromancer.Editor
                     EditorUtility.SetDirty(oc);
                 }
 
-                // SO 의 animatorController 필드에 연결
-                if (so.animatorController != oc)
+                // SO 의 animatorController 필드에 연결 (AssetReferenceT)
+                string ocGuid = AssetDatabase.AssetPathToGUID(ocPath);
+                if (so.animatorController == null || so.animatorController.AssetGUID != ocGuid)
                 {
-                    so.animatorController = oc;
+                    so.animatorController = new AssetReferenceT<RuntimeAnimatorController>(ocGuid);
                     EditorUtility.SetDirty(so);
                     linked++;
                 }

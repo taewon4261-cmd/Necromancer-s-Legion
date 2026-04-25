@@ -39,13 +39,15 @@ namespace Necromancer.Core
         [Header("Resources")]
         public int currentSoul = 0;
         public int unlockedStageLevel = 1;
+        public List<string> unlockedMinionIDs = new List<string>() { "Minion_01" };
+        public string lastLoginMethod = "None"; // [AUTH] "None", "Guest", "Google"
+        public bool hasSeenTutorial = false;   // [TUTORIAL] 최초 실행 가이드 노출 여부
+
+        [Header("Stamina (피로도)")]
         public int currentStamina = 10;
         public long lastStaminaUpdateTimeTicks = 0;
         public int staminaAdsWatchedToday = 0;
         public string lastStaminaAdDate = "";
-        public List<string> unlockedMinionIDs = new List<string>() { "Minion_01" };
-        public string lastLoginMethod = "None"; // [AUTH] "None", "Guest", "Google"
-        public bool hasSeenTutorial = false;   // [TUTORIAL] 최초 실행 가이드 노출 여부
         
         // [SAVE] 정수 획득 현황 딕셔너리 직렬화를 위한 리스트
         [SerializeField] private List<EssenceEntry> essenceList = new List<EssenceEntry>();

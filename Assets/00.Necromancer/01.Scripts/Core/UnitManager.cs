@@ -300,31 +300,52 @@ namespace Necromancer
         }
 
         /// <summary>
-        /// [SRP] 현재 스테이지 ID에 따라 드랍할 미니언 해금 데이터를 반환합니다.
-        /// 1-10: Minion_02, 11-20: Minion_03, 21-30: Minion_04, 31-40: Minion_05, 41+: Minion_06
+        /// 가중치 기반으로 전체 미니언 중 하나의 정수 데이터를 무작위 선택합니다.
+        /// 등급별 총 가중치: Bronze=70 / Silver=25 / Gold=5
+        /// 같은 등급 내 미니언들은 가중치를 균등 분배합니다.
         /// </summary>
-        public Necromancer.Data.MinionUnlockSO GetMinionDataForCurrentStage()
+        public Necromancer.Data.MinionUnlockSO GetRandomMinionDataWeighted()
         {
             var gm = GameManager.Instance;
-            if (gm == null || gm.currentStage == null || gm.minionUnlockDataList == null || gm.minionUnlockDataList.Count == 0) return null;
+            if (gm == null || gm.minionUnlockDataList == null || gm.minionUnlockDataList.Count == 0) return null;
 
-            int stageID = gm.currentStage.stageID;
-            int minionIndex = 0;
+            var list = gm.minionUnlockDataList;
 
-            if (stageID >= 1 && stageID <= 10) minionIndex = 1;
-            else if (stageID >= 11 && stageID <= 20) minionIndex = 2;
-            else if (stageID >= 21 && stageID <= 30) minionIndex = 3;
-            else if (stageID >= 31 && stageID <= 40) minionIndex = 4;
-            else if (stageID >= 41) minionIndex = 5;
+            // 등급별 총 가중치 (Bronze=0, Silver=1, Gold=2)
+            float[] tierTotalWeights = { 70f, 25f, 5f };
+            int[] tierCounts = new int[3];
 
-            if (minionIndex >= 0 && minionIndex < gm.minionUnlockDataList.Count)
+            foreach (var d in list)
+                if (d != null) tierCounts[(int)d.tier]++;
+
+            // 미니언별 가중치 = 해당 등급 총 가중치 / 등급 내 미니언 수
+            float[] weights = new float[list.Count];
+            float totalWeight = 0f;
+
+            for (int i = 0; i < list.Count; i++)
             {
-                var data = gm.minionUnlockDataList[minionIndex];
-                // 이미 해금된 미니언이라면 중복 드랍 방지
-                if (data != null && gm.Resources != null && gm.Resources.IsMinionUnlocked(data.minionID))
-                    return null;
-                return data;
+                if (list[i] == null) continue;
+                int tier = (int)list[i].tier;
+                float w = tierCounts[tier] > 0 ? tierTotalWeights[tier] / tierCounts[tier] : 0f;
+                weights[i] = w;
+                totalWeight += w;
             }
+
+            if (totalWeight <= 0f) return null;
+
+            float roll = Random.Range(0f, totalWeight);
+            float cumulative = 0f;
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] == null) continue;
+                cumulative += weights[i];
+                if (roll < cumulative) return list[i];
+            }
+
+            // 부동소수점 오차 방어 — 마지막 유효 항목 반환
+            for (int i = list.Count - 1; i >= 0; i--)
+                if (list[i] != null) return list[i];
 
             return null;
         }

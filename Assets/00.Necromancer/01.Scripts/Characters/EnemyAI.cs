@@ -1,6 +1,8 @@
 
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 using System.Collections;
@@ -35,6 +37,9 @@ public class EnemyAI : UnitBase
     [SerializeField] private Rigidbody2D rb;
     private float lastHitTime;
     private CancellationTokenSource lifetimeCts;
+
+    private AsyncOperationHandle<RuntimeAnimatorController> _animHandle;
+    private CancellationTokenSource _loadCts;
 
     // --- [최적화 변수] ---
     private int separationOffset;
@@ -82,18 +87,28 @@ public class EnemyAI : UnitBase
     protected override void OnDisable()
     {
         base.OnDisable();
-        // [OPTIMIZATION] O(N) 리스트 제거 대신 O(1) 카운트 감소
         if (!hasCountedDeath && GameManager.Instance != null && GameManager.Instance.waveManager != null)
         {
             GameManager.Instance.waveManager.OnEnemyDied();
-            hasCountedDeath = true; // 가드 활성화
+            hasCountedDeath = true;
         }
 
-        currentTarget = null; // [STABILITY] 참조 초기화
-        
+        currentTarget = null;
+
         lifetimeCts?.Cancel();
         lifetimeCts?.Dispose();
         lifetimeCts = null;
+
+        // 로드 취소 및 핸들 해제
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
+
+        if (_animHandle.IsValid())
+        {
+            Addressables.Release(_animHandle);
+            _animHandle = default;
+        }
     }
 
     public void Setup(EnemyData enemyData)
@@ -101,13 +116,7 @@ public class EnemyAI : UnitBase
         this.data = enemyData;
         if (data == null) return;
 
-        // 1. 외형 변경 (애니메이터 교체)
-        if (data.animatorController != null && unitAnimator != null)
-        {
-            unitAnimator.runtimeAnimatorController = data.animatorController;
-        }
-
-        // 2. 능력치 설정
+        // 능력치 설정 (즉시)
         float hpMult = 1f;
         float dmgMult = 1f;
 
@@ -123,10 +132,59 @@ public class EnemyAI : UnitBase
 
         this.currentHp = maxHp;
         this.isDead = false;
-        this.hasCountedDeath = false; // [NEW] 셋업 시 가드 리셋
+        this.hasCountedDeath = false;
         this.lastHitTime = 0f;
 
         if (unitSprite != null) unitSprite.color = Color.white;
+
+        // 애니메이터: 비동기 로드 시작
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = new CancellationTokenSource();
+        LoadAnimatorAsync(_loadCts.Token).Forget();
+    }
+
+    private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
+    {
+        if (data?.animatorController == null || unitAnimator == null) return;
+
+        if (_animHandle.IsValid())
+        {
+            // 완료됐고 같은 컨트롤러면 재로드 불필요
+            if (_animHandle.IsDone && _animHandle.Status == AsyncOperationStatus.Succeeded
+                && unitAnimator.runtimeAnimatorController == _animHandle.Result)
+                return;
+
+            Addressables.Release(_animHandle);
+            _animHandle = default;
+        }
+
+        // AssetReference.LoadAssetAsync 대신 RuntimeKey로 직접 로드:
+        // 여러 적이 동일한 EnemyData SO를 공유할 때 AssetReference 내부 handle 충돌을 방지합니다.
+        _animHandle = Addressables.LoadAssetAsync<RuntimeAnimatorController>(data.animatorController.RuntimeKey);
+
+        while (!_animHandle.IsDone)
+        {
+            if (ct.IsCancellationRequested)
+            {
+                // 취소 시 인플라이트 핸들을 반드시 해제 (미해제 시 OnDisable과 이중 해제 충돌)
+                if (_animHandle.IsValid())
+                {
+                    Addressables.Release(_animHandle);
+                    _animHandle = default;
+                }
+                return;
+            }
+            await UniTask.Yield();
+        }
+
+        // while 종료 후 OnDisable이 먼저 실행돼 핸들이 해제됐을 수 있으므로 반드시 재확인
+        if (!_animHandle.IsValid()) return;
+
+        if (_animHandle.Status == AsyncOperationStatus.Succeeded && unitAnimator != null)
+            unitAnimator.runtimeAnimatorController = _animHandle.Result;
+        else
+            Debug.LogWarning($"[EnemyAI] AnimatorController 로드 실패: {data.enemyID}");
     }
 
     private async UniTaskVoid EnrageAfterDelayAsync(CancellationToken token)
@@ -275,23 +333,23 @@ public class EnemyAI : UnitBase
     {
         if (GameManager.Instance == null || GameManager.Instance.currentStage == null) return;
 
-        float dropRate = GameManager.Instance.currentStage.essenceDropRate;
-        
-        // [RULE] 확률 체크 및 스테이지별 미니언 데이터 가져오기
-        if (Random.value < dropRate)
-        {
-            var minionData = GameManager.Instance.unitManager?.GetMinionDataForCurrentStage();
-            if (minionData == null) return;
+        int stageID = GameManager.Instance.currentStage.stageID;
+        float baseDropRate = GameManager.Instance.currentStage.essenceDropRate;
+        // 스테이지 1~10: 보너스 0%, 11~20: +1%, 21~30: +2% ...
+        float stageBonus = Mathf.FloorToInt((stageID - 1) / 10f) * 0.01f;
+        float finalDropRate = baseDropRate + stageBonus;
 
-            if (GameManager.Instance.poolManager != null)
-            {
-                // [NEW] 정수 아이템 생성 및 설정
-                GameObject essenceObj = GameManager.Instance.poolManager.Get("Essence", transform.position, Quaternion.identity);
-                if (essenceObj != null && essenceObj.TryGetComponent(out EssenceItem essenceItem))
-                {
-                    essenceItem.Setup(minionData);
-                }
-            }
+        if (Random.value >= finalDropRate) return;
+
+        // 가중치 기반 전역 드롭 (Bronze 70 / Silver 25 / Gold 5)
+        var minionData = GameManager.Instance.unitManager?.GetRandomMinionDataWeighted();
+        if (minionData == null) return;
+
+        if (GameManager.Instance.poolManager != null)
+        {
+            GameObject essenceObj = GameManager.Instance.poolManager.Get("Essence", transform.position, Quaternion.identity);
+            if (essenceObj != null && essenceObj.TryGetComponent(out EssenceItem essenceItem))
+                essenceItem.Setup(minionData);
         }
     }
 protected override void Die()

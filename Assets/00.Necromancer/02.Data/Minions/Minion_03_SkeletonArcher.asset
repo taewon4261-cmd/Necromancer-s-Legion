@@ -14,8 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minionID: SkeletonArcher
   minionTag: SkeletonArcher
-  minionIcon: {fileID: 21300000, guid: 157c907495984ef408bbcc81f0ee1d39, type: 3}
-  animatorController: {fileID: 22100000, guid: b06dfc1c456ed224eaa6403f59aee376, type: 2}
+  minionIcon:
+    m_AssetGUID: 157c907495984ef408bbcc81f0ee1d39
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
+  animatorController:
+    m_AssetGUID: b06dfc1c456ed224eaa6403f59aee376
+    m_SubObjectName: 
+    m_SubObjectType: 
+    m_EditorAssetChanged: 0
   unlockCost_Soul: 1500
   unlockCost_Essence: 300
   targetEnemyID: SkeletonArcher
