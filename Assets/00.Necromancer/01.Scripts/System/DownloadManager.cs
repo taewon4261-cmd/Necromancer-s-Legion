@@ -23,6 +23,9 @@ namespace Necromancer.Systems
         public void Init()
         {
             Debug.Log("<color=cyan>[DownloadManager]</color> Initialized.");
+            // [INIT SPLIT] Addressables 초기화를 게임 시작 시 미리 시작
+            // UpdateCatalogsAsync 호출 시점에는 이미 완료되어 대기 시간이 줄어듦
+            _ = Addressables.InitializeAsync();
         }
 
         /// <summary>
@@ -31,51 +34,63 @@ namespace Necromancer.Systems
         /// </summary>
         public async UniTask<bool> UpdateCatalogsAsync()
         {
-            // [BUILD FIX] 빌드 기기에서 암시적 초기화가 지연될 수 있으므로 명시적으로 보장
-            var initHandle = Addressables.InitializeAsync();
-            while (!initHandle.IsDone)
-                await UniTask.Yield();
-
-            if (initHandle.Status != AsyncOperationStatus.Succeeded)
+            try
             {
-                Debug.LogError("[DownloadManager] Addressables.InitializeAsync failed.");
+                // [BUILD FIX] 빌드 기기에서 암시적 초기화가 지연될 수 있으므로 명시적으로 보장
+                var initHandle = Addressables.InitializeAsync();
+                while (!initHandle.IsDone)
+                    await UniTask.Yield();
+
+                if (initHandle.Status != AsyncOperationStatus.Succeeded)
+                {
+                    Debug.LogError("[DownloadManager] Addressables.InitializeAsync failed.");
+                    Addressables.Release(initHandle);
+                    return false;
+                }
                 Addressables.Release(initHandle);
-                return false;
-            }
-            Addressables.Release(initHandle);
 
-            var checkHandle = Addressables.CheckForCatalogUpdates(false);
-            while (!checkHandle.IsDone)
+                // [TIMING FIX] Release 직후 내부 상태가 안정화될 시간을 한 프레임 확보
                 await UniTask.Yield();
 
-            if (checkHandle.Status != AsyncOperationStatus.Succeeded)
-            {
-                Debug.LogWarning("[DownloadManager] CheckForCatalogUpdates failed. Offline mode?");
+                var checkHandle = Addressables.CheckForCatalogUpdates(false);
+                while (!checkHandle.IsDone)
+                    await UniTask.Yield();
+
+                if (checkHandle.Status != AsyncOperationStatus.Succeeded)
+                {
+                    Debug.LogWarning("[DownloadManager] CheckForCatalogUpdates failed. Offline mode?");
+                    Addressables.Release(checkHandle);
+                    return false;
+                }
+
+                List<string> toUpdate = checkHandle.Result;
                 Addressables.Release(checkHandle);
+
+                if (toUpdate == null || toUpdate.Count == 0)
+                {
+                    Debug.Log("[DownloadManager] No catalog updates found.");
+                    return true;
+                }
+
+                Debug.Log($"[DownloadManager] Updating {toUpdate.Count} catalog(s)...");
+                var updateHandle = Addressables.UpdateCatalogs(toUpdate, false);
+                while (!updateHandle.IsDone)
+                    await UniTask.Yield();
+
+                bool success = updateHandle.Status == AsyncOperationStatus.Succeeded;
+                Addressables.Release(updateHandle);
+
+                if (!success)
+                    Debug.LogError("[DownloadManager] UpdateCatalogs failed.");
+
+                return success;
+            }
+            catch (Exception ex)
+            {
+                // 예외를 상위로 전파하지 않고 false 반환 — RunFlow의 에러 팝업 방지
+                Debug.LogWarning($"[DownloadManager] UpdateCatalogsAsync 예외 (오프라인 처리): {ex.Message}");
                 return false;
             }
-
-            List<string> toUpdate = checkHandle.Result;
-            Addressables.Release(checkHandle);
-
-            if (toUpdate == null || toUpdate.Count == 0)
-            {
-                Debug.Log("[DownloadManager] No catalog updates found.");
-                return true;
-            }
-
-            Debug.Log($"[DownloadManager] Updating {toUpdate.Count} catalog(s)...");
-            var updateHandle = Addressables.UpdateCatalogs(toUpdate, false);
-            while (!updateHandle.IsDone)
-                await UniTask.Yield();
-
-            bool success = updateHandle.Status == AsyncOperationStatus.Succeeded;
-            Addressables.Release(updateHandle);
-
-            if (!success)
-                Debug.LogError("[DownloadManager] UpdateCatalogs failed.");
-
-            return success;
         }
 
         /// <summary>

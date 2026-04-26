@@ -85,13 +85,13 @@ namespace Necromancer.UI
         {
             try
             {
-                // ── 1단계: 다운로드 먼저 (로그인 패널 숨김) ─────────────────────────
-                authPanel.SetActive(false);
-                await RunDownloadFlow(ct);
+                // [TIMING FIX] 기기 및 네트워크 모듈이 완전히 준비될 시간 확보
+                await UniTask.Delay(300, cancellationToken: ct);
 
-                // ── 2단계: Firebase 초기화 대기 ──────────────────────────────────────
-                SetStatus("Firebase 초기화 중...");
-
+                // ── 1단계: Firebase 초기화 완료 대기 ─────────────────────────────────
+                // [RACE CONDITION FIX] Firebase와 Addressables가 동시에 네트워크를 점유하면
+                // 모바일 저사양 기기에서 초기화 실패가 잦으므로 Firebase 완료 후 Addressables 시작
+                SetStatus("초기화 중...");
                 var auth = GameManager.Instance?.Auth;
                 if (auth != null && !auth.IsFirebaseReady && auth.CurrentState != AuthState.Failed)
                 {
@@ -102,7 +102,11 @@ namespace Necromancer.UI
                         cancellationToken: ct);
                 }
 
-                // ── 3단계: 로그인 (다운로드 완료 후) ────────────────────────────────
+                // ── 2단계: 다운로드 (Firebase 준비 완료 후 Addressables 시작) ──────────
+                authPanel.SetActive(false);
+                await RunDownloadFlow(ct);
+
+                // ── 3단계: 로그인 ────────────────────────────────────────────────────
                 bool loginSuccess = await HandleLoginPhase(ct);
 
                 if (!loginSuccess)
@@ -129,14 +133,19 @@ namespace Necromancer.UI
         private async UniTask<bool> HandleLoginPhase(System.Threading.CancellationToken ct)
         {
             var auth = GameManager.Instance?.Auth;
+            if (auth == null) return false;
 
-            // 이미 로그인된 상태면 즉시 통과 (자동 로그인 성공)
-            if (auth != null &&
-                (auth.CurrentState == AuthState.LoggedIn || auth.CurrentState == AuthState.Guest))
+            // 이미 로그인 성공 상태면 즉시 통과
+            if (auth.CurrentState == AuthState.LoggedIn || auth.CurrentState == AuthState.Guest)
             {
                 Debug.Log("[DownloadScene] 이미 로그인 완료 상태. 로그인 단계 생략.");
                 return true;
             }
+
+            // [RACE CONDITION FIX] 다운로드 중 자동 로그인이 이미 실패했으면 바로 수동 로그인 표시
+            // — WaitForLoginResultAsync를 호출하면 TCS가 영원히 채워지지 않아 멈춤
+            if (auth.CurrentState == AuthState.Failed)
+                return await ShowLoginPanelAndWait(ct);
 
             // 이전 로그인 기록이 있으면 자동 로그인 진행 중 → 패널 숨기고 대기
             bool hasRecord = HasPreviousLoginRecord();
@@ -144,6 +153,13 @@ namespace Necromancer.UI
             {
                 SetStatus("자동 로그인 중...");
                 authPanel.SetActive(false);
+
+                // 대기 직전 한 번 더 체크 (Failed로 바뀐 경우 방어)
+                if (auth.CurrentState == AuthState.Failed)
+                {
+                    SetStatus("자동 로그인 실패. 직접 로그인해주세요.");
+                    return await ShowLoginPanelAndWait(ct);
+                }
 
                 bool autoResult = await WaitForLoginResultAsync(ct);
 
@@ -245,9 +261,11 @@ namespace Necromancer.UI
             bool catalogOk = await dm.UpdateCatalogsAsync();
             if (!catalogOk)
             {
-                SetStatus("서버 연결 실패. 캐시 데이터로 진행합니다.");
-                await UniTask.Delay(1500, cancellationToken: ct);
-                return; // 오프라인이어도 로그인은 진행
+                // [HARD UPDATE] 서버 연결 실패 시 로그인 진행 차단 — 재시도 또는 종료만 허용
+                bool wantsRetry = await ShowError("서버 연결에 실패했습니다.\n네트워크 상태를 확인해주세요.", ct);
+                if (wantsRetry)
+                    await RunDownloadFlow(ct);
+                return;
             }
 
             // 다운로드 용량 확인
@@ -263,35 +281,46 @@ namespace Necromancer.UI
                 return;
             }
 
-            // 패치 안내 팝업 (다운로드 또는 나중에)
-            bool confirmed = await ShowNoticePopup(totalBytes, ct);
-            if (!confirmed)
-                return; // "나중에" 선택 → 로그인 단계로 진행
+            // 패치 안내 팝업 — 필수 다운로드, 거부 시 종료
+            await ShowNoticePopup(totalBytes, ct);
 
             // 다운로드 실행
             await RunDownloadWithRetry(dm, totalBytes, ct);
         }
 
-        private async UniTask<bool> ShowNoticePopup(long bytes, System.Threading.CancellationToken ct)
+        private async UniTask ShowNoticePopup(long bytes, System.Threading.CancellationToken ct)
         {
             float mb = bytes / (1024f * 1024f);
-            noticeSizeText.text = $"추가 다운로드가 필요합니다.\n({mb:F1} MB)\n와이파이 연결을 권장합니다.";
+            noticeSizeText.text = string.Format(
+                "원활한 게임 플레이를 위해 최신 데이터 다운로드가 필요합니다.\n" +
+                "<b>(용량: {0:F1} MB)</b>\n\n" +
+                "<size=80%>※ LTE/5G 이용 시 데이터 요금이 발생할 수 있으니\n" +
+                "Wi-Fi 환경에서 다운로드하시길 권장합니다.</size>",
+                mb);
+
+            // [MANDATORY] 스킵 버튼을 "게임 종료"로 재활용
+            if (skipButton != null)
+            {
+                skipButton.gameObject.SetActive(true);
+                var label = skipButton.GetComponentInChildren<TextMeshProUGUI>();
+                if (label != null) label.text = "게임 종료";
+            }
+
             noticePopup.SetActive(true);
 
-            bool decided = false, confirmed = false;
+            bool decided = false;
 
-            void OnDownload() { confirmed = true;  decided = true; }
-            void OnSkip()     { confirmed = false; decided = true; }
+            void OnDownload() { decided = true; }
+            void OnSkip()     { Application.Quit(); }  // 거부 시 게임 종료
 
             downloadButton.onClick.AddListener(OnDownload);
-            skipButton.onClick.AddListener(OnSkip);
+            if (skipButton != null) skipButton.onClick.AddListener(OnSkip);
 
             await UniTask.WaitUntil(() => decided, cancellationToken: ct);
 
             downloadButton.onClick.RemoveListener(OnDownload);
-            skipButton.onClick.RemoveListener(OnSkip);
+            if (skipButton != null) skipButton.onClick.RemoveListener(OnSkip);
             noticePopup.SetActive(false);
-            return confirmed;
         }
 
         private async UniTask RunDownloadWithRetry(DownloadManager dm, long totalBytes,
@@ -377,7 +406,11 @@ namespace Necromancer.UI
         private bool HasPreviousLoginRecord()
         {
             var data = GameManager.Instance?.SaveData?.Data;
-            return data != null && data.lastLoginMethod != "None";
+            // [REINSTALL FIX] null이면 C#에서 null != "None" = true가 되어 재설치 시
+            // lastLoginMethod가 초기화되지 않은 경우에도 hasRecord=true로 오판되는 버그 방지
+            return data != null &&
+                   !string.IsNullOrEmpty(data.lastLoginMethod) &&
+                   data.lastLoginMethod != "None";
         }
 
         private bool TryGetDownloadManager(out DownloadManager dm)
