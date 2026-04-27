@@ -143,9 +143,13 @@ namespace Necromancer.UI
                     Debug.Log("<color=cyan>[TitleUI]</color> Firebase initializing...");
                     break;
                 case AuthState.Failed:
-                    // 자동로그인 실패 시 authPanel 복원 후 버튼 활성화 (부모가 꺼져있으면 버튼도 안 보임)
-                    if (authPanel != null) authPanel.SetActive(true);
-                    if (mainButtonPanel != null) mainButtonPanel.SetActive(false);
+                    if (authPanel != null)
+                    {
+                        // authPanel이 있으면 로그인 화면으로 복귀
+                        authPanel.SetActive(true);
+                        if (mainButtonPanel != null) mainButtonPanel.SetActive(false);
+                    }
+                    // authPanel이 없으면 mainButtonPanel 유지 (빈 화면 방지)
                     SetButtonsInteractable(true);
                     Debug.LogWarning($"<color=red>[TitleUI]</color> Login Failed. Showing Auth Panel.");
                     break;
@@ -154,17 +158,25 @@ namespace Necromancer.UI
 
         private void InitAllPanels()
         {
-            if (mainButtonPanel != null) mainButtonPanel.SetActive(false);
+            // 모든 서브 패널은 일단 끔
             foreach (var panel in allSubPanels)
                 if (panel != null) panel.SetActive(false);
 
             var saveData = GameManager.Instance?.SaveData?.Data;
             bool hasLoginRecord = saveData != null && saveData.lastLoginMethod != "None";
 
-            if (authPanel != null) authPanel.SetActive(!hasLoginRecord);
+            // [FIX] 우선 메인 패널을 기본으로 켬 (빈 화면 방지)
+            if (mainButtonPanel != null) mainButtonPanel.SetActive(true);
 
-            if (hasLoginRecord)
-                Debug.Log("<color=cyan>[TitleUI]</color> Login record found. Hiding login panel for auto-login.");
+            // [FIX] authPanel이 있고 첫 실행이라면, authPanel을 켜서 메인을 가림
+            if (authPanel != null)
+            {
+                bool showAuth = !hasLoginRecord;
+                authPanel.SetActive(showAuth);
+                if (showAuth && mainButtonPanel != null) mainButtonPanel.SetActive(false);
+            }
+
+            Debug.Log("<color=cyan>[TitleUI]</color> UI Initialized. AuthPanel: " + (authPanel != null) + ", HasRecord: " + hasLoginRecord);
         }
 
         public void SetupInitialUI() => InitAllPanels();
@@ -342,19 +354,19 @@ namespace Necromancer.UI
         public void OnGuestLoginClick()
         {
             Debug.Log("<color=yellow>[TitleUI]</color> Guest Login Button Clicked!");
-            if (GameManager.Instance.Auth != null)
+            if (GameManager.Instance != null && GameManager.Instance.Auth != null)
                 GameManager.Instance.Auth.LoginAsGuest();
             else
-                Debug.LogError("[TitleUI] GameManager.Instance.Auth is NULL!");
+                Debug.LogError("[TitleUI] GameManager or Auth is NULL!");
         }
 
         public void OnGoogleLoginClick()
         {
             Debug.Log("<color=yellow>[TitleUI]</color> Google Login Button Clicked!");
-            if (GameManager.Instance.Auth != null)
+            if (GameManager.Instance != null && GameManager.Instance.Auth != null)
                 GameManager.Instance.Auth.LoginWithGoogle();
             else
-                Debug.LogError("[TitleUI] GameManager.Instance.Auth is NULL!");
+                Debug.LogError("[TitleUI] GameManager or Auth is NULL!");
         }
 
         [ContextMenu("Test Toast - 구글 로그인 성공")]
@@ -371,7 +383,6 @@ namespace Necromancer.UI
 
         private void ValidateReferences()
         {
-            if (authPanel == null)        Debug.LogError("[TitleUI] authPanel is NOT assigned!");
             if (mainButtonPanel == null)  Debug.LogError("[TitleUI] mainButtonPanel is NOT assigned!");
             if (stageSelectPanel == null) Debug.LogError("[TitleUI] stageSelectPanel is NOT assigned!");
             if (upgradePanel == null)     Debug.LogError("[TitleUI] upgradePanel is NOT assigned!");
