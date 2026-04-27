@@ -566,6 +566,11 @@ PrefabInstance:
       propertyPath: playerTransform
       value: 
       objectReference: {fileID: 1583968989}
+    - target: {fileID: 2663693136703229708, guid: d076dd6845f5ca84eb94326ecd47b265,
+        type: 3}
+      propertyPath: gameBGM
+      value: 
+      objectReference: {fileID: 8300000, guid: 34bf130f02e0c064eaf6b94936e5d14e, type: 3}
     - target: {fileID: 5222022597978494407, guid: d076dd6845f5ca84eb94326ecd47b265,
         type: 3}
       propertyPath: textWave

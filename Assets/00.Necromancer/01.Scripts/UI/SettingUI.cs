@@ -261,7 +261,7 @@ namespace Necromancer.UI
 
         public void CloseAndSave()
         {
-            // Settings 사유 해소 (다른 정지 사유가 있으면 timeScale은 0으로 유지됨)
+            // Settings 사유 해소 및 저장은 애니메이션 전에 즉시 처리
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.SetPause(Necromancer.PauseSource.Settings, false);
@@ -272,7 +272,11 @@ namespace Necromancer.UI
                 GameManager.Instance.SaveData.Save();
             }
 
-            gameObject.SetActive(false); 
+            var anim = GetComponent<UIPanelAnim>();
+            if (anim != null)
+                anim.Hide();
+            else
+                gameObject.SetActive(false);
         }
 
         /// <summary>

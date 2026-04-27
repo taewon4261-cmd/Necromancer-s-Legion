@@ -36,9 +36,9 @@ namespace Necromancer
             view.SetHealth(current, max);
 
             if (hideWhenFull)
-            {
                 view.SetVisible(current < max && current > 0);
-            }
+            else
+                view.SetVisible(current > 0);
         }
     }
 }

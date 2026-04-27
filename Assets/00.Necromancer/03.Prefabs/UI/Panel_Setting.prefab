@@ -1673,6 +1673,7 @@ GameObject:
   - component: {fileID: 2987438548322523307}
   - component: {fileID: 7706479002384558864}
   - component: {fileID: 1682110358146686053}
+  - component: {fileID: 7146670466249075233}
   m_Layer: 5
   m_Name: Panel_Setting
   m_TagString: Untagged
@@ -1772,6 +1773,22 @@ MonoBehaviour:
   loginTxt: {fileID: 2023142684262475410}
   toastCanvasGroup: {fileID: 1304277626949919383}
   toastText: {fileID: 3526901883947109504}
+--- !u!114 &7146670466249075233
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3895624759034320344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b89b4da738525944b5b97967451136c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _showDuration: 0.2
+  _hideDuration: 0.15
+  _showEase: 27
+  _hideEase: 2
 --- !u!1 &3902820972918998875
 GameObject:
   m_ObjectHideFlags: 0

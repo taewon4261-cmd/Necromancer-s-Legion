@@ -121,9 +121,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 3895624759034320344}
         m_TargetAssemblyTypeName: Necromancer.UI.SettingUI, Assembly-CSharp
-        m_MethodName: CloseAndSave
+        m_MethodName: 
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -199,7 +199,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   m_text: "\uC801\uC744 \uCC98\uCE58\uD558\uBA74 \uC77C\uC815 \uD655\uB960\uB85C
-    \uBD80\uD65C\uD558\uC5EC \uB2F9\uC2E0\uC744 \uC704\uD574 \uC2F8\uC6C1\uB2C8\uB2E4"
+    \uBD80\uD65C\uD558\uC5EC \uB2F9\uC2E0\uC744 \uC704\uD574 \uC2F8\uC6C1\uB2C8\uB2E4
+    (\uAE30\uBCF8 \uC720\uC9C0\uC2DC\uAC04 10\uCD08)"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7117805483fe5844abd1d814159298bd, type: 2}
   m_sharedMaterial: {fileID: -7989198017072685728, guid: 7117805483fe5844abd1d814159298bd,
@@ -431,6 +432,7 @@ GameObject:
   - component: {fileID: 954292766777764550}
   - component: {fileID: 2987438548322523307}
   - component: {fileID: 7706479002384558864}
+  - component: {fileID: 6277649095372677696}
   m_Layer: 5
   m_Name: Panel_Tutorial
   m_TagString: Untagged
@@ -501,6 +503,22 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &6277649095372677696
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3895624759034320344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b89b4da738525944b5b97967451136c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _showDuration: 0.2
+  _hideDuration: 0.15
+  _showEase: 27
+  _hideEase: 2
 --- !u!1 &3919943629297005402
 GameObject:
   m_ObjectHideFlags: 0

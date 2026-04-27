@@ -51,6 +51,13 @@ namespace Necromancer.Systems
 
         private IEnumerator TransitionRoutine(string sceneName)
         {
+            // [AUDIO] 씬 전환 시작 시 사운드 정리 (BGM 페이드 아웃 및 SFX 중단)
+            if (GameManager.Instance != null && GameManager.Instance.Sound != null)
+            {
+                GameManager.Instance.Sound.StopAllSFX(true);
+                GameManager.Instance.Sound.StopBGM(true);
+            }
+
             // 1. 페이드 아웃 (어두워짐)
             if (_fadeCanvasGroup != null)
             {
@@ -70,7 +77,17 @@ namespace Necromancer.Systems
             {
                 yield return _fadeCanvasGroup.DOFade(0f, UIConstants.DefaultFadeDuration).SetUpdate(true).WaitForCompletion();
                 _fadeCanvasGroup.blocksRaycasts = false;
+
+                // [FIX] 페이드 인 완료 후 사운드 잠금 해제 (새로운 씬의 효과음 재생 허용)
+                if (GameManager.Instance != null && GameManager.Instance.Sound != null)
+                {
+                    GameManager.Instance.Sound.ResumeSFX();
+                }
             }
+
+            // [AUDIO] 씬 완전 진입 후 SFX 재개 — StopAllSFX(true)로 걸린 무음 잠금 해제
+            if (GameManager.Instance?.Sound != null)
+                GameManager.Instance.Sound.ResumeSFX();
         }
     }
 }

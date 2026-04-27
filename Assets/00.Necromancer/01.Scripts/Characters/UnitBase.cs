@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using DG.Tweening;
 using UnityEngine;
 
 namespace Necromancer
@@ -26,25 +27,35 @@ namespace Necromancer
         public virtual void ApplyDamage(float damage, UnitBase attacker = null) => TakeDamage(damage, attacker);
 
         [Header("Base Stats")]
-        public float maxHp = 50f;
+        public float maxHp = 150f;
         public float currentHp;
         public float moveSpeed = 3f;
         
-        [Header("Visual Components")]
         [Header("Visual Components (Assign in Inspector)")]
         [SerializeField] protected Animator unitAnimator;
         [SerializeField] protected SpriteRenderer unitSprite;
+        [SerializeField] protected Collider2D unitCollider;
 
         [Header("Hit Effect Settings")]
         public Color hitColor = Color.red;
         public float hitDuration = 0.1f;
 
+        [Header("Death Settings")]
+        [SerializeField] protected float deathAnimDuration = 1.0f;
+
         public bool IsDead => isDead;
         protected bool isDead = false;
-                private CancellationTokenSource _hitFlashCts;
+        private CancellationTokenSource _hitFlashCts;
         private CancellationTokenSource _poisonFlashCts;
+        private CancellationTokenSource _dieSequenceCts;
 
         public event global::System.Action<float, float> OnHealthChanged; // (current, max)
+
+        // [BALANCE] UI 갱신을 수동으로 호출하기 위한 protected 메서드 추가 (파생 클래스 전용)
+        protected void InvokeHealthChanged()
+        {
+            OnHealthChanged?.Invoke(currentHp, maxHp);
+        }
 
         protected virtual void Awake()
         {
@@ -89,6 +100,11 @@ namespace Necromancer
             _poisonFlashCts?.Cancel();
             _poisonFlashCts?.Dispose();
             _poisonFlashCts = null;
+
+            // 사망 시퀀스 취소 (외부에서 강제 비활성화 시 정리)
+            _dieSequenceCts?.Cancel();
+            _dieSequenceCts?.Dispose();
+            _dieSequenceCts = null;
         }
 
         /// <summary>
@@ -213,14 +229,45 @@ namespace Necromancer
         protected virtual void Die()
         {
             isDead = true;
-            // 사망 시 모든 모디파이어 즉시 해제
             for (int i = 0; i < activeModifiers.Count; i++) activeModifiers[i].OnRemove(this);
             activeModifiers.Clear();
 
+            if (unitCollider != null) unitCollider.enabled = false;
+
+            if (unitAnimator != null)
+                unitAnimator.SetBool(Necromancer.Systems.UIConstants.AnimParam_Die, true);
+
+            _dieSequenceCts = new CancellationTokenSource();
+            DieSequenceAsync(_dieSequenceCts.Token).Forget();
+        }
+
+        protected virtual async UniTaskVoid DieSequenceAsync(CancellationToken ct)
+        {
+            // 1프레임 대기 후 실제 애니메이션 길이 측정
+            await UniTask.Yield(PlayerLoopTiming.Update, ct);
+
+            float duration = deathAnimDuration;
             if (unitAnimator != null)
             {
-                unitAnimator.SetBool(Necromancer.Systems.UIConstants.AnimParam_Die, true);
+                float animLength = unitAnimator.GetCurrentAnimatorStateInfo(0).length;
+                if (animLength > 0.05f) duration = animLength;
             }
+
+            if (unitSprite != null)
+                unitSprite.DOFade(0f, duration * 0.7f).SetUpdate(true).SetLink(gameObject);
+
+            bool cancelled = await UniTask.Delay(
+                System.TimeSpan.FromSeconds(duration),
+                DelayType.UnscaledDeltaTime,
+                PlayerLoopTiming.Update,
+                ct).SuppressCancellationThrow();
+
+            if (!cancelled) OnDeathComplete();
+        }
+
+        protected virtual void OnDeathComplete()
+        {
+            gameObject.SetActive(false);
         }
 
         public void AddModifier(IUnitModifier modifier)

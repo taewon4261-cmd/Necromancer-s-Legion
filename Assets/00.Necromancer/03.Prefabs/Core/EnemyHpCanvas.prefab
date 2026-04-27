@@ -161,7 +161,6 @@ GameObject:
   m_Component:
   - component: {fileID: 3292525649727084255}
   - component: {fileID: 5856251152835821784}
-  - component: {fileID: 8566611772575545001}
   - component: {fileID: 871511744257522827}
   - component: {fileID: 4417272393577908968}
   - component: {fileID: 6509568330884966029}
@@ -216,29 +215,6 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
---- !u!114 &8566611772575545001
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7701114420295547870}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0cd44c1031e13a943bb63640046fad76, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_UiScaleMode: 0
-  m_ReferencePixelsPerUnit: 100
-  m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
-  m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
-  m_PhysicalUnit: 3
-  m_FallbackScreenDPI: 96
-  m_DefaultSpriteDPI: 96
-  m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 1
 --- !u!114 &871511744257522827
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -284,7 +260,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   unit: {fileID: 0}
   view: {fileID: 4417272393577908968}
-  hideWhenFull: 1
+  hideWhenFull: 0
 --- !u!225 &3815451404880098858
 CanvasGroup:
   m_ObjectHideFlags: 0

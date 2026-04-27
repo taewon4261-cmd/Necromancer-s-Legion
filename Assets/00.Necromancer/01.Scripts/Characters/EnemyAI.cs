@@ -354,28 +354,31 @@ public class EnemyAI : UnitBase
     }
 protected override void Die()
     {
-        base.Die();
-        HandleEssenceDrop();
+        // 웨이브 카운트 즉시 반영 (애니메이션 지연 전에 처리)
+        if (!hasCountedDeath && GameManager.Instance?.waveManager != null)
+        {
+            GameManager.Instance.waveManager.OnEnemyDied();
+            hasCountedDeath = true;
+        }
+
+        base.Die(); // isDead=true, 콜라이더 비활성화, 사망 애니메이션 + DieSequenceAsync 시작
 
         rb.velocity = Vector2.zero;
-        
+        HandleEssenceDrop();
+
         if (GameManager.Instance != null)
         {
-            if (GameManager.Instance.poolManager != null)
-            {
-                GameManager.Instance.poolManager.Get("ExpGem", transform.position, Quaternion.identity);
-            }
+            GameManager.Instance.poolManager?.Get("ExpGem", transform.position, Quaternion.identity);
             GameManager.Instance.unitManager?.TryReviveAsMinion(transform.position);
         }
+    }
 
-        if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
-        {
+    protected override void OnDeathComplete()
+    {
+        if (GameManager.Instance?.poolManager != null)
             GameManager.Instance.poolManager.Release("Enemy", gameObject);
-        }
         else
-        {
             Destroy(gameObject);
-        }
     }
 
     /// <summary>

@@ -472,7 +472,21 @@ MonoBehaviour:
   unlockedStageLevel: 0
   currentStamina: 0
   staminaAdsWatchedToday: 0
-  upgradeSOConfig: []
+  upgradeSOConfig:
+  - {fileID: 11400000, guid: 4b6dd8aeb7892ac49966c660a6ff7d46, type: 2}
+  - {fileID: 11400000, guid: 699905ff77bd4794baafaefd701b1103, type: 2}
+  - {fileID: 11400000, guid: ec6caf191e837c74294c695071e8e075, type: 2}
+  - {fileID: 11400000, guid: bcf543218c74f2c4780f079d253c1145, type: 2}
+  - {fileID: 11400000, guid: 830717b626362fe4aaa8447b38c2858e, type: 2}
+  - {fileID: 11400000, guid: 207313174480aa447934944591be555c, type: 2}
+  - {fileID: 11400000, guid: cc873400c64467c4a94d56dfa87bf124, type: 2}
+  - {fileID: 11400000, guid: 4a7b13421a50f6542b38a540c750e433, type: 2}
+  - {fileID: 11400000, guid: bf09b55b0db789c4ba8afd8b580dac3a, type: 2}
+  - {fileID: 11400000, guid: aed5c8a5ccf32fd4d9e88f0a318df922, type: 2}
+  - {fileID: 11400000, guid: e95ebec3e8dac28429b406728e57d96a, type: 2}
+  - {fileID: 11400000, guid: 9a9602b27fd0d3544b319763a6efe584, type: 2}
+  - {fileID: 11400000, guid: 8e2d1cc9d05c4a84aa0d1b4dec7dcdb5, type: 2}
+  - {fileID: 11400000, guid: 82f458e93294827498cba1234567890a, type: 2}
 --- !u!1 &3526522176809907545
 GameObject:
   m_ObjectHideFlags: 0
@@ -906,18 +920,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   bgmSource: {fileID: 4120480303135771045}
   titleBGM: {fileID: 8300000, guid: c5518e3a87d76454e9c22ff0ef19e487, type: 3}
-  gameBGM: {fileID: 0}
-  sfxBow: {fileID: 0}
-  sfxCreateMinion: {fileID: 0}
-  sfxFailBtn: {fileID: 0}
-  sfxLose: {fileID: 0}
-  sfxNormalAttackCraw: {fileID: 0}
-  sfxPlayerAttack: {fileID: 0}
-  sfxSelectBtn: {fileID: 0}
-  sfxSoulGain: {fileID: 0}
-  sfxUpgrade: {fileID: 0}
-  sfxWin: {fileID: 0}
-  sfxSourcePrefab: {fileID: 0}
+  gameBGM: {fileID: 8300000, guid: 34bf130f02e0c064eaf6b94936e5d14e, type: 3}
+  sfxBow: {fileID: 8300000, guid: fe0b1f9aeb45b41b089175aeeabd5d95, type: 3}
+  sfxCreateMinion: {fileID: 8300000, guid: 38a17a92b9d9748c6a1e67972041b833, type: 3}
+  sfxFailBtn: {fileID: 8300000, guid: 1ed8fb76fc64e4e46847348138782234, type: 3}
+  sfxLose: {fileID: 8300000, guid: acbcb75601b0082458fda8807f67c813, type: 3}
+  sfxNormalAttackCraw: {fileID: 8300000, guid: 56703418e3aed4c47a5f6622816b8e41, type: 3}
+  sfxPlayerAttack: {fileID: 8300000, guid: 84e427d6b66ab4066b6a4dcd0ce819ee, type: 3}
+  sfxSelectBtn: {fileID: 8300000, guid: 724131bc8a7f34041bb9f1701f0cb58d, type: 3}
+  sfxSoulGain: {fileID: 8300000, guid: a652877b012108e41871f867ada9f176, type: 3}
+  sfxUpgrade: {fileID: 8300000, guid: 79180f511d89441b9aa23ccae1992fe0, type: 3}
+  sfxWin: {fileID: 8300000, guid: 2667a0a008b044e218b63df62e2be749, type: 3}
+  sfxSourcePrefab: {fileID: 351301848704060971, guid: 53b1c64cd1aedc04095931e7921f0b88,
+    type: 3}
   initialSfxPoolSize: 10
   masterVolume: 1
   bgmVolume: 0.6
@@ -1888,7 +1903,7 @@ GameObject:
   - component: {fileID: 8681006699480707148}
   - component: {fileID: 2698137794492885362}
   m_Layer: 0
-  m_Name: PopupCanvas
+  m_Name: PopupCanvas1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

@@ -370,22 +370,25 @@ public class PlayerController : UnitBase
             }
         }
 
-        base.Die();
-        
+        // UnscaledTime 설정: 슬로우모션 중에도 애니메이션 정속 재생 보장
         if (unitAnimator != null)
-        {
             unitAnimator.updateMode = AnimatorUpdateMode.UnscaledTime;
-        }
+
+        base.Die(); // isDead=true, DieSequenceAsync 시작
 
         rb.velocity = Vector2.zero;
-        rb.bodyType = RigidbodyType2D.Static; 
-        
+        rb.bodyType = RigidbodyType2D.Static;
+
+        Time.timeScale = 0.5f; // 극적 연출을 위한 슬로우모션
+
+        Debug.Log("[PlayerController] Player is dead. Starting death sequence.");
+    }
+
+    protected override void OnDeathComplete()
+    {
+        Time.timeScale = 1f;
         if (GameManager.Instance != null)
-        {
             GameManager.Instance.OnStageFailed();
-        }
-        
-        Debug.Log("[PlayerController] Player is dead. Triggering GameOver sequence.");
     }
 
     private void Resurrect()

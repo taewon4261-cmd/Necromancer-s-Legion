@@ -581,6 +581,7 @@ GameObject:
   - component: {fileID: 7890493919916125242}
   - component: {fileID: 4527327611639991330}
   - component: {fileID: 3577474944452730803}
+  - component: {fileID: 2059099840725023153}
   m_Layer: 5
   m_Name: LevelUpPanel
   m_TagString: Untagged
@@ -646,6 +647,22 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &2059099840725023153
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812458268333322987}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b89b4da738525944b5b97967451136c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _showDuration: 0.2
+  _hideDuration: 0.15
+  _showEase: 27
+  _hideEase: 2
 --- !u!1 &1884338217277531430
 GameObject:
   m_ObjectHideFlags: 0

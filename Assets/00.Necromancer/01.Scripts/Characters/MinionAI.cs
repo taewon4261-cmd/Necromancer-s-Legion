@@ -35,7 +35,6 @@ private CancellationTokenSource _loadCts;
 
 private Transform currentTarget;
 private float lastHitTime;
-private float spawnTime;
 private Transform playerTransform;
 private CancellationTokenSource lifetimeCts;
 
@@ -62,23 +61,39 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
 {
     if (minionData?.animatorController == null || unitAnimator == null) return;
 
-    // 이전 핸들 해제
     if (_animHandle.IsValid())
     {
+        if (_animHandle.IsDone && _animHandle.Status == AsyncOperationStatus.Succeeded
+            && unitAnimator.runtimeAnimatorController == _animHandle.Result)
+            return;
+
         Addressables.Release(_animHandle);
         _animHandle = default;
     }
 
-    _animHandle = minionData.animatorController.LoadAssetAsync<RuntimeAnimatorController>();
+    // RuntimeKey로 로드 — 여러 미니언이 같은 SO 공유 시 AssetReference 내부 핸들 충돌 방지
+    _animHandle = Addressables.LoadAssetAsync<RuntimeAnimatorController>(minionData.animatorController.RuntimeKey);
+
     while (!_animHandle.IsDone)
     {
-        if (ct.IsCancellationRequested) return;
+        if (ct.IsCancellationRequested)
+        {
+            if (_animHandle.IsValid())
+            {
+                Addressables.Release(_animHandle);
+                _animHandle = default;
+            }
+            return;
+        }
         await UniTask.Yield();
     }
 
+    // while 종료 후 OnDisable이 먼저 실행돼 핸들이 해제됐을 수 있으므로 재확인
+    if (!_animHandle.IsValid()) return;
+
     if (_animHandle.Status == AsyncOperationStatus.Succeeded && unitAnimator != null)
         unitAnimator.runtimeAnimatorController = _animHandle.Result;
-    else if (_animHandle.Status != AsyncOperationStatus.Succeeded)
+    else
         Debug.LogWarning($"[MinionAI] AnimatorController 로드 실패: {minionData.minionID}");
 }
 
@@ -105,7 +120,6 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
         
         base.OnEnable();
         
-        spawnTime = Time.time;
         currentTarget = null;
         lifetimeCts = new CancellationTokenSource();
 
@@ -178,9 +192,18 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
 
         UpdateAnimation();
 
-        if (Time.time > spawnTime + lifeTime)
+        // [BALANCE] 수명(lifeTime)에 비례하여 초당 체력을 서서히 감소 (체력 기반 생명주기)
+        float decayAmount = (maxHp / lifeTime) * deltaTime;
+        currentHp -= decayAmount;
+
+        // 체력바 UI 갱신을 위해 이벤트 호출
+        InvokeHealthChanged();
+
+        if (currentHp <= 0f)
         {
+            currentHp = 0f;
             Die();
+            return;
         }
 
         // [OPTIMIZED] 공격 로직 (업데이트 루프에서 쿨타임 체크 및 거리 기반)
@@ -293,9 +316,11 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
         }
     }
 
+    // 적 처치 시 보너스 수명을 HP로 환산하여 회복 (흡혈·힐과 동일한 방식으로 작동)
     public void AddLifeTime(float amount)
     {
-        spawnTime += amount;
+        float hpGain = (maxHp / lifeTime) * amount;
+        currentHp = Mathf.Min(currentHp + hpGain, maxHp);
     }
 
     // [BloodFrenzy] HP 50% 미만 시 공속 버프를 반영한 실제 쿨타임 반환
@@ -382,30 +407,28 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
 
     protected override void Die()
     {
-        base.Die();
+        base.Die(); // isDead=true, 콜라이더 비활성화, DieSequenceAsync 시작
+
         rb.velocity = Vector2.zero;
-        
-        SkillManager sManager = GameManager.Instance.skillManager;
+
+        // 폭발 스킬 효과는 즉시 적용
+        SkillManager sManager = GameManager.Instance?.skillManager;
         if (sManager != null && sManager.minionExplosionDamage > 0f)
         {
             int count = Physics2D.OverlapCircleNonAlloc(transform.position, 2f, explosionBuffer);
             for (int i = 0; i < count; i++)
             {
                 Collider2D h = explosionBuffer[i];
-                if (h != null && h.CompareTag("Enemy"))
-                {
-                    if (h.TryGetComponent(out IDamageable targetUnit))
-                    {
-                        targetUnit.ApplyDamage(sManager.minionExplosionDamage, this);
-                    }
-                }
+                if (h != null && h.CompareTag("Enemy") && h.TryGetComponent(out IDamageable targetUnit))
+                    targetUnit.ApplyDamage(sManager.minionExplosionDamage, this);
             }
         }
-        
-        if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
+    }
+
+    protected override void OnDeathComplete()
+    {
+        if (GameManager.Instance?.poolManager != null)
         {
-            // [BUG-FIX] 하드코딩된 "Minion" 태그 대신 SO의 minionTag를 사용하여 개별 풀에 정확히 반납
-            // 기본 미니언(SO 없음)은 GameManager.minionPoolTag("Minion")로 fallback
             string poolTag = (minionData != null && !string.IsNullOrEmpty(minionData.minionTag))
                 ? minionData.minionTag
                 : GameManager.Instance.unitManager?.minionPoolTag ?? "Minion";

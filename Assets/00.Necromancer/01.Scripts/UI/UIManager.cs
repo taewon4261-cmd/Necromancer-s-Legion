@@ -80,8 +80,13 @@ namespace Necromancer.UI
             {
                 // 열기: 설정 사유로 일시정지
                 GameManager.Instance.SetPause(PauseSource.Settings, true);
-                settingUI.gameObject.SetActive(true);
-                
+
+                var anim = settingUI.GetComponent<UIPanelAnim>();
+                if (anim != null)
+                    anim.Show();
+                else
+                    settingUI.gameObject.SetActive(true);
+
                 // [SOUND] 설정창 열기 효과음
                 if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
                     GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
@@ -171,6 +176,11 @@ namespace Necromancer.UI
                     {
                         hud.tutorialCloseButton.onClick.RemoveAllListeners();
                         hud.tutorialCloseButton.onClick.AddListener(OnClick_CloseTutorial);
+                        Debug.Log("<color=green>[UIManager]</color> Tutorial Close Button bound successfully.");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("<color=red>[UIManager]</color> Tutorial Close Button NOT FOUND in HUD prefab!");
                     }
 
                     // [STABILITY] 설정창 버튼 바인딩 (HUD Button Binding)
@@ -272,11 +282,14 @@ namespace Necromancer.UI
             CheckAndShowTutorial();
         }
 
-        private void CheckAndShowTutorial()
+        public void CheckAndShowTutorial()
         {
             var saveData = GameManager.Instance?.SaveData?.Data;
             if (saveData == null) return;
             if (saveData.hasSeenTutorial) return;
+
+            // [STABILITY] 이미 패널이 떠 있다면 중복으로 열지 않음
+            if (tutorialPanel != null && tutorialPanel.activeSelf) return;
 
             ShowTutorial();
         }
@@ -289,17 +302,42 @@ namespace Necromancer.UI
                 return;
             }
 
-            tutorialPanel.SetActive(true);
+            // [FIX] 애니메이션 시스템과 상관없이 즉시 인터랙션이 가능하도록 CanvasGroup 강제 설정
+            var cg = tutorialPanel.GetComponent<CanvasGroup>();
+            if (cg == null) cg = tutorialPanel.AddComponent<CanvasGroup>();
+            cg.interactable = true;
+            cg.blocksRaycasts = true;
+            cg.alpha = 1f;
+
+            var anim = tutorialPanel.GetComponent<UIPanelAnim>();
+            if (anim != null)
+                anim.Show();
+            else
+                tutorialPanel.SetActive(true);
+
             GameManager.Instance?.SetPause(PauseSource.Settings, true);
-            Debug.Log("<color=cyan>[UIManager]</color> Tutorial panel opened.");
+            Debug.Log("<color=cyan>[UIManager]</color> Tutorial panel opened (Interaction Forced).");
         }
 
         public void OnClick_CloseTutorial()
         {
+            Debug.Log("<color=yellow>[UIManager]</color> OnClick_CloseTutorial called.");
             if (tutorialPanel != null)
-                tutorialPanel.SetActive(false);
+            {
+                var anim = tutorialPanel.GetComponent<UIPanelAnim>();
+                if (anim != null)
+                    anim.Hide(FinishCloseTutorial);
+                else
+                {
+                    tutorialPanel.SetActive(false);
+                    FinishCloseTutorial();
+                }
+            }
+            else FinishCloseTutorial();
+        }
 
-            // 최초 확인 시에만 플래그 저장
+        private void FinishCloseTutorial()
+        {
             var saveData = GameManager.Instance?.SaveData?.Data;
             if (saveData != null && !saveData.hasSeenTutorial)
             {
@@ -307,7 +345,6 @@ namespace Necromancer.UI
                 GameManager.Instance.SaveData.Save();
                 Debug.Log("<color=green>[UIManager]</color> Tutorial flag saved.");
             }
-
             GameManager.Instance?.SetPause(PauseSource.Settings, false);
             Debug.Log("<color=cyan>[UIManager]</color> Tutorial panel closed.");
         }
@@ -383,7 +420,14 @@ namespace Necromancer.UI
 
         private void HandleLevelUp(List<SkillData> options)
         {
-            if (levelUpPanel != null) levelUpPanel.SetActive(true);
+            if (levelUpPanel != null)
+            {
+                var anim = levelUpPanel.GetComponent<UIPanelAnim>();
+                if (anim != null)
+                    anim.Show();
+                else
+                    levelUpPanel.SetActive(true);
+            }
             freeRefreshUsed = false;
             UpdateRefreshButtonText();
             // [NOTE] LevelUp 정지는 GameManager.AddExp에서 SetPause(LevelUp, true)로 이미 처리됨
@@ -482,7 +526,14 @@ namespace Necromancer.UI
                 GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
             }
 
-            if (levelUpPanel != null) levelUpPanel.SetActive(false);
+            if (levelUpPanel != null)
+            {
+                var anim = levelUpPanel.GetComponent<UIPanelAnim>();
+                if (anim != null)
+                    anim.Hide();
+                else
+                    levelUpPanel.SetActive(false);
+            }
 
             // 스킬 선택 완료 → LevelUp 정지 사유 해소
             if (GameManager.Instance != null)

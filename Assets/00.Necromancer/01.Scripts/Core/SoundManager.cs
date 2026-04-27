@@ -42,6 +42,12 @@ namespace Necromancer.Core
         {
             InitPool();
             LoadVolumesFromData();
+
+            // [DIAGNOSTIC] 인스펙터 연결 상태 확인
+            if (bgmSource == null) Debug.LogError("<color=red>[SoundManager]</color> BGM Source가 연결되지 않았습니다! 인스펙터에서 AudioSource를 드래그 앤 드롭 하세요.");
+            if (titleBGM == null) Debug.LogWarning("<color=yellow>[SoundManager]</color> Title BGM 클립이 비어있습니다.");
+            if (gameBGM == null)  Debug.LogWarning("<color=yellow>[SoundManager]</color> Game BGM 클립이 비어있습니다.");
+
             Debug.Log("<color=cyan>[SoundManager]</color> Initialized by GameManager.");
         }
 
@@ -167,9 +173,25 @@ namespace Necromancer.Core
 
         public void PlayBGM(AudioClip clip, bool fade = true)
         {
-            if (bgmSource.clip == clip) return;
+            if (bgmSource == null) 
+            {
+                Debug.LogError("<color=red>[SoundManager]</color> BGM Source가 없어 재생할 수 없습니다.");
+                return;
+            }
+            if (clip == null) 
+            {
+                Debug.LogWarning("<color=yellow>[SoundManager]</color> 재생하려는 BGM 클립이 NULL입니다. 인스펙터 설정을 확인하세요.");
+                return;
+            }
 
-            if (fade && bgmSource.clip != null)
+            if (bgmSource.clip == clip && bgmSource.isPlaying) return;
+
+            Debug.Log($"<color=lime>[SoundManager]</color> PlayBGM: <b>{clip.name}</b> (Fade: {fade})");
+
+            // [STABILITY] 이전 페이드 트윈이 있다면 제거
+            bgmSource.DOKill();
+
+            if (fade && bgmSource.clip != null && bgmSource.isPlaying)
             {
                 bgmSource.DOFade(0f, 0.5f).OnComplete(() =>
                 {
@@ -187,19 +209,26 @@ namespace Necromancer.Core
             }
         }
 
-        public void StopBGM()
+        public void StopBGM(bool fade = true)
         {
-            bgmSource.DOFade(0f, 0.5f).OnComplete(() => bgmSource.Stop());
+            if (bgmSource == null) return;
+            Debug.Log($"<color=orange>[SoundManager]</color> StopBGM (Current: {(bgmSource.clip != null ? bgmSource.clip.name : "None")}, Fade: {fade})");
+            bgmSource.DOKill();
+
+            if (fade)
+            {
+                bgmSource.DOFade(0f, 0.5f).OnComplete(() => {
+                    bgmSource.Stop();
+                    bgmSource.clip = null;
+                });
+            }
+            else
+            {
+                bgmSource.Stop();
+                bgmSource.clip = null;
+            }
         }
 
-        /// <summary>
-        /// [CLEANUP] 현재 재생 중인 모든 효과음을 즉시 중지하고 정리합니다.
-        /// 스테이지 탈출이나 씬 전환 시 호출됩니다.
-        /// </summary>
-        /// <summary>
-        /// [CLEANUP] 현재 재생 중인 모든 효과음을 즉시 중지하고 정리합니다.
-        /// silenceNewSounds가 참이면 ResumeSFX() 전까지 새로운 사운드 재생이 차단됩니다.
-        /// </summary>
         /// <summary>
         /// [CLEANUP] 현재 재생 중인 모든 효과음을 즉시 중지하고 정리합니다.
         /// silenceNewSounds가 참이면 ResumeSFX() 전까지 새로운 사운드 재생이 차단됩니다.

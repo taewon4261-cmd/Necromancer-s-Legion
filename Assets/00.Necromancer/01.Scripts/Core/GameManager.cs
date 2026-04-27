@@ -355,6 +355,12 @@ namespace Necromancer
                 _titleUI.SetupInitialUI();
             }
 
+            // 3. 인게임 UI가 있다면 튜토리얼 여부 다시 체크 (복귀 유저 중복 노출 방지)
+            if (_uiManager != null)
+            {
+                _uiManager.CheckAndShowTutorial();
+            }
+
             Debug.Log("<color=green>[GameManager]</color> All systems synchronized with cloud data.");
         }
 

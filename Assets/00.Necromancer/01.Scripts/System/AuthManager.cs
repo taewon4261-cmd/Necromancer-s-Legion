@@ -49,6 +49,8 @@ namespace Necromancer.Systems
                 {
                     Debug.LogError($"[AuthManager] Could not resolve all Firebase dependencies: {dependencyStatus}");
                     SetState(AuthState.Failed);
+                    // [FIX] 의존성 실패 시에도 이벤트를 발생시켜 UI가 무한 대기하지 않게 함
+                    OnLoginResult?.Invoke(false, null);
                 }
             });
         }
@@ -91,7 +93,8 @@ namespace Necromancer.Systems
         private void TryAutoLogin()
         {
 #if GPGS
-            // [FIX] 최신 GPGS SDK: 콜백 타입이 Action<bool> → Action<SignInStatus>
+            Debug.Log("<color=cyan>[AuthManager]</color> TryAutoLogin: Attempting Silent Authenticate...");
+            // [FIX] 자동 로그인은 조용히(Authenticate) 시도하여 UX 방해 금지
             PlayGamesPlatform.Instance.Authenticate((SignInStatus status) => {
                 if (status == SignInStatus.Success)
                 {
@@ -99,7 +102,10 @@ namespace Necromancer.Systems
                 }
                 else
                 {
-                    Debug.Log("[AuthManager] Auto Login Failed or Cancelled.");
+                    Debug.LogWarning($"[AuthManager] Silent Auto Login Failed. Status: {status}");
+                    // 실패 상태를 설정하여 UI가 대기를 멈추고 로그인 버튼을 띄우게 함
+                    SetState(AuthState.Failed);
+                    OnLoginResult?.Invoke(false, null);
                 }
             });
 #endif
@@ -356,11 +362,10 @@ namespace Necromancer.Systems
                         {
                             GameManager.Instance.RefreshSystemsAfterLoad();
                         }
-                        // [FIX] 첫 로그인이라 클라우드에 데이터가 없으면 즉시 문서 생성
+                        // [FIX] 첫 로그인이라 클라우드에 데이터가 없으면 SaveLoginMethod → Save() 경로로 자동 업로드
                         else
                         {
-                            Debug.Log("[AuthManager] 첫 로그인 감지. Firestore에 문서를 즉시 생성합니다.");
-                            _ = saveManager.SaveToCloud(uid);
+                            Debug.Log("[AuthManager] 첫 로그인 감지. SaveLoginMethod 호출 시 Firestore에 자동 업로드됩니다.");
                         }
 
                         // [FIX] 모든 데이터 처리가 끝난 후(Load 완료 후)에만 로그인 상태로 전환 및 수단 저장

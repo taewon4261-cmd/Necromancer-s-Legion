@@ -227,16 +227,33 @@ namespace Necromancer.UI
         {
             if (targetPanel == null) return;
             if (mainButtonPanel != null) mainButtonPanel.SetActive(false);
-            targetPanel.SetActive(true);
+
+            var anim = targetPanel.GetComponent<UIPanelAnim>();
+            if (anim != null)
+                anim.Show();
+            else
+                targetPanel.SetActive(true);
+
             PlaySelectSound();
             Debug.Log($"<color=green>[TitleUI]</color> Open SubPanel: {targetPanel.name}");
         }
 
         public void BackToMainMenu()
         {
+            bool animatedClose = false;
             foreach (var panel in allSubPanels)
-                if (panel != null) panel.SetActive(false);
-            if (mainButtonPanel != null) mainButtonPanel.SetActive(true);
+            {
+                if (panel == null || !panel.activeSelf) continue;
+                var anim = panel.GetComponent<UIPanelAnim>();
+                if (anim != null && !animatedClose)
+                {
+                    animatedClose = true;
+                    anim.Hide(() => mainButtonPanel?.SetActive(true));
+                }
+                else
+                    panel.SetActive(false);
+            }
+            if (!animatedClose) mainButtonPanel?.SetActive(true);
             PlaySelectSound();
         }
 
@@ -250,7 +267,11 @@ namespace Necromancer.UI
                 Debug.LogWarning("[TitleUI] tutorialPanel이 연결되지 않았습니다.");
                 return;
             }
-            tutorialPanel.SetActive(true);
+            var anim = tutorialPanel.GetComponent<UIPanelAnim>();
+            if (anim != null)
+                anim.Show();
+            else
+                tutorialPanel.SetActive(true);
             Debug.Log("<color=cyan>[TitleUI]</color> Tutorial panel opened.");
         }
 
@@ -260,9 +281,21 @@ namespace Necromancer.UI
         public void OnClick_CloseTutorial()
         {
             if (tutorialPanel != null)
-                tutorialPanel.SetActive(false);
+            {
+                var anim = tutorialPanel.GetComponent<UIPanelAnim>();
+                if (anim != null)
+                    anim.Hide(SaveTutorialFlag);
+                else
+                {
+                    tutorialPanel.SetActive(false);
+                    SaveTutorialFlag();
+                }
+            }
+            else SaveTutorialFlag();
+        }
 
-            // 최초 확인 시에만 플래그 저장
+        private void SaveTutorialFlag()
+        {
             var saveData = GameManager.Instance?.SaveData?.Data;
             if (saveData != null && !saveData.hasSeenTutorial)
             {

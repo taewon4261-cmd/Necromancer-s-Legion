@@ -284,7 +284,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   unit: {fileID: 0}
   view: {fileID: 4417272393577908968}
-  hideWhenFull: 1
+  hideWhenFull: 0
 --- !u!225 &3815451404880098858
 CanvasGroup:
   m_ObjectHideFlags: 0

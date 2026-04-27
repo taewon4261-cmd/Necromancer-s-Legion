@@ -33,6 +33,7 @@ namespace Necromancer.Core {
         // [DATA-SAFETY] 정수 누적 자동 저장 — N개 쌓일 때마다 파일에 기록하여 크래시 대비
         private int essenceCountSinceLastSave = 0;
         private const int ESSENCE_AUTOSAVE_THRESHOLD = 5;
+        private bool _isInitialized = false;
 
         // 이번 세션(판)에서 얻은 정수 - 결과창 표시용, 저장 안 함
         public Dictionary<string, int> currentSessionEssences { get; private set; } = new Dictionary<string, int>();
@@ -44,9 +45,31 @@ namespace Necromancer.Core {
         }
 
         public void Init() {
+            if (_isInitialized)
+            {
+                // 클라우드 로드 후 재호출: 세션 카운터·upgradeList 재설정 없이 데이터만 갱신
+                if (GameManager.Instance?.SaveData?.Data != null)
+                {
+                    var d = GameManager.Instance.SaveData.Data;
+                    currentSoul = d.currentSoul;
+                    unlockedStageLevel = d.unlockedStageLevel;
+                    currentStamina = d.currentStamina;
+                    lastStaminaUpdateTimeTicks = d.lastStaminaUpdateTimeTicks;
+                    staminaAdsWatchedToday = d.staminaAdsWatchedToday;
+                    lastStaminaAdDate = d.lastStaminaAdDate;
+                    UpdateStamina();
+                    foreach (var u in upgradeList)
+                        if (u != null) u.LoadLevel();
+                    GameManager.BroadcastSoul(currentSoul);
+                    Debug.Log($"<color=cyan>[ResourceManager]</color> Refreshed from cloud data. Soul: {currentSoul}");
+                }
+                return;
+            }
+            _isInitialized = true;
+
             currentSessionSoul = 0;
             essenceCountSinceLastSave = 0;
-            currentSessionEssences.Clear(); // 세션 정수 기록 초기화
+            currentSessionEssences.Clear();
             if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null) {
                 var data = GameManager.Instance.SaveData.Data;
                 currentSoul = data.currentSoul;

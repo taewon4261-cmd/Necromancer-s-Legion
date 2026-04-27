@@ -949,6 +949,7 @@ GameObject:
   - component: {fileID: 329936504}
   - component: {fileID: 329936503}
   - component: {fileID: 329936505}
+  - component: {fileID: 329936506}
   m_Layer: 5
   m_Name: 'Panel_Upgrade '
   m_TagString: Untagged
@@ -1048,6 +1049,22 @@ MonoBehaviour:
     type: 3}
   soulText: {fileID: 853982778}
   initialGold: 1000
+--- !u!114 &329936506
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 329936500}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b89b4da738525944b5b97967451136c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _showDuration: 0.2
+  _hideDuration: 0.15
+  _showEase: 27
+  _hideEase: 2
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -5261,6 +5278,7 @@ GameObject:
   - component: {fileID: 1525555551}
   - component: {fileID: 1525555550}
   - component: {fileID: 1525555552}
+  - component: {fileID: 1525555553}
   m_Layer: 5
   m_Name: Panel_MinionStore
   m_TagString: Untagged
@@ -5351,6 +5369,22 @@ MonoBehaviour:
   slotPrefab: {fileID: 8293275331917451820, guid: a0dbf2b1eacde4a429dac97b1cb9168a,
     type: 3}
   soulText: {fileID: 256372007}
+--- !u!114 &1525555553
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1525555547}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b89b4da738525944b5b97967451136c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _showDuration: 0.2
+  _hideDuration: 0.15
+  _showEase: 27
+  _hideEase: 2
 --- !u!1 &1602453989
 GameObject:
   m_ObjectHideFlags: 0
@@ -5720,6 +5754,7 @@ GameObject:
   - component: {fileID: 1722059814}
   - component: {fileID: 1722059813}
   - component: {fileID: 1722059815}
+  - component: {fileID: 1722059816}
   m_Layer: 5
   m_Name: 'Panel_StageSelect '
   m_TagString: Untagged
@@ -5867,6 +5902,22 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3f83ae9ec3983e8449787f0977b56b63, type: 2}
   - {fileID: 11400000, guid: 7600759ac86aeff48a91a3d33b0093ed, type: 2}
   selectedStage: {fileID: 0}
+--- !u!114 &1722059816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1722059810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b89b4da738525944b5b97967451136c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _showDuration: 0.2
+  _hideDuration: 0.15
+  _showEase: 27
+  _hideEase: 2
 --- !u!1 &1751327338
 GameObject:
   m_ObjectHideFlags: 0

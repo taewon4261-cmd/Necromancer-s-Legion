@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -47,10 +48,7 @@ namespace Necromancer.UI
         private void OnEnable()
         {
             AuthManager.OnFirebaseReady += HandleFirebaseReady;
-
-            var auth = GameManager.Instance?.Auth;
-            if (auth != null)
-                auth.OnLoginResult += HandleLoginResult;
+            // OnLoginResult는 Start()에서 구독 — OnEnable 시점에 GameManager.Auth가 미초기화일 수 있음
         }
 
         private void OnDisable()
@@ -66,6 +64,13 @@ namespace Necromancer.UI
 
         private void Start()
         {
+            // [FIX] 모든 Awake() 완료 후 Start()가 실행되므로 여기서 구독해야 Auth가 보장됨
+            var auth = GameManager.Instance?.Auth;
+            if (auth != null)
+                auth.OnLoginResult += HandleLoginResult;
+            else
+                Debug.LogError("[DownloadScene] GameManager.Auth is NULL in Start! 로그인 콜백을 받을 수 없습니다.");
+
             // 모든 패널 숨김 → RunFlow가 상황에 맞게 켬
             authPanel.SetActive(false);
             noticePopup.SetActive(false);
@@ -151,22 +156,22 @@ namespace Necromancer.UI
             bool hasRecord = HasPreviousLoginRecord();
             if (hasRecord)
             {
-                SetStatus("자동 로그인 중...");
+                SetStatus("로그인 중...");
                 authPanel.SetActive(false);
 
                 // 대기 직전 한 번 더 체크 (Failed로 바뀐 경우 방어)
                 if (auth.CurrentState == AuthState.Failed)
                 {
-                    SetStatus("자동 로그인 실패. 직접 로그인해주세요.");
+                    SetStatus("자동 로그인 실패.");
                     return await ShowLoginPanelAndWait(ct);
                 }
 
-                bool autoResult = await WaitForLoginResultAsync(ct);
+                bool autoResult = await WaitForLoginResultAsync(ct, withTimeout: true);
 
                 // 자동 로그인 실패 → 수동 로그인 패널로 전환
                 if (!autoResult)
                 {
-                    SetStatus("자동 로그인 실패. 직접 로그인해주세요.");
+                    SetStatus("자동 로그인 실패.");
                     return await ShowLoginPanelAndWait(ct);
                 }
                 return true;
@@ -185,15 +190,75 @@ namespace Necromancer.UI
         }
 
         // UniTaskCompletionSource로 OnLoginResult 이벤트를 비동기 대기
-        private UniTask<bool> WaitForLoginResultAsync(System.Threading.CancellationToken ct)
+        // withTimeout=true 일 때만 10초 타임아웃 적용 (자동 로그인 전용)
+        // 수동 로그인 패널 대기에는 타임아웃 없음 — 사용자 행동을 무한 대기해야 함
+        private async UniTask<bool> WaitForLoginResultAsync(
+            System.Threading.CancellationToken ct, bool withTimeout = false)
         {
+            var auth = GameManager.Instance?.Auth;
+
+            // 이미 완료 상태면 TCS 없이 즉시 반환
+            if (auth != null)
+            {
+                if (auth.CurrentState == AuthState.LoggedIn || auth.CurrentState == AuthState.Guest) return true;
+                if (auth.CurrentState == AuthState.Failed) return false;
+            }
+
             _loginTcs = new UniTaskCompletionSource<bool>();
-            return _loginTcs.Task.AttachExternalCancellation(ct);
+
+            // TCS 생성 직후 한 번 더 체크하여 결과 유실 방지
+            if (auth != null)
+            {
+                if (auth.CurrentState == AuthState.LoggedIn || auth.CurrentState == AuthState.Guest)
+                    _loginTcs.TrySetResult(true);
+                else if (auth.CurrentState == AuthState.Failed)
+                    _loginTcs.TrySetResult(false);
+            }
+
+            if (withTimeout)
+            {
+                // [THREAD-SAFE TIMEOUT] CancelAfter 타이머는 ThreadPool에서 발동되어 UniTask 상태머신을
+                // 백그라운드 스레드에서 재개시킬 수 있음 → Unity API 호출 시 크래시.
+                // WhenAny 방식은 PlayerLoop(메인 스레드) 위에서만 동작하므로 안전함.
+                try
+                {
+                    var loginTask   = _loginTcs.Task;
+                    var timeoutTask = UniTask.Delay(10000, cancellationToken: ct)
+                                             .ContinueWith(() => false);
+
+                    var (winner, loginResult, _) = await UniTask.WhenAny(loginTask, timeoutTask);
+
+                    if (winner == 0)
+                        return loginResult;
+
+                    // 타임아웃 발동 — 그러나 실제로 로그인이 완료됐을 수도 있으므로 재확인
+                    var authState = GameManager.Instance?.Auth?.CurrentState;
+                    if (authState == AuthState.LoggedIn || authState == AuthState.Guest)
+                    {
+                        _loginTcs = null;
+                        return true;
+                    }
+
+                    Debug.LogWarning("[DownloadScene] 자동 로그인 10초 타임아웃. 수동 로그인으로 전환.");
+                    _loginTcs = null;
+                    return false;
+                }
+                catch (OperationCanceledException)
+                {
+                    // ct 취소(씬 파괴) — RunFlow로 전파
+                    throw;
+                }
+            }
+
+            // 타임아웃 없음 — 사용자가 버튼을 누를 때까지 무한 대기
+            return await _loginTcs.Task.AttachExternalCancellation(ct);
         }
 
         // AuthManager.OnLoginResult 콜백 → TCS에 결과 전달
         private void HandleLoginResult(bool success, string uid)
         {
+            Debug.Log($"[DownloadScene] HandleLoginResult: success={success}, uid={uid ?? "null"}, _loginTcs={(_loginTcs != null ? "SET" : "NULL")}");
+
             if (!success)
             {
                 // [크래쉬 방지] 실패 시 버튼 즉시 재활성화

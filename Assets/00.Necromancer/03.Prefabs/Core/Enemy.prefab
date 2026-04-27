@@ -130,6 +130,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   CurrentGridPos: {x: -999, y: -999}
+  allUnitsIndex: -1
   LastGridUpdatePos: {x: -9999, y: -9999, z: -9999}
   IsStunned: 0
   maxHp: 50
@@ -137,8 +138,10 @@ MonoBehaviour:
   moveSpeed: 2
   unitAnimator: {fileID: -4724947027001510696}
   unitSprite: {fileID: 7993786871015807553}
+  unitCollider: {fileID: 7063953439979360031}
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitDuration: 0.1
+  deathAnimDuration: 1
   data: {fileID: 0}
   attackDamage: 10
   hitCooldown: 1
@@ -149,6 +152,7 @@ MonoBehaviour:
   enemyLayer:
     serializedVersion: 2
     m_Bits: 0
+  attackRange: 1.2
 --- !u!58 &7063953439979360031
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -252,11 +256,6 @@ PrefabInstance:
         type: 3}
       propertyPath: m_SizeDelta.x
       value: 100
-      objectReference: {fileID: 0}
-    - target: {fileID: 3292525649727084255, guid: 5fe0bdb0768f29948bf1d5630402d206,
-        type: 3}
-      propertyPath: m_SizeDelta.y
-      value: 10
       objectReference: {fileID: 0}
     - target: {fileID: 3292525649727084255, guid: 5fe0bdb0768f29948bf1d5630402d206,
         type: 3}

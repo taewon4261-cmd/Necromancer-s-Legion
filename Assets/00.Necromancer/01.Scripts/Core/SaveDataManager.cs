@@ -100,13 +100,14 @@ namespace Necromancer.Core
     {
         // AES 암호화 키/IV (32바이트 키 = AES-256)
         private const string AES_KEY = "NecroLegion!Key#2024$Secure@Pass";  // 32자
-        private const string AES_IV  = "NecroLegion!IV##";                  // 16자
+        private const string LEGACY_AES_IV = "NecroLegion!IV##";           // [MIGRATION] 구버전 고정 IV
 
         private string savePath;
         private bool isInitialized = false;
 
         // [CLOUD] 현재 로그인된 Firebase UID (로그인 시 AuthManager가 설정)
         private string _cloudUid = null;
+        private bool _isLoadingFromCloud = false; // [FIX] 클라우드 로딩 중 저장 방지용
 
         private GameSaveData currentData;
 
@@ -117,7 +118,7 @@ namespace Necromancer.Core
             // [STABILITY] 초기화되지 않은 상태에서 Save가 호출되는 것을 방지하기 위해 Awake에서 즉시 경로를 설정합니다.
             if (string.IsNullOrEmpty(savePath))
             {
-                savePath = Path.Combine(Application.persistentDataPath, "savedata.json");
+                savePath = System.IO.Path.Combine(Application.persistentDataPath, "NecromancerSave.json");
             }
         }
 
@@ -150,7 +151,26 @@ namespace Necromancer.Core
                 try
                 {
                     string encrypted = File.ReadAllText(savePath);
-                    string json = Decrypt(encrypted);
+                    string json = "";
+
+                    try
+                    {
+                        // 1. 신규 포맷 (랜덤 IV) 시도
+                        json = Decrypt(encrypted);
+                    }
+                    catch
+                    {
+                        // 2. 실패 시 구 포맷 (고정 IV) 마이그레이션 시도
+                        Debug.Log("<color=orange>[SaveDataManager]</color> New format decrypt failed. Trying legacy migration...");
+                        json = DecryptLegacy(encrypted);
+                        
+                        // 마이그레이션 성공 시 즉시 신규 포맷으로 갱신 저장
+                        currentData = JsonUtility.FromJson<GameSaveData>(json);
+                        Save(); 
+                        Debug.Log("<color=green>[SaveDataManager]</color> Migration from legacy format successful.");
+                        return;
+                    }
+
                     currentData = JsonUtility.FromJson<GameSaveData>(json);
                     Debug.Log($"<color=green>[SaveDataManager]</color> Data loaded from {savePath}");
                 }
@@ -163,7 +183,8 @@ namespace Necromancer.Core
             else
             {
                 currentData = new GameSaveData();
-                Save();
+                // [FIX] 초기화 시 즉시 저장하지 않음 (클라우드 로드 전 덮어쓰기 방지)
+                // Save(); 
             }
         }
 
@@ -174,6 +195,11 @@ namespace Necromancer.Core
         public void Save()
         {
             if (currentData == null) currentData = new GameSaveData();
+            if (_isLoadingFromCloud)
+            {
+                Debug.LogWarning("[SaveDataManager] Save skipped: currently loading from cloud.");
+                return;
+            }
 
             // [STABILITY] 저장 전 경로 재검증 (NullReference 방어)
             if (string.IsNullOrEmpty(savePath))
@@ -196,6 +222,24 @@ namespace Necromancer.Core
             if (!string.IsNullOrEmpty(_cloudUid))
             {
                 _ = SaveToCloud(_cloudUid);
+            }
+        }
+
+        // 파일에만 쓰고 클라우드 업로드는 건너뜀 (LoadFromCloud 후 이중 업로드 방지용)
+        private void SaveLocalOnly()
+        {
+            if (currentData == null) currentData = new GameSaveData();
+            if (string.IsNullOrEmpty(savePath))
+                savePath = System.IO.Path.Combine(Application.persistentDataPath, "NecromancerSave.json");
+            try
+            {
+                string json = JsonUtility.ToJson(currentData, true);
+                string encrypted = Encrypt(json);
+                System.IO.File.WriteAllText(savePath, encrypted);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[SaveDataManager] SaveLocalOnly failed: {e.Message}");
             }
         }
 
@@ -253,6 +297,7 @@ namespace Necromancer.Core
                 return false;
             }
 
+            _isLoadingFromCloud = true;
             try
             {
                 var db = FirebaseFirestore.DefaultInstance;
@@ -272,7 +317,7 @@ namespace Necromancer.Core
 
                 string json = Decrypt(encrypted);
                 currentData = JsonUtility.FromJson<GameSaveData>(json);
-                Save(); // 로컬 파일과 동기화 (클라우드 재업로드는 _cloudUid가 없어 스킵됨)
+                SaveLocalOnly(); // 로컬 파일만 동기화 (클라우드 이중 업로드 방지)
                 Debug.Log("<color=green>[SaveDataManager]</color> Cloud data loaded and synced to local.");
                 return true;
             }
@@ -280,6 +325,10 @@ namespace Necromancer.Core
             {
                 Debug.LogError($"[SaveDataManager] LoadFromCloud failed: {e.Message}");
                 throw; // 에러 발생 시 예외를 던져서 상위에서 '데이터 없음'과 '통신 에러'를 구분할 수 있게 함
+            }
+            finally
+            {
+                _isLoadingFromCloud = false;
             }
         }
 
@@ -329,13 +378,19 @@ namespace Necromancer.Core
             using (Aes aes = Aes.Create())
             {
                 aes.Key = Encoding.UTF8.GetBytes(AES_KEY);
-                aes.IV  = Encoding.UTF8.GetBytes(AES_IV);
+                aes.GenerateIV(); // [SECURITY] 매번 새로운 IV 생성
+                
                 using (var ms = new MemoryStream())
-                using (var cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
                 {
-                    byte[] data = Encoding.UTF8.GetBytes(plainText);
-                    cs.Write(data, 0, data.Length);
-                    cs.FlushFinalBlock();
+                    // IV를 암호문 앞 16바이트에 포함
+                    ms.Write(aes.IV, 0, 16);
+
+                    using (var cs = new CryptoStream(ms, aes.CreateEncryptor(), CryptoStreamMode.Write))
+                    {
+                        byte[] data = Encoding.UTF8.GetBytes(plainText);
+                        cs.Write(data, 0, data.Length);
+                        cs.FlushFinalBlock();
+                    }
                     return Convert.ToBase64String(ms.ToArray());
                 }
             }
@@ -343,10 +398,34 @@ namespace Necromancer.Core
 
         private string Decrypt(string cipherText)
         {
+            byte[] fullCipher = Convert.FromBase64String(cipherText);
+            if (fullCipher.Length < 16) throw new Exception("Invalid cipher text");
+
             using (Aes aes = Aes.Create())
             {
                 aes.Key = Encoding.UTF8.GetBytes(AES_KEY);
-                aes.IV  = Encoding.UTF8.GetBytes(AES_IV);
+                
+                // 앞 16바이트에서 IV 추출
+                byte[] iv = new byte[16];
+                Array.Copy(fullCipher, 0, iv, 0, 16);
+                aes.IV = iv;
+
+                // 나머지 부분 복호화
+                using (var ms = new MemoryStream(fullCipher, 16, fullCipher.Length - 16))
+                using (var cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read))
+                using (var sr = new StreamReader(cs))
+                {
+                    return sr.ReadToEnd();
+                }
+            }
+        }
+
+        private string DecryptLegacy(string cipherText)
+        {
+            using (Aes aes = Aes.Create())
+            {
+                aes.Key = Encoding.UTF8.GetBytes(AES_KEY);
+                aes.IV  = Encoding.UTF8.GetBytes(LEGACY_AES_IV);
                 using (var ms = new MemoryStream(Convert.FromBase64String(cipherText)))
                 using (var cs = new CryptoStream(ms, aes.CreateDecryptor(), CryptoStreamMode.Read))
                 using (var sr = new StreamReader(cs))
