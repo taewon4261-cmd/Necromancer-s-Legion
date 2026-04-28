@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 using TMPro;
 using Necromancer.Data;
 using Necromancer.Core;
@@ -28,13 +30,32 @@ namespace Necromancer.UI
         [SerializeField] private TextMeshProUGUI soulText; // 상단 소울 표시 (있을 경우)
 
         private readonly List<MinionUnlockSlot> activeSlots = new List<MinionUnlockSlot>();
+        private readonly List<AsyncOperationHandle<Sprite>> _preloadHandles = new List<AsyncOperationHandle<Sprite>>();
         private int lastDisplayedSoul = -1;
         private Tweener soulTweener;
         private bool isRefreshing = false;
 
         private void Awake()
         {
-            // [STABILITY] Awake에서는 컴포넌트 초기화만 수행하며, 상태 제어는 TitleUIController에 위임합니다.
+            StartCoroutine(PreloadIconsCoroutine());
+        }
+
+        private IEnumerator PreloadIconsCoroutine()
+        {
+            foreach (var data in minionDataList)
+            {
+                if (data?.minionIcon == null) continue;
+                _preloadHandles.Add(data.minionIcon.LoadAssetAsync<Sprite>());
+            }
+            foreach (var h in _preloadHandles)
+                yield return new WaitUntil(() => h.IsDone);
+        }
+
+        private void OnDestroy()
+        {
+            foreach (var h in _preloadHandles)
+                if (h.IsValid()) Addressables.Release(h);
+            _preloadHandles.Clear();
         }
 
         private void OnEnable()

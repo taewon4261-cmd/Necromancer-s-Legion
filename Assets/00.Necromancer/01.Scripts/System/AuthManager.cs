@@ -135,6 +135,10 @@ namespace Necromancer.Systems
                 if (success)
                 {
                     Debug.Log("<color=green>[AuthManager]</color> Guest Login Success!");
+                    // [FIX] 게스트도 anonymous UID로 클라우드 백업 활성화 (계정 전환 시 데이터 소멸 방지)
+                    var saveManager = GameManager.Instance?.SaveData;
+                    if (saveManager != null && !string.IsNullOrEmpty(uid))
+                        saveManager.SetCloudUser(uid);
                     SaveLoginMethod("Guest");
                     SetState(AuthState.Guest);
                 }
@@ -208,6 +212,7 @@ namespace Necromancer.Systems
                 {
                     // RequestServerSideAccess 콜백도 메인 스레드에서 호출되므로 직접 처리
                     Debug.LogError("[AuthManager] Failed to get Server Auth Code. Check Web Client ID in GPGS Setup.");
+                    _isLoginInProgress = false; // [FIX] 미리셋 누락으로 인한 재시도 차단 버그 수정
                     SetState(AuthState.Failed);
                     OnLoginResult?.Invoke(false, null);
                     return;
@@ -306,6 +311,14 @@ namespace Necromancer.Systems
         {
 #if GPGS
             Debug.Log("[AuthManager] 유저가 기존 구글 계정 데이터 복구를 선택함. AuthCode 재발급 시도.");
+
+            // [FIX] 계정 전환 전 현재 게스트 데이터를 anonymous UID로 강제 백업 (전환 실패 시 복구 가능하도록)
+            var saveManager = GameManager.Instance?.SaveData;
+            if (saveManager != null && !string.IsNullOrEmpty(saveManager.CurrentUid))
+            {
+                Debug.Log($"[AuthManager] 계정 전환 전 게스트 데이터 백업. UID: {saveManager.CurrentUid}");
+                _ = saveManager.SaveToCloud(saveManager.CurrentUid);
+            }
             PlayGamesPlatform.Instance.RequestServerSideAccess(true, newAuthCode => {
                 if (string.IsNullOrEmpty(newAuthCode))
                 {

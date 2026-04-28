@@ -24,5 +24,10 @@ namespace Necromancer
                 canvasGroup.alpha = visible ? 1f : 0f;
             }
         }
+
+        public void SetColor(Color color)
+        {
+            if (hpFillImage != null) hpFillImage.color = color;
+        }
     }
 }

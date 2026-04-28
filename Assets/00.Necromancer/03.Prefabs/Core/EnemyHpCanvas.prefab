@@ -66,7 +66,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 5935472f88f34874393c1d0594054f4e, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -141,7 +141,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 4b73954b7eac76d45a762ec6ebfc5970, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 5935472f88f34874393c1d0594054f4e, type: 3}
   m_Type: 3
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -261,6 +261,7 @@ MonoBehaviour:
   unit: {fileID: 0}
   view: {fileID: 4417272393577908968}
   hideWhenFull: 0
+  yOffset: -0.8
 --- !u!225 &3815451404880098858
 CanvasGroup:
   m_ObjectHideFlags: 0

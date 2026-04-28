@@ -296,7 +296,7 @@ MonoBehaviour:
   unitCollider: {fileID: 7318152054279085810}
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitDuration: 0.1
-  deathAnimDuration: 2
+  deathAnimDuration: 3
   invincibilityDuration: 0.25
   rb: {fileID: 4526610042873829610}
   virtualJoystick: {fileID: 0}
@@ -505,6 +505,12 @@ PrefabInstance:
       propertyPath: m_Name
       value: PlayerHpCanvas
       objectReference: {fileID: 0}
+    - target: {fileID: 8092020476716754927, guid: 75cf941041885724f90aa6b752442498,
+        type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 5935472f88f34874393c1d0594054f4e,
+        type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

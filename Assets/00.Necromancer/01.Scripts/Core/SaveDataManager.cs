@@ -109,6 +109,8 @@ namespace Necromancer.Core
         private string _cloudUid = null;
         private bool _isLoadingFromCloud = false; // [FIX] 클라우드 로딩 중 저장 방지용
 
+        public string CurrentUid => _cloudUid;
+
         private GameSaveData currentData;
 
         public GameSaveData Data => currentData;
@@ -316,7 +318,20 @@ namespace Necromancer.Core
                 }
 
                 string json = Decrypt(encrypted);
-                currentData = JsonUtility.FromJson<GameSaveData>(json);
+                var loaded = JsonUtility.FromJson<GameSaveData>(json);
+
+                // 클라우드 데이터가 기본값이면 로컬 데이터 유지 (빈 클라우드 덮어쓰기 방지)
+                bool isMeaningful = loaded.currentSoul > 0
+                    || loaded.unlockedStageLevel > 1
+                    || (loaded.upgradeDict != null && loaded.upgradeDict.Count > 0);
+
+                if (!isMeaningful)
+                {
+                    Debug.Log("[SaveDataManager] Cloud data is empty/default. Keeping local data.");
+                    return false;
+                }
+
+                currentData = loaded;
                 SaveLocalOnly(); // 로컬 파일만 동기화 (클라우드 이중 업로드 방지)
                 Debug.Log("<color=green>[SaveDataManager]</color> Cloud data loaded and synced to local.");
                 return true;

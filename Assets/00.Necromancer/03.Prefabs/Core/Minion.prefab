@@ -141,7 +141,7 @@ MonoBehaviour:
   unitCollider: {fileID: -894118040432091259}
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitDuration: 0.1
-  deathAnimDuration: 1
+  deathAnimDuration: 2
   minionData: {fileID: 0}
   attackDamage: 15
   lifeTime: 15

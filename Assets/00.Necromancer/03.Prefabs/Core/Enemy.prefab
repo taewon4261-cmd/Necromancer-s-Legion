@@ -141,7 +141,7 @@ MonoBehaviour:
   unitCollider: {fileID: 7063953439979360031}
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitDuration: 0.1
-  deathAnimDuration: 1
+  deathAnimDuration: 2
   data: {fileID: 0}
   attackDamage: 10
   hitCooldown: 1
