@@ -28,8 +28,8 @@ public class EnemyAI : UnitBase
     public float hitCooldown = 0.5f;
 
     [Header("Swarm AI Settings")]
-    public float separationRadius = 0.8f;
-    public float separationStrength = 5f;
+    public float separationRadius = 1.5f;
+    public float separationStrength = 8f;
     public float movementSmoothTime = 0.15f;
     private Vector2 currentVelocity;
 

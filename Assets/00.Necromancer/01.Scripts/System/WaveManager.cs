@@ -223,7 +223,8 @@ namespace Necromancer
             EnemyData selectedEnemyData = waveData.enemyPoolList[Random.Range(0, waveData.enemyPoolList.Count)];
             if (selectedEnemyData == null || playerTransform == null) return;
 
-            Vector2 spawnPos = (Vector2)playerTransform.position + (Random.insideUnitCircle.normalized * spawnRadius);
+            float randomRadius = spawnRadius + Random.Range(-3f, 3f);
+            Vector2 spawnPos = (Vector2)playerTransform.position + (Random.insideUnitCircle.normalized * randomRadius);
             
             // [AUTOMATION] 개별 태그 대신 통합 "Enemy" 풀 태그 사용
             GameObject enemyObj = GameManager.Instance.poolManager.Get("Enemy", spawnPos, Quaternion.identity);

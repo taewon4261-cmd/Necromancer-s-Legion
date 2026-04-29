@@ -2,8 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 using TMPro;
 using Necromancer.Data;
 using Necromancer.Core;
@@ -27,36 +25,12 @@ namespace Necromancer.UI
         [Header("UI References")]
         [SerializeField] private Transform contentParent;
         [SerializeField] private GameObject slotPrefab;
-        [SerializeField] private TextMeshProUGUI soulText; // 상단 소울 표시 (있을 경우)
+        [SerializeField] private TextMeshProUGUI soulText;
 
         private readonly List<MinionUnlockSlot> activeSlots = new List<MinionUnlockSlot>();
-        private readonly List<AsyncOperationHandle<Sprite>> _preloadHandles = new List<AsyncOperationHandle<Sprite>>();
         private int lastDisplayedSoul = -1;
         private Tweener soulTweener;
         private bool isRefreshing = false;
-
-        private void Awake()
-        {
-            StartCoroutine(PreloadIconsCoroutine());
-        }
-
-        private IEnumerator PreloadIconsCoroutine()
-        {
-            foreach (var data in minionDataList)
-            {
-                if (data?.minionIcon == null) continue;
-                _preloadHandles.Add(data.minionIcon.LoadAssetAsync<Sprite>());
-            }
-            foreach (var h in _preloadHandles)
-                yield return new WaitUntil(() => h.IsDone);
-        }
-
-        private void OnDestroy()
-        {
-            foreach (var h in _preloadHandles)
-                if (h.IsValid()) Addressables.Release(h);
-            _preloadHandles.Clear();
-        }
 
         private void OnEnable()
         {
@@ -77,7 +51,7 @@ namespace Necromancer.UI
         private void HandleSoulChanged(int amount)
         {
             UpdateSoulUI(false);
-            RefreshAllSlots(); // 소울 변화에 따라 해금 버튼 활성 상태 갱신
+            RefreshAllSlots();
         }
 
         public void RefreshAltar()
@@ -87,13 +61,13 @@ namespace Necromancer.UI
             if (GameManager.Instance == null || GameManager.Instance.Resources == null) return;
 
             isRefreshing = true;
-            try 
+            try
             {
                 int slotIndex = 0;
                 for (int i = 0; i < minionDataList.Count; i++)
                 {
                     var data = minionDataList[i];
-                    if (data == null || data.minionID == "SkeletonWarrior") continue; // [EXCLUDE] 기본 미니언 제외
+                    if (data == null || data.minionID == "SkeletonWarrior") continue;
 
                     MinionUnlockSlot slot;
                     if (slotIndex < activeSlots.Count)
@@ -110,9 +84,8 @@ namespace Necromancer.UI
                     }
 
                     if (slot != null)
-                    {
                         slot.Setup(data, this);
-                    }
+
                     slotIndex++;
                 }
 
@@ -140,7 +113,7 @@ namespace Necromancer.UI
         {
             if (soulText == null || GameManager.Instance == null || GameManager.Instance.Resources == null) return;
             int targetSoul = GameManager.Instance.Resources.currentSoul;
-            
+
             if (immediate)
             {
                 soulTweener?.Kill();

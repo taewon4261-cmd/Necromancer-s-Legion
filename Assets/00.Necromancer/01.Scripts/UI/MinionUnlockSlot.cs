@@ -94,7 +94,7 @@ namespace Necromancer.UI
             bool enoughSoul = currentSoul >= Data.unlockCost_Soul;
 
             // 1. 아이콘 및 이름 색상 (미해금 시에도 형태가 보이도록 색상값 상향 조정)
-            if (iconImage != null) iconImage.color = isUnlocked ? Color.white : new Color(0.5f, 0.5f, 0.5f, 0.8f);
+            if (iconImage != null) iconImage.color = isUnlocked ? Color.white : new Color(1f, 1f, 1f, 0.4f);
             if (nameText != null) nameText.color = isUnlocked ? Color.white : Color.gray;
 
             // 2. 정수 진행도 표시 (해금 완료 시 텍스트 제거)
