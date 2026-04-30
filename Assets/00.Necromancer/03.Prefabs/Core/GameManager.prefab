@@ -379,6 +379,53 @@ MonoBehaviour:
   despawnRadius: 22
   maxEnemyCount: 150
   gameTime: 0
+--- !u!1 &1802734316606375514
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5747143493408638582}
+  - component: {fileID: 6109930898477403617}
+  m_Layer: 0
+  m_Name: LogMessageManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5747143493408638582
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1802734316606375514}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5521724465700664552}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6109930898477403617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1802734316606375514}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 25bfb7225c78ee342a1488defebcf221, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _slotPrefab: {fileID: 6316268899203332797, guid: 5a44f0777b3df7c408542828594c44cf,
+    type: 3}
+  _initialPoolSize: 10
 --- !u!1 &2070542256330022340
 GameObject:
   m_ObjectHideFlags: 0
@@ -985,6 +1032,7 @@ Transform:
   - {fileID: 2802200720410909649}
   - {fileID: 6479525071464784601}
   - {fileID: 7084003020619737012}
+  - {fileID: 5747143493408638582}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2435100814045926009
@@ -1007,7 +1055,7 @@ MonoBehaviour:
   _adManager: {fileID: 8491276329709891338}
   _popupManager: {fileID: 8395375053184076173}
   _notificationManager: {fileID: 719488423207537838}
-  _downloadManager: {fileID: 0}
+  _downloadManager: {fileID: 7473823606786364347}
   _levelManager: {fileID: 8072309310297587708}
   Auth: {fileID: 2786132494251319040}
   _poolManager: {fileID: 3109314625104592819}
@@ -1017,6 +1065,7 @@ MonoBehaviour:
   _uiManager: {fileID: 5222022597978494407}
   _titleUI: {fileID: 0}
   _unitManager: {fileID: 877591509518821255}
+  _logMessageManager: {fileID: 6109930898477403617}
   _minionUnlockDataList:
   - {fileID: 11400000, guid: df4797e7f18409a40a1de36b0023e572, type: 2}
   - {fileID: 11400000, guid: aed21335d3a65f8449bca64281ebcf03, type: 2}

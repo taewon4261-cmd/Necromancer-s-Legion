@@ -218,6 +218,15 @@ namespace Necromancer.UI
                         Debug.LogError("<color=red>[UIManager]</color> HUD Prefab arrays (Buttons/Icons) are MISSING!");
                     }
 
+                    // [LOG] 로그 메시지 시스템 초기화
+                    if (GameManager.Instance?.logMessageManager != null)
+                    {
+                        if (hud.logContents != null)
+                            GameManager.Instance.logMessageManager.Init(hud.logContents);
+                        else
+                            Debug.LogWarning("<color=yellow>[UIManager]</color> LogContents is not assigned in InGameHUD!");
+                    }
+
                     Debug.Log("<color=green>[UIManager]</color> UI References Mapped via InGameHUD component.");
                 }
                 else

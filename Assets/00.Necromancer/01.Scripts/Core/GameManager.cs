@@ -43,6 +43,7 @@ namespace Necromancer
         [SerializeField] private UIManager _uiManager;
         [SerializeField] private TitleUIController _titleUI;
         [SerializeField] private UnitManager _unitManager;
+        [SerializeField] private Necromancer.UI.LogMessageManager _logMessageManager;
 
         [Header("Data Config (Master's Directive)")]
         [SerializeField] private List<Necromancer.Data.MinionUnlockSO> _minionUnlockDataList = new List<Necromancer.Data.MinionUnlockSO>();
@@ -102,6 +103,7 @@ namespace Necromancer
         public UIManager uiManager => _uiManager;
         public TitleUIController titleUI => _titleUI;
         public UnitManager unitManager => _unitManager;
+        public Necromancer.UI.LogMessageManager logMessageManager => _logMessageManager;
 
         public static event Action<int, int, string> OnWaveStarted;
         public static event Action<int> OnSoulChanged;        // 로비 UI용 — 전체 보유량(currentSoul)

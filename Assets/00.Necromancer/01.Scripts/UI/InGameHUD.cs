@@ -23,6 +23,9 @@ namespace Necromancer.UI
         public GameObject tutorialPanel;
         public Button tutorialCloseButton; // 튜토리얼 패널 안의 닫기 버튼
 
+        [Header("Log System")]
+        public RectTransform logContents; // LogView > Contents
+
         [Header("Buttons")]
         public Button speedButton;
         public Button backToTitleButton;

@@ -337,6 +337,11 @@ namespace Necromancer.Core {
                 Debug.Log($"<color=blue>[ResourceManager]</color> Essence auto-saved. (threshold: {ESSENCE_AUTOSAVE_THRESHOLD})");
             }
 
+            // 정수 획득 로그 메시지
+            var minionData = GameManager.Instance?.minionUnlockDataList?.Find(m => m != null && m.targetEnemyID == enemyID);
+            string displayName = (minionData != null && !string.IsNullOrEmpty(minionData.minionName)) ? minionData.minionName : enemyID;
+            GameManager.Instance?.logMessageManager?.AddLog($"{displayName}의 정수 획득!");
+
             Debug.Log($"<color=blue>[ResourceManager]</color> Essence Gained: {enemyID} (+{amount})");
         }
 
