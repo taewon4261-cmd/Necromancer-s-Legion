@@ -23,7 +23,8 @@ public class BoneProjectile : UnitBase
 
     private Rigidbody2D rb;
     private CancellationTokenSource projectileCts;
-    private UnitBase owner; // [NEW] 이 투사체를 발사한 주인 (회복용)
+    private UnitBase owner;
+    private string poolTag = "BoneProjectile";
 
     protected override void Awake()
     {
@@ -53,18 +54,18 @@ public class BoneProjectile : UnitBase
     }
 
     /// <summary>
-    /// 외부(공격 스크립트)에서 발사 방향과 데미지를 세팅해주는 초기화 함수
+    /// 외부(공격 스크립트)에서 발사 방향, 데미지, 풀 태그를 세팅하는 초기화 함수
     /// </summary>
-    public void Fire(Vector2 direction, float currentDamage, UnitBase fireOwner = null)
+    public void Fire(Vector2 direction, float currentDamage, UnitBase fireOwner = null, string tag = "BoneProjectile")
     {
         owner = fireOwner;
+        poolTag = tag;
         damage = currentDamage;
         rb.velocity = direction.normalized * speed;
-        
+
         float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
         transform.rotation = Quaternion.Euler(0, 0, angle + 180f);
 
-        // [SOUND] 발사 시 플레이어 공격 효과음 재생
         if (GameManager.Instance != null && GameManager.Instance.Sound != null)
         {
             GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxPlayerAttack);
@@ -83,32 +84,40 @@ public class BoneProjectile : UnitBase
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.CompareTag("Enemy"))
+        IDamageable target = null;
+
+        if (owner is EnemyAI)
         {
-            if (collision.TryGetComponent<IDamageable>(out var enemy))
-            {
-                enemy.ApplyDamage(damage);
-                
-                if (GameManager.Instance != null && GameManager.Instance.skillManager != null)
-                {
-                    var sManager = GameManager.Instance.skillManager;
-                    // UnitBase 유닛인 경우 스킬 효과 전파
-                    if (enemy.Unit != null)
-                        sManager.ApplyAttackEffects(enemy.Unit);
-
-                    // [NEW] 흡혈(Vampiric Teeth) 효과 적용 (주인 회복)
-                    if (owner != null && !owner.IsDead && sManager.vampiricChance > 0f)
-                    {
-                        if (Random.value < sManager.vampiricChance)
-                        {
-                            owner.currentHp = Mathf.Min(owner.currentHp + sManager.vampiricHealAmount, owner.maxHp);
-                        }
-                    }
-                }
-            }
-
-            ReleaseToPool();
+            // 적군 투사체: 플레이어와 미니언 타격
+            if (collision.TryGetComponent<PlayerController>(out var pc)) target = pc;
+            else if (collision.TryGetComponent<MinionAI>(out var m)) target = m;
         }
+        else
+        {
+            // 아군 투사체: 적 타격
+            if (collision.CompareTag("Enemy"))
+                collision.TryGetComponent(out target);
+        }
+
+        if (target == null) return;
+
+        target.ApplyDamage(damage);
+
+        // 스킬 효과는 아군 투사체만 적용
+        if (owner is not EnemyAI && GameManager.Instance?.skillManager != null)
+        {
+            var sManager = GameManager.Instance.skillManager;
+            if (target.Unit != null)
+                sManager.ApplyAttackEffects(target.Unit);
+
+            if (owner != null && !owner.IsDead && sManager.vampiricChance > 0f)
+            {
+                if (Random.value < sManager.vampiricChance)
+                    owner.currentHp = Mathf.Min(owner.currentHp + sManager.vampiricHealAmount, owner.maxHp);
+            }
+        }
+
+        ReleaseToPool();
     }
 
     private async UniTaskVoid AutoReleaseAfterTimeAsync(CancellationToken token)
@@ -129,14 +138,10 @@ public class BoneProjectile : UnitBase
 
     private void ReleaseToPool()
     {
-        if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
-        {
-            GameManager.Instance.poolManager.Release("BoneProjectile", gameObject);
-        }
+        if (GameManager.Instance?.poolManager != null)
+            GameManager.Instance.poolManager.Release(poolTag, gameObject);
         else
-        {
             Destroy(gameObject);
-        }
     }
 
     // 투사체는 데미지를 입지 않거나 즉시 파괴되도록 오버라이드

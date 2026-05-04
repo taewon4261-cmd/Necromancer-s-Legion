@@ -238,7 +238,7 @@ MonoBehaviour:
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
   m_DynamicPixelsPerUnit: 1
-  m_PresetInfoIsWorld: 1
+  m_PresetInfoIsWorld: 0
 --- !u!114 &871511744257522827
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -285,6 +285,7 @@ MonoBehaviour:
   unit: {fileID: 0}
   view: {fileID: 4417272393577908968}
   hideWhenFull: 0
+  yOffset: -0.8
 --- !u!225 &3815451404880098858
 CanvasGroup:
   m_ObjectHideFlags: 0

@@ -17,7 +17,8 @@ namespace Necromancer
 public class MinionAI : UnitBase
 {
     [Header("Identity & Data")]
-    public Necromancer.Data.MinionUnlockSO minionData; // [NEW] 개별 능력치 데이터 연결
+    public Necromancer.Data.MinionUnlockSO minionData;
+    private string cachedProjTag = "BoneProjectile";
 
     [Header("Minion Settings (Overridden by SO)")]
     public float attackDamage = 15f;
@@ -45,6 +46,12 @@ private CancellationTokenSource lifetimeCts;
 public void Initialize(Necromancer.Data.MinionUnlockSO data)
 {
     this.minionData = data;
+
+    // 투사체 태그를 소환 시점에 1회만 결정
+    string id = data?.minionID ?? "";
+    if (id.Contains("Archer")) cachedProjTag = "Arrow";
+    else if (id.Contains("Mage")) cachedProjTag = "MageBall";
+    else cachedProjTag = "BoneProjectile";
 
     // 스탯 재계산 및 체력 회복 (즉시)
     ApplyGlobalBuffs();
@@ -212,7 +219,7 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
             float sqrDist = (currentTarget.position - transform.position).sqrMagnitude;
             if (sqrDist <= attackRange * attackRange)
             {
-                if (attackRange > 1.8f)
+                if (attackRange > 1.5f)
                     TryRangedAttack();
                 else
                     TryMeleeAttack();
@@ -346,29 +353,26 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
     {
         if (Time.time < lastHitTime + GetEffectiveCooldown()) return;
         if (currentTarget == null) return;
+        if (GameManager.Instance?.poolManager == null) return;
 
-        // [ACTION] 다중 발사 로직 처리 (1 + 추가 발수)
-        if (GameManager.Instance != null && GameManager.Instance.poolManager != null)
+        SkillManager sManager = GameManager.Instance.skillManager;
+        int totalProjectiles = 1 + (sManager != null ? sManager.globalExtraProjectiles : 0);
+
+        Vector2 baseDir = (currentTarget.position - transform.position).normalized;
+        float spreadAngle = 10f;
+        float startAngle = -((totalProjectiles - 1) * spreadAngle) / 2f;
+
+        for (int i = 0; i < totalProjectiles; i++)
         {
-            SkillManager sManager = GameManager.Instance.skillManager;
-            int totalProjectiles = 1 + (sManager != null ? sManager.globalExtraProjectiles : 0);
-            
-            Vector2 baseDir = (currentTarget.position - transform.position).normalized;
-            float spreadAngle = 10f; // 발사체 사이의 간격 (도)
-            float startAngle = -((totalProjectiles - 1) * spreadAngle) / 2f;
+            float currentAngle = startAngle + (i * spreadAngle);
+            Vector2 finalDir = Quaternion.Euler(0, 0, currentAngle) * baseDir;
 
-            for (int i = 0; i < totalProjectiles; i++)
-            {
-                float currentAngle = startAngle + (i * spreadAngle);
-                Vector2 finalDir = Quaternion.Euler(0, 0, currentAngle) * baseDir;
-
-                GameObject projGo = GameManager.Instance.poolManager.Get("BoneProjectile", transform.position, Quaternion.identity);
-                if (projGo != null && projGo.TryGetComponent<BoneProjectile>(out var proj))
-                {
-                    proj.Fire(finalDir, attackDamage, this); // 'this' (본체)를 주인으로 전달
-                }
-            }
+            GameObject projGo = GameManager.Instance.poolManager.Get(cachedProjTag, transform.position, Quaternion.identity);
+            if (projGo != null && projGo.TryGetComponent<BoneProjectile>(out var proj))
+                proj.Fire(finalDir, attackDamage, this, cachedProjTag);
         }
+
+        lastHitTime = Time.time;
     }
 
     private void TryMeleeAttack()

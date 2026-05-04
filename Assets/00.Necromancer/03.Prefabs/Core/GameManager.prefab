@@ -286,6 +286,21 @@ MonoBehaviour:
       type: 3}
     size: 100
     batchSize: 30
+  - tag: Arrow
+    prefab: {fileID: 6499782855709715269, guid: a0b7f6913ace7d746b561e86f584ce4a,
+      type: 3}
+    size: 30
+    batchSize: 5
+  - tag: EnemyArrow
+    prefab: {fileID: 6499782855709715269, guid: 1e004aeb6db14fa4991b8120c576eaac,
+      type: 3}
+    size: 20
+    batchSize: 5
+  - tag: MageBall
+    prefab: {fileID: 6499782855709715269, guid: 67533396f33d2bb459aebcbabeffc85f,
+      type: 3}
+    size: 30
+    batchSize: 5
 --- !u!1 &1409728963684472077
 GameObject:
   m_ObjectHideFlags: 0

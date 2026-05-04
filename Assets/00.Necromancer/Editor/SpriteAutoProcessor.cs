@@ -18,6 +18,7 @@ namespace Necromancer.Editor
         private void OnPreprocessTexture()
         {
             if (!assetPath.Contains("04.Sprites")) return;
+            if (assetPath.Contains("Motion")) return; // [NEW] 'Motion' 키워드 포함 시 자동 처리 완전 제외
 
             TextureImporter textureImporter = (TextureImporter)assetImporter;
             textureImporter.textureType = TextureImporterType.Sprite;
@@ -51,6 +52,7 @@ namespace Necromancer.Editor
         private void OnPostprocessTexture(Texture2D texture)
         {
             if (!assetPath.Contains("04.Sprites")) return;
+            if (assetPath.Contains("Motion")) return; // [NEW] 'Motion' 키워드 포함 시 자동 슬라이싱 제외
             
             // [REVISION] 단일 아이콘이 조각나는 참극을 방지하기 위해 "Icons"를 자동 슬라이싱 대상에서 제외합니다.
             bool isAutoSliceTarget = assetPath.Contains("Move") || 

@@ -47,11 +47,14 @@ public class EnemyAI : UnitBase
     [SerializeField] private LayerMask enemyLayer;
 
     [Header("Targeting Settings")]
-    private UnitBase currentTarget; // 실질적인 추격/공격 대상
-    private const float MINION_SCAN_RANGE = 4.0f; // 일반 몹이 한눈 팔 범위
-        private static readonly List<UnitBase> sharedNearbyBuffer = new List<UnitBase>(32);
+    private UnitBase currentTarget;
+    private const float MINION_SCAN_RANGE = 4.0f;
+    private static readonly List<UnitBase> sharedNearbyBuffer = new List<UnitBase>(32);
     public float attackRange = 1.2f;
     private bool hasCountedDeath;
+
+    private const float RANGED_ATTACK_RANGE = 5f;
+    private const float RANGED_STOP_RANGE = 4f; // 사거리 80% 지점에서 정지
 
     // --- [스킬 연동: Modifier 패턴으로 대체됨] ---
 
@@ -245,7 +248,27 @@ public class EnemyAI : UnitBase
     {
         if (currentTarget == null || currentTarget.transform == null) return;
 
-        Vector2 stalkDir = ((Vector2)currentTarget.transform.position - (Vector2)transform.position).normalized;
+        Vector2 toTarget = (Vector2)currentTarget.transform.position - (Vector2)transform.position;
+        float sqrDistToTarget = toTarget.sqrMagnitude;
+        Vector2 stalkDir;
+
+        if (data != null && data.isRanged)
+        {
+            float stopSqr = RANGED_STOP_RANGE * RANGED_STOP_RANGE;
+            float retreatSqr = (RANGED_STOP_RANGE * 0.6f) * (RANGED_STOP_RANGE * 0.6f);
+
+            if (sqrDistToTarget < retreatSqr)
+                stalkDir = -toTarget.normalized; // 너무 가까우면 후퇴
+            else if (sqrDistToTarget > stopSqr)
+                stalkDir = toTarget.normalized;  // 사거리 밖이면 접근
+            else
+                stalkDir = Vector2.zero;         // 적정 거리 유지
+        }
+        else
+        {
+            stalkDir = toTarget.normalized;
+        }
+
         Vector2 separationDir = cachedSeparationDir;
 
         // [OPTIMIZATION] Grid Spatial Partitioning 사용 (OverlapCircleNonAlloc 대체)
@@ -290,26 +313,43 @@ public class EnemyAI : UnitBase
     {
         if (currentTarget == null) return;
 
-        // [OPTIMIZED] 물리 트리거 대신 논리적 거리 연산으로 대체
         float sqrDist = (currentTarget.transform.position - transform.position).sqrMagnitude;
-        float attackRange = 1.0f; // 적의 기본 공격 범위 (콜라이더 대체 반경)
 
-        if (sqrDist <= attackRange * attackRange)
+        if (data != null && data.isRanged)
         {
-            if (Time.time >= lastHitTime + hitCooldown)
+            if (sqrDist <= RANGED_ATTACK_RANGE * RANGED_ATTACK_RANGE && Time.time >= lastHitTime + hitCooldown)
+                TryEnemyRangedAttack();
+        }
+        else
+        {
+            float meleeRange = 1.0f;
+            if (sqrDist <= meleeRange * meleeRange && Time.time >= lastHitTime + hitCooldown)
             {
                 if (currentTarget.gameObject.TryGetComponent(out IDamageable targetUnit))
                 {
                     targetUnit.ApplyDamage(attackDamage, this);
                     lastHitTime = Time.time;
-
                     if (unitAnimator != null)
-                    {
                         unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
-                    }
                 }
             }
         }
+    }
+
+    private void TryEnemyRangedAttack()
+    {
+        if (currentTarget == null || GameManager.Instance?.poolManager == null) return;
+
+        string projTag = "EnemyArrow";
+
+        Vector2 dir = ((Vector2)currentTarget.transform.position - (Vector2)transform.position).normalized;
+        GameObject projGo = GameManager.Instance.poolManager.Get(projTag, transform.position, Quaternion.identity);
+        if (projGo != null && projGo.TryGetComponent<BoneProjectile>(out var proj))
+            proj.Fire(dir, attackDamage, this, projTag);
+
+        lastHitTime = Time.time;
+        if (unitAnimator != null)
+            unitAnimator.SetTrigger(Necromancer.Systems.UIConstants.AnimParam_Attack);
     }
 
     public override void TakeDamage(float damage, UnitBase attacker = null)

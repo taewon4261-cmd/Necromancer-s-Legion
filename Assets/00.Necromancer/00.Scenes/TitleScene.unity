@@ -2280,7 +2280,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uB9DD\uB839\uC758 \uC81C\uB2E8"
+  m_text: "\uB124\uD06C\uB85C\uBA58\uC11C \uC81C\uB2E8"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 7117805483fe5844abd1d814159298bd, type: 2}
   m_sharedMaterial: {fileID: -7989198017072685728, guid: 7117805483fe5844abd1d814159298bd,
@@ -6343,10 +6343,10 @@ MonoBehaviour:
     m_Bottom: 150
   m_ChildAlignment: 1
   m_Spacing: 30
-  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandWidth: 0
   m_ChildForceExpandHeight: 0
   m_ChildControlWidth: 1
-  m_ChildControlHeight: 1
+  m_ChildControlHeight: 0
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
