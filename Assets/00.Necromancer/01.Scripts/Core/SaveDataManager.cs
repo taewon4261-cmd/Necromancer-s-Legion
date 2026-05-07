@@ -24,6 +24,12 @@ namespace Necromancer.Core
         public int count;
     }
 
+    [Serializable]
+    public class MinionProgressData
+    {
+        public string minionID;
+        public int stars;
+    }
 
     /// <summary>
     /// 게임 내 모든 영속성 데이터를 JSON 형식으로 관리하는 매니저입니다.
@@ -53,6 +59,9 @@ namespace Necromancer.Core
         [SerializeField] private List<EssenceEntry> essenceList = new List<EssenceEntry>();
         public Dictionary<string, int> minionEssences = new Dictionary<string, int>();
 
+        [SerializeField] private List<MinionProgressData> minionProgressList = new List<MinionProgressData>();
+        public Dictionary<string, int> minionStars = new Dictionary<string, int>();
+
 
         [Header("Upgrades")]
         [SerializeField] private List<UpgradeSaveData> upgradeLevels = new List<UpgradeSaveData>();
@@ -75,6 +84,12 @@ namespace Necromancer.Core
             {
                 essenceList.Add(new EssenceEntry { enemyID = kvp.Key, count = kvp.Value });
             }
+
+            minionProgressList.Clear();
+            foreach (var kvp in minionStars)
+            {
+                minionProgressList.Add(new MinionProgressData { minionID = kvp.Key, stars = kvp.Value });
+            }
         }
 
         public void OnAfterDeserialize()
@@ -93,6 +108,12 @@ namespace Necromancer.Core
                 minionEssences[entry.enemyID] = entry.count;
             }
 
+            minionStars.Clear();
+            foreach (var entry in minionProgressList)
+            {
+                if (entry == null || string.IsNullOrEmpty(entry.minionID)) continue;
+                minionStars[entry.minionID] = Mathf.Clamp(entry.stars, 0, 5);
+            }
         }
     }
 
@@ -114,6 +135,25 @@ namespace Necromancer.Core
         private GameSaveData currentData;
 
         public GameSaveData Data => currentData;
+
+        private static readonly Dictionary<string, string> LegacyMinionIdMap = new Dictionary<string, string>
+        {
+            { "Minion_01", "SkeletonWarrior" },
+            { "Minion_02", "SkeletonArcher" },
+            { "Minion_03", "SkeletonMage" },
+            { "Minion_04", "SkeletonKnight" },
+            { "Minion_05", "SkeletonGiant" }
+        };
+
+        private static readonly HashSet<string> ValidMinionIds = new HashSet<string>
+        {
+            "SkeletonWarrior",
+            "SkeletonWolf",
+            "SkeletonArcher",
+            "SkeletonMage",
+            "SkeletonGiant",
+            "SkeletonKnight"
+        };
 
         private void Awake()
         {
@@ -168,12 +208,14 @@ namespace Necromancer.Core
                         
                         // 마이그레이션 성공 시 즉시 신규 포맷으로 갱신 저장
                         currentData = JsonUtility.FromJson<GameSaveData>(json);
+                        MigrateMinionProgress();
                         Save(); 
                         Debug.Log("<color=green>[SaveDataManager]</color> Migration from legacy format successful.");
                         return;
                     }
 
                     currentData = JsonUtility.FromJson<GameSaveData>(json);
+                    MigrateMinionProgress();
                     Debug.Log($"<color=green>[SaveDataManager]</color> Data loaded from {savePath}");
                 }
                 catch (Exception e)
@@ -185,8 +227,71 @@ namespace Necromancer.Core
             else
             {
                 currentData = new GameSaveData();
+                MigrateMinionProgress();
                 // [FIX] 초기화 시 즉시 저장하지 않음 (클라우드 로드 전 덮어쓰기 방지)
                 // Save(); 
+            }
+        }
+
+        public void MigrateMinionProgress()
+        {
+            if (currentData == null) currentData = new GameSaveData();
+            if (currentData.minionStars == null) currentData.minionStars = new Dictionary<string, int>();
+
+            if (currentData.unlockedMinionIDs != null)
+            {
+                for (int i = 0; i < currentData.unlockedMinionIDs.Count; i++)
+                {
+                    string legacyOrNewId = currentData.unlockedMinionIDs[i];
+                    if (string.IsNullOrEmpty(legacyOrNewId)) continue;
+
+                    if (LegacyMinionIdMap.TryGetValue(legacyOrNewId, out string mappedId))
+                    {
+                        SetMigratedStars(mappedId, 1);
+                    }
+                    else if (legacyOrNewId == "Minion_06")
+                    {
+                        Debug.LogWarning("[SaveDataManager] Legacy minion ID 'Minion_06' has no safe mapping. Left as orphan.");
+                    }
+                    else if (ValidMinionIds.Contains(legacyOrNewId))
+                    {
+                        SetMigratedStars(legacyOrNewId, 1);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[SaveDataManager] Unknown minion ID '{legacyOrNewId}' skipped during migration.");
+                    }
+                }
+            }
+
+            ClampMinionStars();
+            SetMigratedStars("SkeletonWarrior", 1);
+        }
+
+        private void SetMigratedStars(string minionID, int stars)
+        {
+            if (string.IsNullOrEmpty(minionID)) return;
+            int clamped = Mathf.Clamp(stars, 0, 5);
+            int current = currentData.minionStars.TryGetValue(minionID, out int existing) ? existing : 0;
+            if (clamped > current) currentData.minionStars[minionID] = clamped;
+        }
+
+        private void ClampMinionStars()
+        {
+            if (currentData?.minionStars == null) return;
+
+            var keys = new List<string>(currentData.minionStars.Keys);
+            for (int i = 0; i < keys.Count; i++)
+            {
+                string key = keys[i];
+                if (!ValidMinionIds.Contains(key))
+                {
+                    Debug.LogWarning($"[SaveDataManager] Unknown minion progress key '{key}' removed during migration.");
+                    currentData.minionStars.Remove(key);
+                    continue;
+                }
+
+                currentData.minionStars[key] = Mathf.Clamp(currentData.minionStars[key], 0, 5);
             }
         }
 
@@ -323,7 +428,9 @@ namespace Necromancer.Core
                 // 클라우드 데이터가 기본값이면 로컬 데이터 유지 (빈 클라우드 덮어쓰기 방지)
                 bool isMeaningful = loaded.currentSoul > 0
                     || loaded.unlockedStageLevel > 1
-                    || (loaded.upgradeDict != null && loaded.upgradeDict.Count > 0);
+                    || (loaded.upgradeDict != null && loaded.upgradeDict.Count > 0)
+                    || (loaded.minionStars != null && loaded.minionStars.Count > 0)
+                    || (loaded.unlockedMinionIDs != null && loaded.unlockedMinionIDs.Count > 0);
 
                 if (!isMeaningful)
                 {
@@ -332,6 +439,7 @@ namespace Necromancer.Core
                 }
 
                 currentData = loaded;
+                MigrateMinionProgress();
                 SaveLocalOnly(); // 로컬 파일만 동기화 (클라우드 이중 업로드 방지)
                 Debug.Log("<color=green>[SaveDataManager]</color> Cloud data loaded and synced to local.");
                 return true;

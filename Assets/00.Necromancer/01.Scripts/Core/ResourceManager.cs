@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Necromancer.Systems;
+using Necromancer.Data;
 
 namespace Necromancer.Core {
     public class ResourceManager : MonoBehaviour 
@@ -25,6 +26,7 @@ namespace Necromancer.Core {
         private long lastStaminaUpdateTimeTicks;
 
         public float SecondsUntilNextStamina { get; private set; }
+        public static event Action<string, int> OnMinionStarsChanged;
 
         // [INSPECTOR] Resources.LoadAll 대신 Inspector 직렬화 사용 (Resources 폴더 의존 제거)
         [SerializeField] private List<LobbyUpgradeSO> upgradeSOConfig = new List<LobbyUpgradeSO>();
@@ -366,14 +368,84 @@ namespace Necromancer.Core {
 
         public bool IsMinionUnlocked(string minionID)
         {
-            if (GameManager.Instance == null || GameManager.Instance.SaveData == null) return false;
-            return GameManager.Instance.SaveData.Data.unlockedMinionIDs.Contains(minionID);
+            return GetMinionStars(minionID) >= 1;
+        }
+
+        public int GetMinionStars(string minionID)
+        {
+            if (string.IsNullOrEmpty(minionID) || GameManager.Instance?.SaveData?.Data == null) return 0;
+            var stars = GameManager.Instance.SaveData.Data.minionStars;
+            return stars != null && stars.TryGetValue(minionID, out int value) ? Mathf.Clamp(value, 0, 5) : 0;
+        }
+
+        public static float GetMinionStarBonusRatio(int stars)
+        {
+            return stars switch
+            {
+                2 => 0.25f,
+                3 => 0.56f,
+                4 => 1.03f,
+                5 => 1.84f,
+                _ => 0f
+            };
+        }
+
+        public void GetPromotionCost(MinionUnlockSO data, int targetStar, out int soulCost, out int essenceCost)
+        {
+            soulCost = 0;
+            essenceCost = 0;
+            if (data == null) return;
+
+            float soulMultiplier;
+            float essenceMultiplier;
+            switch (targetStar)
+            {
+                case 1:
+                    soulMultiplier = 1f;
+                    essenceMultiplier = 1f;
+                    break;
+                case 2:
+                    soulMultiplier = 3f;
+                    essenceMultiplier = 1.5f;
+                    break;
+                case 3:
+                    soulMultiplier = 8f;
+                    essenceMultiplier = 3f;
+                    break;
+                case 4:
+                    soulMultiplier = 18f;
+                    essenceMultiplier = 5f;
+                    break;
+                case 5:
+                    soulMultiplier = 40f;
+                    essenceMultiplier = 8f;
+                    break;
+                default:
+                    return;
+            }
+
+            soulCost = Mathf.CeilToInt(data.unlockCost_Soul * soulMultiplier);
+            essenceCost = Mathf.CeilToInt(data.unlockCost_Essence * essenceMultiplier);
+        }
+
+        private void SetMinionStars(string minionID, int stars)
+        {
+            if (string.IsNullOrEmpty(minionID) || GameManager.Instance?.SaveData?.Data == null) return;
+            var data = GameManager.Instance.SaveData.Data;
+            if (data.minionStars == null) data.minionStars = new Dictionary<string, int>();
+
+            int clamped = Mathf.Clamp(stars, 0, 5);
+            int oldValue = data.minionStars.TryGetValue(minionID, out int oldStars) ? oldStars : 0;
+            if (oldValue == clamped) return;
+
+            data.minionStars[minionID] = clamped;
+            OnMinionStarsChanged?.Invoke(minionID, clamped);
         }
 
         /// <summary>
         /// [LOGIC] 비용(소울+정수)을 검사하고 미니언을 영구 해금합니다.
         /// </summary>
-        public bool TryUnlockMinion(Necromancer.Data.MinionUnlockSO minionData)
+        public bool TryUnlockMinion(MinionUnlockSO minionData)
         {
             if (minionData == null || IsMinionUnlocked(minionData.minionID)) return false;
 
@@ -391,8 +463,7 @@ namespace Necromancer.Core {
             // 정수 차감 (SpendEssence 대신 직접 수정 — 동일 이유)
             data.minionEssences[minionData.targetEnemyID] = currentEssence - minionData.unlockCost_Essence;
 
-            // 해금 등록
-            data.unlockedMinionIDs.Add(minionData.minionID);
+            SetMinionStars(minionData.minionID, 1);
 
             // 모든 데이터 변경 완료 후 단 한 번만 저장
             GameManager.Instance.SaveData.Save();
@@ -401,6 +472,37 @@ namespace Necromancer.Core {
                 GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade);
 
             Debug.Log($"<color=gold>[ResourceManager]</color> Minion Permanently Unlocked: {minionData.minionName}");
+            return true;
+        }
+
+        public bool TryPromoteMinion(MinionUnlockSO minionData)
+        {
+            if (minionData == null || GameManager.Instance?.SaveData?.Data == null) return false;
+
+            int currentStars = GetMinionStars(minionData.minionID);
+            int maxStars = Mathf.Clamp(minionData.maxStars, 1, 5);
+            if (currentStars < 1 || currentStars >= maxStars) return false;
+
+            int targetStar = currentStars + 1;
+            GetPromotionCost(minionData, targetStar, out int soulCost, out int essenceCost);
+
+            int currentEssence = GetEssenceCount(minionData.targetEnemyID);
+            if (currentSoul < soulCost || currentEssence < essenceCost) return false;
+
+            var data = GameManager.Instance.SaveData.Data;
+            currentSoul -= soulCost;
+            data.currentSoul = currentSoul;
+            GameManager.BroadcastSoul(currentSoul);
+
+            data.minionEssences[minionData.targetEnemyID] = currentEssence - essenceCost;
+            SetMinionStars(minionData.minionID, targetStar);
+
+            GameManager.Instance.SaveData.Save();
+
+            if (GameManager.Instance?.Sound != null)
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade);
+
+            Debug.Log($"<color=gold>[ResourceManager]</color> Minion Promoted: {minionData.minionName} -> {targetStar} Stars");
             return true;
         }
         #endregion

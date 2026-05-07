@@ -301,6 +301,31 @@ MonoBehaviour:
       type: 3}
     size: 30
     batchSize: 5
+  - tag: VFX_ChainLightning
+    prefab: {fileID: 6841187210621464881, guid: 83381247708cb6e4bb77d0995fce0855,
+      type: 3}
+    size: 16
+    batchSize: 8
+  - tag: VFX_ChargeSlash
+    prefab: {fileID: 8026734751854735916, guid: 64aa1861ac3e4e84ba76efb4d51c5d20,
+      type: 3}
+    size: 16
+    batchSize: 8
+  - tag: VFX_FireZone
+    prefab: {fileID: 2656337215674559182, guid: 0c1e57f2855066d4183e3c85c3557d20,
+      type: 3}
+    size: 16
+    batchSize: 8
+  - tag: VFX_MeteorImpact
+    prefab: {fileID: 1634500949791442307, guid: 5b8415e83b9448d4b98af813b0d5b886,
+      type: 3}
+    size: 16
+    batchSize: 8
+  - tag: VFX_SlamShockwave
+    prefab: {fileID: 6579642800983558813, guid: b2bbec82df859284cb3d6d98a073bf84,
+      type: 3}
+    size: 16
+    batchSize: 8
 --- !u!1 &1409728963684472077
 GameObject:
   m_ObjectHideFlags: 0

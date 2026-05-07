@@ -184,7 +184,14 @@ namespace Necromancer
     public class StunModifierTemplate : IUnitModifierTemplate
     {
         public string ModifierId => "Stun";
-        public IUnitModifier CreateModifier() => new StunModifier(1.5f);
+        private readonly float duration;
+
+        public StunModifierTemplate(float duration = 1.5f)
+        {
+            this.duration = duration;
+        }
+
+        public IUnitModifier CreateModifier() => new StunModifier(duration);
     }
 
     public class StunModifier : IUnitModifier

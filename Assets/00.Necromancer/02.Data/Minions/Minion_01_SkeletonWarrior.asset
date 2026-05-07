@@ -24,8 +24,8 @@ MonoBehaviour:
     m_SubObjectName: 
     m_SubObjectType: 
     m_EditorAssetChanged: 0
-  unlockCost_Soul: 0
-  unlockCost_Essence: 0
+  unlockCost_Soul: 100
+  unlockCost_Essence: 50
   targetEnemyID: SkeletonWarrior
   tier: 0
   minionName: "\uD574\uACE8 \uC804\uC0AC"
@@ -37,3 +37,6 @@ MonoBehaviour:
   attackRange: 1.5
   baseAttackSpeed: 1
   targetPriority: 4
+  maxStars: 5
+  star3Skill: {fileID: 11400000, guid: ac6ec41293fb4c24e80dfbc5f49d52d6, type: 2}
+  star5Skill: {fileID: 11400000, guid: 601fc47ea9408cd478d1612107cc5f4f, type: 2}

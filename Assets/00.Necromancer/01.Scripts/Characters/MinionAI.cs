@@ -6,6 +6,9 @@ using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using Cysharp.Threading.Tasks;
 using System.Threading;
+using System;
+using Necromancer.Core;
+using Necromancer.Data;
 
 namespace Necromancer
 {
@@ -38,6 +41,13 @@ private Transform currentTarget;
 private float lastHitTime;
 private Transform playerTransform;
 private CancellationTokenSource lifetimeCts;
+private CancellationTokenSource uniqueSkillCts;
+private MinionUniqueSkillData activeStar3Skill;
+private MinionUniqueSkillData activeStar5Skill;
+private int currentStars;
+
+public string ProjectilePoolTag => cachedProjTag;
+public CancellationToken UniqueSkillToken => uniqueSkillCts?.Token ?? CancellationToken.None;
 
 /// <summary>
 /// [AUTOMATION] 소환 시 데이터를 주입받아 외형과 스탯을 동적으로 설정합니다.
@@ -62,6 +72,8 @@ public void Initialize(Necromancer.Data.MinionUnlockSO data)
     _loadCts?.Dispose();
     _loadCts = new CancellationTokenSource();
     LoadAnimatorAsync(_loadCts.Token).Forget();
+
+    StartUniqueSkillRoutines();
 }
 
 private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
@@ -124,10 +136,14 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
         // 1. 데이터 기반 초기화 및 전역 버프 적용
         ApplyGlobalBuffs();
         SkillManager.OnMinionStatsChanged += ApplyGlobalBuffs;
+        ResourceManager.OnMinionStarsChanged += HandleMinionStarsChanged;
         
         base.OnEnable();
         
         currentTarget = null;
+        activeStar3Skill = null;
+        activeStar5Skill = null;
+        currentStars = 0;
         lifetimeCts = new CancellationTokenSource();
 
         if (GameManager.Instance != null) playerTransform = GameManager.Instance.playerTransform;
@@ -146,13 +162,17 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
             float baseDmgVal = (minionData != null) ? minionData.baseDamage : 15f;
             float baseAtkSpeedVal = (minionData != null) ? minionData.baseAttackSpeed : 1.0f; // [NEW] 기본 공속
             this.attackRange = (minionData != null) ? minionData.attackRange : 1.5f;
+            int stars = (minionData != null && GameManager.Instance?.Resources != null)
+                ? GameManager.Instance.Resources.GetMinionStars(minionData.minionID)
+                : 0;
+            float starBonusRatio = ResourceManager.GetMinionStarBonusRatio(stars);
 
             float oldMaxHp = maxHp;
             float hpRatio = (oldMaxHp > 0) ? currentHp / oldMaxHp : 1f;
 
             // [SKILL & UPGRADE] SkillManager에서 합산된 글로벌 배율만 적용 (중복 적용 방지)
-            maxHp = baseHpVal * sManager.globalMinionHpBonusRatio;
-            attackDamage = baseDmgVal * sManager.globalMinionDamageBonusRatio;
+            maxHp = baseHpVal * (sManager.globalMinionHpBonusRatio + starBonusRatio);
+            attackDamage = baseDmgVal * (sManager.globalMinionDamageBonusRatio + starBonusRatio);
             moveSpeed = baseSpeedVal * sManager.globalMinionSpeedBonusRatio;
             
             // [NEW] 소환 유지 시간 보너스 적용 (기본 10초 + 업그레이드 수치)
@@ -170,10 +190,15 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
     {
         base.OnDisable();
         SkillManager.OnMinionStatsChanged -= ApplyGlobalBuffs;
+        ResourceManager.OnMinionStarsChanged -= HandleMinionStarsChanged;
 
         lifetimeCts?.Cancel();
         lifetimeCts?.Dispose();
         lifetimeCts = null;
+
+        uniqueSkillCts?.Cancel();
+        uniqueSkillCts?.Dispose();
+        uniqueSkillCts = null;
 
         // 로드 취소 및 핸들 해제
         _loadCts?.Cancel();
@@ -185,6 +210,57 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
             Addressables.Release(_animHandle);
             _animHandle = default;
         }
+    }
+
+    private void HandleMinionStarsChanged(string minionID, int stars)
+    {
+        if (minionData == null || minionData.minionID != minionID) return;
+        ApplyGlobalBuffs();
+        StartUniqueSkillRoutines();
+    }
+
+    private void StartUniqueSkillRoutines()
+    {
+        if (!isActiveAndEnabled || lifetimeCts == null || minionData == null || GameManager.Instance?.Resources == null) return;
+
+        uniqueSkillCts?.Cancel();
+        uniqueSkillCts?.Dispose();
+        uniqueSkillCts = CancellationTokenSource.CreateLinkedTokenSource(lifetimeCts.Token);
+
+        currentStars = GameManager.Instance.Resources.GetMinionStars(minionData.minionID);
+        activeStar3Skill = currentStars >= 3 ? minionData.star3Skill : null;
+        activeStar5Skill = currentStars >= 5 ? minionData.star5Skill : null;
+
+        if (currentStars >= 3 && activeStar3Skill == null)
+            Debug.LogWarning($"[MinionAI] {minionData.minionID} is {currentStars} stars but star3Skill is not assigned.");
+
+        if (activeStar3Skill != null)
+            SkillRoutineAsync(activeStar3Skill, uniqueSkillCts.Token).Forget();
+        if (activeStar5Skill != null)
+            SkillRoutineAsync(activeStar5Skill, uniqueSkillCts.Token).Forget();
+    }
+
+    private async UniTaskVoid SkillRoutineAsync(MinionUniqueSkillData skill, CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            bool cancelled = await UniTask.Delay(
+                TimeSpan.FromSeconds(Mathf.Max(0.1f, skill.cooldown)),
+                cancellationToken: token).SuppressCancellationThrow();
+
+            if (cancelled || token.IsCancellationRequested || isDead) break;
+            if (currentTarget == null) continue;
+
+            float sqrRange = skill.range * skill.range;
+            if ((currentTarget.position - transform.position).sqrMagnitude <= sqrRange)
+                TryCastUniqueSkill(skill);
+        }
+    }
+
+    private void TryCastUniqueSkill(MinionUniqueSkillData skill)
+    {
+        if (skill == null || currentTarget == null) return;
+        MinionUniqueSkillExecutor.TryCast(this, skill, currentTarget);
     }
 
     public override void ManualUpdate(float deltaTime)
@@ -261,7 +337,7 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
             {
                 float sqrDistToPlayer = (playerTransform.position - transform.position).sqrMagnitude;
                 if (sqrDistToPlayer > 144.0f) // 12.0f * 12.0f
-                    transform.position = playerTransform.position + (Vector3)Random.insideUnitCircle * 2f;
+                    transform.position = playerTransform.position + (Vector3)UnityEngine.Random.insideUnitCircle * 2f;
             }
 
             if (GameManager.Instance != null && GameManager.Instance.unitManager != null)
@@ -396,7 +472,7 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
             // [NEW] 흡혈(Vampiric Teeth) 효과 적용
             if (sManager != null && sManager.vampiricChance > 0f)
             {
-                if (Random.value < sManager.vampiricChance)
+                if (UnityEngine.Random.value < sManager.vampiricChance)
                 {
                     float healAmount = sManager.vampiricHealAmount;
                     this.currentHp = Mathf.Min(currentHp + healAmount, maxHp);

@@ -37,3 +37,6 @@ MonoBehaviour:
   attackRange: 1.2
   baseAttackSpeed: 2
   targetPriority: 5
+  maxStars: 5
+  star3Skill: {fileID: 11400000, guid: b1b8a1ca4f6798a4e91066738b4169cc, type: 2}
+  star5Skill: {fileID: 11400000, guid: 45698d7a307df2b4097e58d69c366b39, type: 2}

@@ -36,5 +36,10 @@ namespace Necromancer.Data
         public float attackRange = 1.5f; // 1.5 이하면 근접 공격, 그 이상이면 원거리 공격
         public float baseAttackSpeed = 1.0f; // [NEW] 초당 공격 횟수 (1.0 = 1초에 1번)
         public int targetPriority = 5;   // [NEW] 적의 타겟팅 우선순위 (높을수록 먼저 공격당함)
+
+        [Header("Promotion")]
+        public int maxStars = 5;
+        public MinionUniqueSkillData star3Skill;
+        public MinionUniqueSkillData star5Skill;
     }
 }

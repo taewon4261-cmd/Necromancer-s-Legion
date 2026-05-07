@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f477c633ce293e4d8f409f4e251de73, type: 3}
+  m_Name: Skill_SkeletonMage_Meteor
+  m_EditorClassIdentifier: 
+  skillID: SkeletonMage_Meteor
+  skillName: "\uBA54\uD14C\uC624"
+  description: "\uD0C0\uAC9F \uC704\uCE58\uC5D0 \uC9E7\uC740 \uC9C0\uC5F0 \uD6C4
+    \uD3ED\uBC1C\uD558\uB294 \uC6B4\uC11D\uC744 \uB5A8\uC5B4\uB728\uB9BD\uB2C8\uB2E4."
+  cooldown: 21
+  range: 2.6
+  value: 2.2
+  effectPoolTag: VFX_MeteorImpact
+  soundCue: {fileID: 0}

@@ -24,15 +24,14 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     [Tooltip("적 탐색 반경 (기획: 화면 중앙 집중형 교전을 위해 4.0f로 추가 하향)")]
     public float detectionRadius = 4.0f;
 
-    // [OPTIMIZATION] 가비지 컬렉션 방지를 위한 정적 버퍼
-    private static readonly Collider2D[] scanBuffer = new Collider2D[16];
-
     [Tooltip("풀매니저에서 꺼내올 투사체 이름")]
     public string projectileTag = "BoneProjectile";
 
     private bool isShooting = false;
     private Animator playerAnim;
     private PoolManager poolMgr;
+    private UnitManager unitManager;
+    private readonly List<UnitBase> targetBuffer = new List<UnitBase>(64);
     
     // [ARCHITECT] 성능 최적화를 위한 보조 스탯 관리
     private float currentDamage;
@@ -42,7 +41,11 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     {
         // [OPTIMIZATION] 런타임 반복 검색(GetComponentInParent) 방지를 미리 캐싱
         playerAnim = GetComponentInParent<Animator>();
-        if (GameManager.Instance != null) poolMgr = GameManager.Instance.poolManager;
+        if (GameManager.Instance != null)
+        {
+            poolMgr = GameManager.Instance.poolManager;
+            unitManager = GameManager.Instance.unitManager;
+        }
 
         // 시작 시 초기 스탯 적용 및 이벤트 구독
         UpdateWeaponStats();
@@ -85,7 +88,9 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
             // [STABILITY] 씬 전환이나 오브젝트 파괴 시 즉시 루프 탈출
             if (!this.gameObject.activeInHierarchy) break;
 
-            if (poolMgr != null)
+            RefreshManagerReferences();
+
+            if (poolMgr != null && unitManager != null)
             {
                 Transform target = FindClosestEnemy();
                 
@@ -97,7 +102,7 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
 
             // 발사 후 쿨타임 대기 (마법 캐스팅 시간 및 재사용 대기)
             // [LIFECYCLE] 토큰을 넘겨 대기 중 파괴 시 즉시 종료 보장
-            await UniTask.Delay(System.TimeSpan.FromSeconds(fireRate), cancellationToken: token).SuppressCancellationThrow();
+            await UniTask.Delay(System.TimeSpan.FromSeconds(Mathf.Max(0.05f, fireRate)), cancellationToken: token).SuppressCancellationThrow();
         }
     }
 
@@ -107,26 +112,24 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
     /// </summary>
     private Transform FindClosestEnemy()
     {
-        // [GC-FIX] OverlapCircleAll 대신 NonAlloc 사용으로 매 발사 시 발생하는 힙 할당 제거
-        int count = Physics2D.OverlapCircleNonAlloc(transform.position, detectionRadius, scanBuffer);
-        
+        if (unitManager == null) return null;
+
+        unitManager.GetNearbyUnitsNonAlloc(transform.position, detectionRadius, targetBuffer);
+
         float closestSqrDistance = Mathf.Infinity;
         Transform closestEnemy = null;
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < targetBuffer.Count; i++)
         {
-            Collider2D hit = scanBuffer[i];
-            if (hit == null) continue;
+            UnitBase unit = targetBuffer[i];
+            if (unit == null || unit.IsDead || unit is not EnemyAI) continue;
 
-            if (hit.CompareTag("Enemy"))
+            Transform enemyTransform = unit.transform;
+            float sqrDistance = (transform.position - enemyTransform.position).sqrMagnitude;
+            if (sqrDistance < closestSqrDistance)
             {
-                // [sqrMagnitude] 제곱근 연산 제거로 매 프레임 타겟팅 부하 최소화
-                float sqrDistance = (transform.position - hit.transform.position).sqrMagnitude;
-                if (sqrDistance < closestSqrDistance)
-                {
-                    closestSqrDistance = sqrDistance;
-                    closestEnemy = hit.transform;
-                }
+                closestSqrDistance = sqrDistance;
+                closestEnemy = enemyTransform;
             }
         }
 
@@ -181,6 +184,21 @@ public class PlayerWeapon_BoneWand : MonoBehaviour
         // fireRate = 1.2f / sm.globalPlayerWeaponFireRateRatio; 
         
         Debug.Log($"[PlayerWeapon] Stats Updated: Level {weaponLevel}, DMG {currentDamage}");
+    }
+
+    private void RefreshManagerReferences()
+    {
+        if (GameManager.Instance == null) return;
+
+        if (poolMgr == null)
+        {
+            poolMgr = GameManager.Instance.poolManager;
+        }
+
+        if (unitManager == null)
+        {
+            unitManager = GameManager.Instance.unitManager;
+        }
     }
 }
 }

@@ -67,7 +67,7 @@ namespace Necromancer.UI
                 for (int i = 0; i < minionDataList.Count; i++)
                 {
                     var data = minionDataList[i];
-                    if (data == null || data.minionID == "SkeletonWarrior") continue;
+                    if (data == null) continue;
 
                     MinionUnlockSlot slot;
                     if (slotIndex < activeSlots.Count)

@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f477c633ce293e4d8f409f4e251de73, type: 3}
+  m_Name: Skill_SkeletonArcher_FireArrow
+  m_EditorClassIdentifier: 
+  skillID: SkeletonArcher_FireArrow
+  skillName: "\uBD88\uD654\uC0B4"
+  description: "\uD0C0\uAC9F \uC704\uCE58 \uC8FC\uBCC0 \uC801\uC5D0\uAC8C 3\uCD08
+    \uB3D9\uC548 \uC9C0\uC18D \uD53C\uD574\uB97C \uB0A8\uAE41\uB2C8\uB2E4."
+  cooldown: 19
+  range: 2.2
+  value: 0.45
+  effectPoolTag: VFX_FireZone
+  soundCue: {fileID: 0}

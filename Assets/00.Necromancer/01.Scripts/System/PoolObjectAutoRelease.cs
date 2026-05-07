@@ -10,7 +10,13 @@ namespace Necromancer.Systems
 
         private void OnEnable()
         {
+            CancelInvoke(nameof(ReturnToPool));
             Invoke(nameof(ReturnToPool), delay);
+        }
+
+        private void OnDisable()
+        {
+            CancelInvoke(nameof(ReturnToPool));
         }
 
         private void ReturnToPool()

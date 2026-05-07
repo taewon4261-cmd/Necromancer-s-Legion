@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f477c633ce293e4d8f409f4e251de73, type: 3}
+  m_Name: Skill_SkeletonKnight_Cleave
+  m_EditorClassIdentifier: 
+  skillID: SkeletonKnight_Cleave
+  skillName: "\uD6A1\uBCA0\uAE30"
+  description: "\uC804\uBC29 \uAC00\uAE4C\uC6B4 \uC801 \uCD5C\uB300 4\uBA85\uC5D0\uAC8C
+    \uAD11\uC5ED \uD53C\uD574\uB97C \uC90D\uB2C8\uB2E4."
+  cooldown: 8
+  range: 2.1
+  value: 1.25
+  effectPoolTag: VFX_ChargeSlash
+  soundCue: {fileID: 0}
