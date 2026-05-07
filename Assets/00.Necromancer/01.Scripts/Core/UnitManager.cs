@@ -152,6 +152,26 @@ namespace Necromancer
             Debug.Log("<color=orange>[UnitManager]</color> All registered unit data cleared.");
         }
 
+        public int CountActiveMinions()
+        {
+            int count = 0;
+            for (int i = 0; i < allUnits.Count; i++)
+            {
+                UnitBase unit = allUnits[i];
+                if (unit != null && !unit.IsDead && unit is MinionAI)
+                    count++;
+            }
+
+            for (int i = 0; i < pendingRegister.Count; i++)
+            {
+                UnitBase unit = pendingRegister[i];
+                if (unit != null && !unit.IsDead && unit is MinionAI)
+                    count++;
+            }
+
+            return count;
+        }
+
 
         #region Spatial Partitioning (Grid)
 

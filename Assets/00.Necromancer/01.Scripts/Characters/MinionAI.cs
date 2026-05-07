@@ -45,6 +45,7 @@ private CancellationTokenSource uniqueSkillCts;
 private MinionUniqueSkillData activeStar3Skill;
 private MinionUniqueSkillData activeStar5Skill;
 private int currentStars;
+private string originPoolTag = "Minion";
 
 public string ProjectilePoolTag => cachedProjTag;
 public CancellationToken UniqueSkillToken => uniqueSkillCts?.Token ?? CancellationToken.None;
@@ -53,9 +54,12 @@ public CancellationToken UniqueSkillToken => uniqueSkillCts?.Token ?? Cancellati
 /// [AUTOMATION] 소환 시 데이터를 주입받아 외형과 스탯을 동적으로 설정합니다.
 /// 애니메이터는 비동기로 로드됩니다 (캐시된 번들이므로 보통 1~2프레임 이내).
 /// </summary>
-public void Initialize(Necromancer.Data.MinionUnlockSO data)
+public void Initialize(Necromancer.Data.MinionUnlockSO data, string poolTagOverride = null)
 {
     this.minionData = data;
+    originPoolTag = string.IsNullOrEmpty(poolTagOverride)
+        ? GameManager.Instance?.unitManager?.minionPoolTag ?? "Minion"
+        : poolTagOverride;
 
     // 투사체 태그를 소환 시점에 1회만 결정
     string id = data?.minionID ?? "";
@@ -509,10 +513,7 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
     {
         if (GameManager.Instance?.poolManager != null)
         {
-            string poolTag = (minionData != null && !string.IsNullOrEmpty(minionData.minionTag))
-                ? minionData.minionTag
-                : GameManager.Instance.unitManager?.minionPoolTag ?? "Minion";
-            GameManager.Instance.poolManager.Release(poolTag, gameObject);
+            GameManager.Instance.poolManager.Release(originPoolTag, gameObject);
         }
         else
             Destroy(gameObject);

@@ -142,7 +142,8 @@ namespace Necromancer.Core
             { "Minion_02", "SkeletonArcher" },
             { "Minion_03", "SkeletonMage" },
             { "Minion_04", "SkeletonKnight" },
-            { "Minion_05", "SkeletonGiant" }
+            { "Minion_05", "SkeletonGiant" },
+            { "Minion_06", "SkeletonKnight" }
         };
 
         private static readonly HashSet<string> ValidMinionIds = new HashSet<string>
@@ -248,10 +249,6 @@ namespace Necromancer.Core
                     if (LegacyMinionIdMap.TryGetValue(legacyOrNewId, out string mappedId))
                     {
                         SetMigratedStars(mappedId, 1);
-                    }
-                    else if (legacyOrNewId == "Minion_06")
-                    {
-                        Debug.LogWarning("[SaveDataManager] Legacy minion ID 'Minion_06' has no safe mapping. Left as orphan.");
                     }
                     else if (ValidMinionIds.Contains(legacyOrNewId))
                     {

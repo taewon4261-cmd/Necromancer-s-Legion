@@ -17,6 +17,7 @@ namespace Necromancer
         {
             if (caster == null || skill == null || target == null) return false;
 
+            bool knownSkill = true;
             bool casted = skill.skillID switch
             {
                 "SkeletonWarrior_Slam" => CastWarriorSlam(caster, skill, target),
@@ -31,15 +32,22 @@ namespace Necromancer
                 "SkeletonWolf_GiantForm" => CastWolfGiantForm(caster, skill, target),
                 "SkeletonGiant_Berserk" => CastGiantBerserk(caster, skill, target),
                 "SkeletonKnight_SummonWarriors" => CastKnightSummonWarriors(caster, skill, target),
-                _ => false
+                _ => UnknownSkill(out knownSkill)
             };
 
             if (casted && !IsDelayedFeedbackSkill(skill.skillID))
                 PlayFeedback(skill, target.position);
-            else
+
+            if (!knownSkill)
                 Debug.LogWarning($"[MinionUniqueSkillExecutor] Unknown unique skillID: {skill.skillID}");
 
             return casted;
+        }
+
+        private static bool UnknownSkill(out bool knownSkill)
+        {
+            knownSkill = false;
+            return false;
         }
 
         private static bool IsDelayedFeedbackSkill(string skillID)
@@ -244,7 +252,7 @@ namespace Necromancer
 
             if (warriorData == null) return false;
 
-            int availableSlots = MaxTemporaryWarriors - activeTemporaryWarriorCount;
+            int availableSlots = GetAvailableTemporaryWarriorSlots();
             if (availableSlots <= 0) return false;
 
             int summonCount = Mathf.Min(Mathf.Clamp(Mathf.RoundToInt(skill.value > 0f ? skill.value : 2f), 1, 3), availableSlots);
@@ -254,13 +262,32 @@ namespace Necromancer
                 GameObject minionObj = GameManager.Instance.poolManager.Get("Minion", caster.transform.position + offset, Quaternion.identity);
                 if (minionObj != null && minionObj.TryGetComponent<MinionAI>(out var ai))
                 {
-                    ai.Initialize(warriorData);
+                    ai.Initialize(warriorData, "Minion");
                     activeTemporaryWarriorCount++;
                     TemporarySummonAsync(ai, 8f, caster.UniqueSkillToken).Forget();
                 }
             }
 
             return true;
+        }
+
+        private static int GetAvailableTemporaryWarriorSlots()
+        {
+            int hardLimit = MaxTemporaryWarriors;
+            int globalSlots = hardLimit;
+
+            SkillManager skillManager = GameManager.Instance?.skillManager;
+            UnitManager unitManager = GameManager.Instance?.unitManager;
+            if (skillManager != null)
+            {
+                int tempBudget = Mathf.Clamp(Mathf.CeilToInt(skillManager.currentMaxMinions * 0.2f), 1, hardLimit);
+                hardLimit = Mathf.Min(hardLimit, tempBudget);
+
+                if (unitManager != null)
+                    globalSlots = Mathf.Max(0, skillManager.currentMaxMinions - unitManager.CountActiveMinions());
+            }
+
+            return Mathf.Min(hardLimit - activeTemporaryWarriorCount, globalSlots);
         }
 
         private static async UniTaskVoid TimedSelfBuffAsync(

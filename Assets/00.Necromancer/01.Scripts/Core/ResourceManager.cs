@@ -380,6 +380,8 @@ namespace Necromancer.Core {
 
         public static float GetMinionStarBonusRatio(int stars)
         {
+            // Returns the additive star ratio. Final HP/Damage multiplier is globalRatio + this value.
+            // With the base global ratio at 1f, current totals are: 1★ 1.00x, 2★ 1.25x, 3★ 1.56x, 4★ 2.03x, 5★ 2.84x.
             return stars switch
             {
                 2 => 0.25f,

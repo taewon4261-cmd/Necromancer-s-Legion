@@ -45,12 +45,6 @@ namespace Necromancer.UI
         [SerializeField] private Button skill5IconButton;
         [SerializeField] private Image skill3IconImage;
         [SerializeField] private Image skill5IconImage;
-        [Tooltip("Deprecated: lock overlays are no longer required. Leave empty.")]
-        [SerializeField] private GameObject skill3LockOverlay;
-        [Tooltip("Deprecated: lock overlays are no longer required. Leave empty.")]
-        [SerializeField] private GameObject skill5LockOverlay;
-        [SerializeField] private TextMeshProUGUI skill3RequiredText;
-        [SerializeField] private TextMeshProUGUI skill5RequiredText;
 
         [Header("Promotion Border Colors")]
         [SerializeField] private Color bronzeBorderColor = new Color(0.6f, 0.4f, 0.2f);
@@ -282,18 +276,15 @@ namespace Necromancer.UI
 
         private void RefreshSkillIcons(int stars)
         {
-            RefreshSkillIcon(Data?.star3Skill, 3, stars, skill3IconButton, skill3IconImage, skill3LockOverlay, skill3RequiredText);
-            RefreshSkillIcon(Data?.star5Skill, 5, stars, skill5IconButton, skill5IconImage, skill5LockOverlay, skill5RequiredText);
+            RefreshSkillIcon(3, stars, skill3IconButton, skill3IconImage);
+            RefreshSkillIcon(5, stars, skill5IconButton, skill5IconImage);
         }
 
         private void RefreshSkillIcon(
-            MinionUniqueSkillData skill,
             int requiredStars,
             int currentStars,
             Button button,
-            Image iconImage,
-            GameObject lockOverlay,
-            TextMeshProUGUI requiredText)
+            Image iconImage)
         {
             bool unlocked = currentStars >= requiredStars;
 
@@ -307,15 +298,6 @@ namespace Necromancer.UI
             if (resolvedIconImage != null)
             {
                 resolvedIconImage.color = unlocked ? Color.white : lockedSkillColor;
-            }
-
-            if (lockOverlay != null)
-                lockOverlay.SetActive(false);
-
-            if (requiredText != null)
-            {
-                requiredText.text = $"{requiredStars}성";
-                requiredText.gameObject.SetActive(false);
             }
         }
 
