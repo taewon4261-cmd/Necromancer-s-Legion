@@ -4,6 +4,14 @@ using DG.Tweening;
 
 namespace Necromancer.Core
 {
+    public enum SfxPriority
+    {
+        Low = 0,
+        Medium = 1,
+        High = 2,
+        Critical = 3
+    }
+
     /// <summary>
     /// 게임 전체의 사운드(BGM, SFX)를 총괄하며, 오디오 소스 풀링을 지원합니다.
     /// </summary>
@@ -11,6 +19,7 @@ namespace Necromancer.Core
     {
         [Header("Audio Sources")]
         [SerializeField] private AudioSource bgmSource;
+
         [Header("Audio Clips")]
         [SerializeField] public AudioClip titleBGM;
         [SerializeField] public AudioClip gameBGM;
@@ -29,40 +38,51 @@ namespace Necromancer.Core
 
         [SerializeField] private GameObject sfxSourcePrefab;
         [SerializeField] private int initialSfxPoolSize = 10;
+        [SerializeField] private int maxActiveSfx = 32;
 
         [Header("Volume Settings")]
         [Range(0f, 1f)] public float masterVolume = 1f;
         [Range(0f, 1f)] public float bgmVolume = 0.6f;
         [Range(0f, 1f)] public float sfxVolume = 0.8f;
 
-        private Queue<AudioSource> sfxPool = new Queue<AudioSource>();
-        private List<AudioSource> activeSfx = new List<AudioSource>();
+        private readonly Queue<AudioSource> sfxPool = new Queue<AudioSource>();
+        private readonly List<AudioSource> activeSfx = new List<AudioSource>();
+        private readonly Dictionary<AudioSource, SfxPriority> activeSfxPriorities = new Dictionary<AudioSource, SfxPriority>(32);
+        private readonly Dictionary<AudioSource, float> activeSfxStartTimes = new Dictionary<AudioSource, float>(32);
+        private readonly Dictionary<AudioSource, Coroutine> activeSfxReturnRoutines = new Dictionary<AudioSource, Coroutine>(32);
+        private readonly Dictionary<int, float> lastSfxPlayTimes = new Dictionary<int, float>(64);
+
+        private bool isAudioSilenced;
+        private int droppedSfxCount;
+        private int throttledSfxCount;
+        private int createdSfxSourceCount;
+        private float nextDiagnosticTime;
 
         public void Init()
         {
             InitPool();
             LoadVolumesFromData();
 
-            // [DIAGNOSTIC] 인스펙터 연결 상태 확인
             if (bgmSource == null) Debug.LogError("<color=red>[SoundManager]</color> BGM Source가 연결되지 않았습니다! 인스펙터에서 AudioSource를 드래그 앤 드롭 하세요.");
             if (titleBGM == null) Debug.LogWarning("<color=yellow>[SoundManager]</color> Title BGM 클립이 비어있습니다.");
-            if (gameBGM == null)  Debug.LogWarning("<color=yellow>[SoundManager]</color> Game BGM 클립이 비어있습니다.");
+            if (gameBGM == null) Debug.LogWarning("<color=yellow>[SoundManager]</color> Game BGM 클립이 비어있습니다.");
 
             Debug.Log("<color=cyan>[SoundManager]</color> Initialized by GameManager.");
         }
 
         private void LoadVolumesFromData()
         {
-            if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null)
-            {
-                masterVolume = GameManager.Instance.SaveData.Data.masterVolume;
-                bgmVolume = GameManager.Instance.SaveData.Data.bgmVolume;
-                sfxVolume = GameManager.Instance.SaveData.Data.sfxVolume;
-            }
+            if (GameManager.Instance?.SaveData?.Data == null) return;
+
+            masterVolume = GameManager.Instance.SaveData.Data.masterVolume;
+            bgmVolume = GameManager.Instance.SaveData.Data.bgmVolume;
+            sfxVolume = GameManager.Instance.SaveData.Data.sfxVolume;
         }
 
         private void InitPool()
         {
+            maxActiveSfx = Mathf.Max(1, maxActiveSfx);
+
             if (sfxSourcePrefab == null)
             {
                 GameObject obj = new GameObject("SFX_Source_Template");
@@ -73,9 +93,10 @@ namespace Necromancer.Core
                 obj.SetActive(false);
             }
 
-            for (int i = 0; i < initialSfxPoolSize; i++)
+            int poolSize = Mathf.Clamp(initialSfxPoolSize, 1, maxActiveSfx);
+            for (int i = 0; i < poolSize; i++)
             {
-                CreateNewSfxSource();
+                sfxPool.Enqueue(CreateNewSfxSource());
             }
         }
 
@@ -83,20 +104,35 @@ namespace Necromancer.Core
         {
             GameObject obj = Instantiate(sfxSourcePrefab, transform);
             AudioSource source = obj.GetComponent<AudioSource>();
+            source.playOnAwake = false;
             obj.SetActive(false);
-            sfxPool.Enqueue(source);
+            createdSfxSourceCount++;
             return source;
         }
 
         /// <summary>
-        /// 특정 사운드 시냅스를 재생합니다.
+        /// 기존 호출 호환용. 일반 효과음은 Medium 우선순위와 무제한 간격을 사용합니다.
         /// </summary>
         public void PlaySFX(AudioClip clip, float pitchVar = 0.1f)
         {
-            if (isAudioSilenced || clip == null) return; // [STABILITY] 사운드 셧다운 상태면 재생 거부
+            PlaySFX(clip, SfxPriority.Medium, 0f, pitchVar);
+        }
 
-            AudioSource source = GetSfxSource();
-            if (source == null) return;
+        public void PlaySFX(AudioClip clip, SfxPriority priority, float minInterval = 0f, float pitchVar = 0.1f)
+        {
+            if (isAudioSilenced || clip == null) return;
+            if (IsThrottled(clip, priority, minInterval))
+            {
+                throttledSfxCount++;
+                return;
+            }
+
+            AudioSource source = GetSfxSource(priority);
+            if (source == null)
+            {
+                droppedSfxCount++;
+                return;
+            }
 
             source.clip = clip;
             source.volume = sfxVolume * masterVolume;
@@ -104,37 +140,111 @@ namespace Necromancer.Core
             source.gameObject.SetActive(true);
             source.Play();
 
-            if (activeSfx != null && !activeSfx.Contains(source)) 
-            {
+            if (!activeSfx.Contains(source))
                 activeSfx.Add(source);
-            }
 
-            StartCoroutine(ReturnToPoolAfterPlay(source));
+            activeSfxPriorities[source] = priority;
+            activeSfxStartTimes[source] = Time.unscaledTime;
+            activeSfxReturnRoutines[source] = StartCoroutine(ReturnToPoolAfterPlay(source));
         }
 
-        private AudioSource GetSfxSource()
+        private bool IsThrottled(AudioClip clip, SfxPriority priority, float minInterval)
+        {
+            if (priority == SfxPriority.Critical || minInterval <= 0f) return false;
+
+            int clipId = clip.GetInstanceID();
+            float now = Time.unscaledTime;
+            if (lastSfxPlayTimes.TryGetValue(clipId, out float lastTime) && now - lastTime < minInterval)
+                return true;
+
+            lastSfxPlayTimes[clipId] = now;
+            return false;
+        }
+
+        private AudioSource GetSfxSource(SfxPriority priority)
         {
             if (sfxPool.Count > 0)
-            {
                 return sfxPool.Dequeue();
-            }
-            else
-            {
+
+            if (activeSfx.Count < maxActiveSfx)
                 return CreateNewSfxSource();
+
+            return TryStealLowerPrioritySource(priority);
+        }
+
+        private AudioSource TryStealLowerPrioritySource(SfxPriority requestedPriority)
+        {
+            AudioSource candidate = null;
+            SfxPriority candidatePriority = requestedPriority;
+            float oldestStartTime = float.MaxValue;
+
+            for (int i = 0; i < activeSfx.Count; i++)
+            {
+                AudioSource source = activeSfx[i];
+                if (source == null) continue;
+
+                SfxPriority priority = activeSfxPriorities.TryGetValue(source, out var storedPriority)
+                    ? storedPriority
+                    : SfxPriority.Low;
+                if (priority >= requestedPriority) continue;
+
+                float startTime = activeSfxStartTimes.TryGetValue(source, out float storedStartTime)
+                    ? storedStartTime
+                    : 0f;
+
+                if (candidate == null || priority < candidatePriority || (priority == candidatePriority && startTime < oldestStartTime))
+                {
+                    candidate = source;
+                    candidatePriority = priority;
+                    oldestStartTime = startTime;
+                }
             }
+
+            if (candidate == null) return null;
+
+            if (activeSfxReturnRoutines.TryGetValue(candidate, out Coroutine routine) && routine != null)
+                StopCoroutine(routine);
+
+            candidate.Stop();
+            UntrackActiveSource(candidate);
+            return candidate;
         }
 
         private System.Collections.IEnumerator ReturnToPoolAfterPlay(AudioSource source)
         {
-            // [STABILITY] 소스 파괴 여부도 함께 체크
             yield return new WaitUntil(() => source == null || !source.isPlaying);
-            
-            if (source != null && !sfxPool.Contains(source))
-            {
-                source.gameObject.SetActive(false);
-                if (activeSfx.Contains(source)) activeSfx.Remove(source);
+            ReturnSourceToPool(source);
+        }
+
+        private void ReturnSourceToPool(AudioSource source)
+        {
+            if (source == null) return;
+
+            source.gameObject.SetActive(false);
+            UntrackActiveSource(source);
+            if (!sfxPool.Contains(source))
                 sfxPool.Enqueue(source);
+        }
+
+        private void UntrackActiveSource(AudioSource source)
+        {
+            activeSfx.Remove(source);
+            activeSfxPriorities.Remove(source);
+            activeSfxStartTimes.Remove(source);
+            activeSfxReturnRoutines.Remove(source);
+        }
+
+        private void Update()
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (Time.unscaledTime < nextDiagnosticTime) return;
+            nextDiagnosticTime = Time.unscaledTime + 1f;
+
+            if (activeSfx.Count >= maxActiveSfx || droppedSfxCount > 0 || throttledSfxCount > 0 || isAudioSilenced)
+            {
+                Debug.Log($"[SoundManager] SFX diagnostics: active={activeSfx.Count}, pool={sfxPool.Count}, dropped={droppedSfxCount}, throttled={throttledSfxCount}, created={createdSfxSourceCount}, silenced={isAudioSilenced}");
             }
+#endif
         }
 
         /// <summary>
@@ -144,9 +254,7 @@ namespace Necromancer.Core
         {
             bgmVolume = Mathf.Clamp01(volume);
             if (bgmSource != null)
-            {
                 bgmSource.volume = bgmVolume * masterVolume;
-            }
         }
 
         /// <summary>
@@ -164,21 +272,18 @@ namespace Necromancer.Core
         {
             masterVolume = Mathf.Clamp01(volume);
             if (bgmSource != null)
-            {
                 bgmSource.volume = bgmVolume * masterVolume;
-            }
-            // SFX는 재생 시점에 masterVolume을 곱하므로 별도의 루프가 필요하지 않으나, 
-            // 현재 재생 중인 SFX가 있다면 업데이트 로직을 추가할 수 있습니다.
         }
 
         public void PlayBGM(AudioClip clip, bool fade = true)
         {
-            if (bgmSource == null) 
+            if (bgmSource == null)
             {
                 Debug.LogError("<color=red>[SoundManager]</color> BGM Source가 없어 재생할 수 없습니다.");
                 return;
             }
-            if (clip == null) 
+
+            if (clip == null)
             {
                 Debug.LogWarning("<color=yellow>[SoundManager]</color> 재생하려는 BGM 클립이 NULL입니다. 인스펙터 설정을 확인하세요.");
                 return;
@@ -187,8 +292,6 @@ namespace Necromancer.Core
             if (bgmSource.clip == clip && bgmSource.isPlaying) return;
 
             Debug.Log($"<color=lime>[SoundManager]</color> PlayBGM: <b>{clip.name}</b> (Fade: {fade})");
-
-            // [STABILITY] 이전 페이드 트윈이 있다면 제거
             bgmSource.DOKill();
 
             if (fade && bgmSource.clip != null && bgmSource.isPlaying)
@@ -217,7 +320,8 @@ namespace Necromancer.Core
 
             if (fade)
             {
-                bgmSource.DOFade(0f, 0.5f).OnComplete(() => {
+                bgmSource.DOFade(0f, 0.5f).OnComplete(() =>
+                {
                     bgmSource.Stop();
                     bgmSource.clip = null;
                 });
@@ -235,26 +339,25 @@ namespace Necromancer.Core
         /// </summary>
         public void StopAllSFX(bool silenceNewSounds = true)
         {
-            StopAllCoroutines(); 
+            StopAllCoroutines();
             isAudioSilenced = silenceNewSounds;
 
-            if (activeSfx != null)
+            for (int i = activeSfx.Count - 1; i >= 0; i--)
             {
-                foreach (var source in activeSfx)
-                {
-                    if (source != null)
-                    {
-                        source.Stop();
-                        source.gameObject.SetActive(false);
-                        if (!sfxPool.Contains(source))
-                        {
-                            sfxPool.Enqueue(source);
-                        }
-                    }
-                }
-                activeSfx.Clear();
+                AudioSource source = activeSfx[i];
+                if (source == null) continue;
+
+                source.Stop();
+                source.gameObject.SetActive(false);
+                if (!sfxPool.Contains(source))
+                    sfxPool.Enqueue(source);
             }
-            
+
+            activeSfx.Clear();
+            activeSfxPriorities.Clear();
+            activeSfxStartTimes.Clear();
+            activeSfxReturnRoutines.Clear();
+
             Debug.Log($"<color=orange>[SoundManager]</color> All SFX Stopped. Silenced: {isAudioSilenced}");
         }
 
@@ -266,10 +369,5 @@ namespace Necromancer.Core
             isAudioSilenced = false;
             Debug.Log("<color=green>[SoundManager]</color> SFX Playback Resumed.");
         }
-
-
-    
-
-        private bool isAudioSilenced = false; // [STABILITY] 씬 전환 중 새로운 사운드 재생 방지 플래그
-}
+    }
 }

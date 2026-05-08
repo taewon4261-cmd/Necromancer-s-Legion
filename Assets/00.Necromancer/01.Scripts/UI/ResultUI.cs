@@ -32,11 +32,6 @@ namespace Necromancer.UI
         // 중복 지급 방지 플래그
         private bool _isDoubleRewarded = false;
 
-        private void Awake()
-        {
-            gameObject.SetActive(false);
-        }
-
         /// <summary>
         /// 결과창을 활성화하고 데이터를 바인딩합니다.
         /// </summary>

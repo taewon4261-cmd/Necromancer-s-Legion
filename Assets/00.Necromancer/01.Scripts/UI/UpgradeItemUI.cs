@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using DG.Tweening;
+using Necromancer.Core;
 using Necromancer.Systems;
 
 namespace Necromancer.UI
@@ -148,7 +149,7 @@ namespace Necromancer.UI
 
                 // [SOUND] 구매 실패 효과음
                 if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn, SfxPriority.Critical);
                 }
             }
         }

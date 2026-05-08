@@ -5,6 +5,7 @@ using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
 using DG.Tweening;
+using Necromancer.Core;
 
 
 namespace Necromancer
@@ -399,10 +400,6 @@ public class PlayerController : UnitBase
         // 2초간 무적 및 시각적 효과
         InvincibilityAsync(2.0f).Forget();
         
-        // [SOUND] 부활 효과음
-        if (GameManager.Instance != null && GameManager.Instance.Sound != null)
-            GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxWin); 
-
         Debug.Log("<color=gold>[Player] RESURRECTED!</color> Remaining Lives: " + (GameManager.Instance?.skillManager?.totalResurrections ?? 0));
     }
 }

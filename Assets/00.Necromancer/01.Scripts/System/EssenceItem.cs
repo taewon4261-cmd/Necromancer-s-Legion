@@ -72,7 +72,7 @@ namespace Necromancer
                 
                 // 효과음 재생
                 if (GameManager.Instance.Sound != null)
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSoulGain); // 소울 획득음 재사용 혹은 전용음
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSoulGain, SfxPriority.Low, 0.12f); // 소울 획득음 재사용 혹은 전용음
             }
 
             // 풀링 시스템으로 회수 (태그가 "Essence"라고 가정)

@@ -25,11 +25,17 @@ namespace Necromancer
         public float gameTime = 0f;
         private Transform playerTransform;
         private CancellationTokenSource waveCts;
+        private float lastFinalClearFailureLogTime = -999f;
+        private const float FinalClearFailureLogInterval = 1f;
 
         public int activeEnemyCount { get; private set; } = 0;
         
         public void OnEnemySpawned() => activeEnemyCount++;
-        public void OnEnemyDied() => activeEnemyCount = Mathf.Max(0, activeEnemyCount - 1);
+        public void OnEnemyDied()
+        {
+            activeEnemyCount = Mathf.Max(0, activeEnemyCount - 1);
+            TryCompleteStageIfFinalClear("OnEnemyDied");
+        }
 
         public void Init()
         {
@@ -51,6 +57,7 @@ namespace Necromancer
             currentWaveIndex = 0;
             activeEnemyCount = 0;
             isSpawning = true;
+            lastFinalClearFailureLogTime = -999f;
 
             if (GameManager.Instance.currentStage != null)
             {
@@ -79,8 +86,11 @@ namespace Necromancer
 
         private void Update()
         {
-            // 타이머 업데이트와 UI 브로드캐스트는 매 프레임 수행
-            gameTime += Time.deltaTime;
+            // 기본 진행은 기존 배속을 따르되, LevelUp pause만으로 승리 판정 시간이 막히지 않게 보정합니다.
+            if (ShouldAdvanceWaveClock())
+            {
+                gameTime += Time.timeScale > 0f ? Time.deltaTime : Time.unscaledDeltaTime;
+            }
 
             if (waveDatabase != null && waveDatabase.waveList != null && waveDatabase.waveList.Count > 0)
             {
@@ -88,6 +98,15 @@ namespace Necromancer
                 GameManager.BroadcastTime(gameTime);
                 GameManager.BroadcastWave(safeIndex, waveDatabase.waveList.Count, waveDatabase.waveList[safeIndex].waveName);
             }
+        }
+
+        private bool ShouldAdvanceWaveClock()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null || gm.IsGameOver) return false;
+            if (Time.timeScale > 0f) return true;
+
+            return gm.HasPause(PauseSource.LevelUp) && !gm.HasAnyPauseExcept(PauseSource.LevelUp);
         }
 
         private async UniTaskVoid WaveProcessLoopAsync(CancellationToken token)
@@ -101,7 +120,11 @@ namespace Necromancer
                     RecycleDistantEnemies();
                 }
                 
-                await UniTask.Delay(System.TimeSpan.FromSeconds(0.25f), cancellationToken: token);
+                await UniTask.Delay(
+                    System.TimeSpan.FromSeconds(0.25f),
+                    DelayType.UnscaledDeltaTime,
+                    PlayerLoopTiming.Update,
+                    cancellationToken: token);
             }
         }
 
@@ -185,22 +208,73 @@ namespace Necromancer
             }
 
             // 3. 스테이지 클리어 조건 (O(1) 체크)
-            if (!isSpawning && currentWaveIndex == waveDatabase.waveList.Count - 1 && activeEnemyCount == 0)
+            TryCompleteStageIfFinalClear("CheckWaveProgress");
+        }
+
+        private void TryCompleteStageIfFinalClear(string source)
+        {
+            var gm = GameManager.Instance;
+            if (gm == null || gm.IsGameOver) return;
+            if (waveDatabase == null || waveDatabase.waveList == null || waveDatabase.waveList.Count == 0) return;
+
+            bool isFinalWave = currentWaveIndex == waveDatabase.waveList.Count - 1;
+            if (!isSpawning && isFinalWave && activeEnemyCount == 0)
             {
-                GameManager.Instance.OnStageClear();
+                Debug.Log($"[WaveManager] Final clear condition met. source={source}, isSpawning={isSpawning}, currentWaveIndex={currentWaveIndex}, waveCount={waveDatabase.waveList.Count}, activeEnemyCount={activeEnemyCount}, gameTime={gameTime:F2}, isGameOver={gm.IsGameOver}, timeScale={Time.timeScale}");
+                gm.OnStageClear();
+                return;
             }
+
+            LogFinalClearFailureIfWave10(source, gm);
+        }
+
+        private void LogFinalClearFailureIfWave10(string source, GameManager gm)
+        {
+            int waveCount = waveDatabase.waveList.Count;
+            bool isWave10 = waveCount == 10 && currentWaveIndex == waveCount - 1;
+            if (!isWave10) return;
+
+            WaveData lastWave = waveDatabase.waveList[waveCount - 1];
+            if (gameTime < lastWave.startTime + lastWave.duration) return;
+            if (Time.unscaledTime < lastFinalClearFailureLogTime + FinalClearFailureLogInterval) return;
+
+            lastFinalClearFailureLogTime = Time.unscaledTime;
+            Debug.Log($"[WaveManager] Final clear condition pending. source={source}, currentWaveIndex={currentWaveIndex}, waveCount={waveCount}, isSpawning={isSpawning}, activeEnemyCount={activeEnemyCount}, gameTime={gameTime:F2}, lastWave.startTime={lastWave.startTime:F2}, lastWave.duration={lastWave.duration:F2}, timeScale={Time.timeScale}, isGameOver={gm.IsGameOver}");
+        }
+
+        private bool ShouldStopBeforeSpawn()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null || gm.IsGameOver) return true;
+            if (!isSpawning) return true;
+            if (waveDatabase == null || waveDatabase.waveList == null || waveDatabase.waveList.Count == 0) return true;
+            if (currentWaveIndex < 0 || currentWaveIndex >= waveDatabase.waveList.Count) return true;
+
+            bool isFinalWave = currentWaveIndex == waveDatabase.waveList.Count - 1;
+            if (!isFinalWave) return false;
+
+            WaveData lastWave = waveDatabase.waveList[currentWaveIndex];
+            if (gameTime < lastWave.startTime + lastWave.duration) return false;
+
+            isSpawning = false;
+            TryCompleteStageIfFinalClear("SpawnLoopDurationGuard");
+            return true;
         }
 
         private async UniTaskVoid SpawnLoopAsync(CancellationToken token)
         {
             while (isSpawning && !token.IsCancellationRequested)
             {
+                if (ShouldStopBeforeSpawn()) break;
+
                 if (waveDatabase != null && waveDatabase.waveList != null && currentWaveIndex < waveDatabase.waveList.Count)
                 {
                     // [NEW] 최댓값 제한 체크 (쿼터 초과 시 스폰 지연)
                     if (activeEnemyCount < maxEnemyCount)
                     {
                         WaveData currentWave = waveDatabase.waveList[currentWaveIndex];
+                        if (ShouldStopBeforeSpawn()) break;
+
                         SpawnEnemy(currentWave);
                         await UniTask.Delay(System.TimeSpan.FromSeconds(currentWave.spawnDelay), cancellationToken: token);
                     }
@@ -244,6 +318,17 @@ namespace Necromancer
         {
             isSpawning = false;
             waveCts?.Cancel();
+            ResetRuntimeState();
+        }
+
+        private void ResetRuntimeState()
+        {
+            gameTime = 0f;
+            currentWaveIndex = 0;
+            activeEnemyCount = 0;
+            lastFinalClearFailureLogTime = -999f;
+            playerTransform = null;
+            waveDatabase = null;
         }
 
         private void OnDestroy()

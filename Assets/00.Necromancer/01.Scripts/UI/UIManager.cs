@@ -89,7 +89,7 @@ namespace Necromancer.UI
 
                 // [SOUND] 설정창 열기 효과음
                 if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn, SfxPriority.Critical);
                 }
 
                 Debug.Log("<color=cyan>[UIManager]</color> Settings Opened (Paused)");
@@ -101,7 +101,7 @@ namespace Necromancer.UI
 
                 // [SOUND] 설정창 닫기 효과음
                 if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn, SfxPriority.Critical);
                 }
 
                 Debug.Log("<color=cyan>[UIManager]</color> Settings Closed (Resumed)");
@@ -119,6 +119,9 @@ namespace Necromancer.UI
 
             // [ARCHITECTURAL PURITY] 자동 탐색/복구 로직 제거.
             // 인스턴스가 없다면 오직 지정된 프리팹으로만 생성합니다.
+            if (inGameUIPrefab == null)
+                Debug.LogError($"[UIManager] InGameUIPrefab is null during Init. scene={SceneManager.GetActiveScene().name}");
+
             if (inGameUIInstance == null && inGameUIPrefab != null)
             {
                 inGameUIInstance = Instantiate(inGameUIPrefab, transform);
@@ -165,6 +168,7 @@ namespace Necromancer.UI
                     dangerOverlay = hud.dangerOverlay;
                     levelUpPanel = hud.levelUpPanel;
                     resultUI = hud.resultUI;
+                    ValidateResultUIBinding(hud);
                     rerollButton = hud.rerollButton;
                     textSpeedToggle = hud.textSpeedToggle;
                     settingUI = hud.settingUI; // [NEW] 브릿지 연결
@@ -286,6 +290,7 @@ namespace Necromancer.UI
 
             if (levelUpPanel != null) levelUpPanel.SetActive(false);
             if (resultUI != null) resultUI.gameObject.SetActive(false);
+            else Debug.LogError(BuildResultUIDiagnosticMessage("ResultUI is null after UIManager.Init."));
 
             // [TUTORIAL] 최초 실행 시 가이드 패널 노출
             CheckAndShowTutorial();
@@ -532,7 +537,7 @@ namespace Necromancer.UI
 
             // [SOUND] 스킬 선택 효과음
             if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn, SfxPriority.Critical);
             }
 
             if (levelUpPanel != null)
@@ -553,19 +558,38 @@ namespace Necromancer.UI
 
         public void ShowResultPanel(bool isVictory)
         {
-            if (resultUI == null) return;
+            Debug.Log($"[UIManager] ShowResultPanel entered. isVictory={isVictory}");
+
+            if (resultUI == null)
+            {
+                Debug.LogError(BuildResultUIDiagnosticMessage("CRITICAL: ResultUI is null. Cannot show result panel."));
+                GameManager.Instance?.SetPause(PauseSource.GameOver, false);
+                return;
+            }
+
+            if (levelUpPanel != null)
+            {
+                levelUpPanel.SetActive(false);
+            }
+
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.SetPause(PauseSource.LevelUp, false);
+            }
             
             int souls = (GameManager.Instance != null && GameManager.Instance.Resources != null) ? 
                 GameManager.Instance.Resources.currentSessionSoul : 0;
 
             // [STABILITY] 결과창 출력 즉시 세계 정지
+            resultUI.transform.SetAsLastSibling();
+            Debug.Log($"[UIManager] ResultUI before open. activeSelf={resultUI.gameObject.activeSelf}, activeInHierarchy={resultUI.gameObject.activeInHierarchy}, siblingIndex={resultUI.transform.GetSiblingIndex()}");
             resultUI.Open(isVictory, souls);
-            GameManager.Instance.SetPause(PauseSource.GameOver, true);
+            GameManager.Instance?.SetPause(PauseSource.GameOver, true);
 
             // [SOUND] 승리/패배 효과음 재생
             if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
                 var sfx = isVictory ? GameManager.Instance.Sound.sfxWin : GameManager.Instance.Sound.sfxLose;
-                GameManager.Instance.Sound.PlaySFX(sfx);
+                GameManager.Instance.Sound.PlaySFX(sfx, SfxPriority.Critical);
             }
         }
 
@@ -580,7 +604,7 @@ namespace Necromancer.UI
             // [SOUND] 버튼 클릭 효과음 (클린업 이후에 들리도록 Resume 후 재생)
             if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
                 GameManager.Instance.Sound.ResumeSFX();
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn, SfxPriority.Critical);
             }
 
             SceneManager.LoadScene("TitleScene");
@@ -590,7 +614,7 @@ namespace Necromancer.UI
         {
             if (GameManager.Instance == null || GameManager.Instance.skillManager == null) return;
 
-            if (GameManager.Instance.Sound != null) GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+            if (GameManager.Instance.Sound != null) GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn, SfxPriority.Critical);
 
             if (!freeRefreshUsed)
             {
@@ -624,6 +648,49 @@ namespace Necromancer.UI
         {
             Debug.LogWarning($"<color=red>[UIManager]</color> AD ERROR: {message}");
             GameManager.Instance?.Popup?.ShowMessagePopup(message);
+        }
+
+        private void ValidateResultUIBinding(InGameHUD hud)
+        {
+            if (inGameUIInstance == null)
+            {
+                Debug.LogError(BuildResultUIDiagnosticMessage("InGameUIInstance is null during Init validation."));
+                return;
+            }
+
+            if (hud == null)
+            {
+                Debug.LogError(BuildResultUIDiagnosticMessage("InGameHUD is null during Init validation."));
+                return;
+            }
+
+            if (hud.resultUI == null)
+            {
+                Debug.LogError(BuildResultUIDiagnosticMessage("InGameHUD.resultUI is null during Init validation.", hud));
+                return;
+            }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            Debug.Log($"[UIManager] ResultUI binding OK. {BuildResultUIDiagnosticContext(hud)}");
+#endif
+        }
+
+        private string BuildResultUIDiagnosticMessage(string reason, InGameHUD hud = null)
+        {
+            return $"[UIManager] {reason} {BuildResultUIDiagnosticContext(hud)}";
+        }
+
+        private string BuildResultUIDiagnosticContext(InGameHUD hud = null)
+        {
+            if (hud == null && inGameUIInstance != null)
+                hud = inGameUIInstance.GetComponent<InGameHUD>();
+
+            string sceneName = SceneManager.GetActiveScene().name;
+            string instanceName = inGameUIInstance != null ? inGameUIInstance.name : "NULL";
+            string prefabName = inGameUIPrefab != null ? inGameUIPrefab.name : "NULL";
+            string hudName = hud != null ? hud.name : "NULL";
+            string resultName = resultUI != null ? resultUI.name : hud != null && hud.resultUI != null ? hud.resultUI.name : "NULL";
+            return $"scene={sceneName}, inGameUIInstance={instanceName}, inGameUIPrefab={prefabName}, hud={hudName}, resultUI={resultName}";
         }
     }
 }

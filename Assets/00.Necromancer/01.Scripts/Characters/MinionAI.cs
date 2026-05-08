@@ -470,7 +470,7 @@ private async UniTaskVoid LoadAnimatorAsync(CancellationToken ct)
 
             if (GameManager.Instance != null && GameManager.Instance.Sound != null)
             {
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxNormalAttackCraw);
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxNormalAttackCraw, SfxPriority.Low, 0.12f);
             }
             
             // [NEW] 흡혈(Vampiric Teeth) 효과 적용

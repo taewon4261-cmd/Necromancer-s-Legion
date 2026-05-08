@@ -45,7 +45,10 @@ namespace Necromancer.UI
         {
             if (stageList == null || stageList.Count == 0) InitStageList();
             if (stageList != null && stageList.Count > 0)
+            {
+                currentIndex = GetHighestUnlockedStageIndex();
                 SelectStage(stageList[currentIndex]);
+            }
 
             // 패널이 열리는 시점에 즉시 한 번 갱신 (앱 복귀 시 오프라인 회복 반영)
             if (GameManager.Instance?.Resources != null)
@@ -69,7 +72,7 @@ namespace Necromancer.UI
 
             if (stageList != null && stageList.Count > 0)
             {
-                currentIndex = 0;
+                currentIndex = GetHighestUnlockedStageIndex();
                 SelectStage(stageList[currentIndex]);
             }
         }
@@ -114,7 +117,7 @@ namespace Necromancer.UI
 
             // [SOUND] 버튼 클릭음
             if (GameManager.Instance.Sound != null)
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn, SfxPriority.Critical);
 
             var res = GameManager.Instance.Resources;
             int adCur = res.staminaAdsWatchedToday;
@@ -161,7 +164,7 @@ namespace Necromancer.UI
                 {
                     // [SOUND] 잠겨서 이동 불가 효과음
                     if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                        GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
+                        GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn, SfxPriority.Critical);
                     }
 
                     // 진동 피드백 (잠금 영역을 더 파고들려고 시도할 때)
@@ -176,7 +179,7 @@ namespace Necromancer.UI
 
                 // [SOUND] 스테이지 이동 효과음 추가
                 if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn, SfxPriority.Critical);
                 }
             }
         }
@@ -191,7 +194,7 @@ namespace Necromancer.UI
 
                 // [SOUND] 스테이지 이동 효과음 추가
                 if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn, SfxPriority.Critical);
                 }
             }
         }
@@ -204,6 +207,31 @@ namespace Necromancer.UI
             {
                 stageList.Sort((a, b) => a.stageID.CompareTo(b.stageID));
             }
+        }
+
+        private int GetHighestUnlockedStageIndex()
+        {
+            if (stageList == null || stageList.Count == 0) return 0;
+
+            var resources = GameManager.Instance?.Resources;
+            if (resources == null) return Mathf.Clamp(currentIndex, 0, stageList.Count - 1);
+
+            int bestIndex = 0;
+            int bestStageId = int.MinValue;
+
+            for (int i = 0; i < stageList.Count; i++)
+            {
+                StageDataSO stage = stageList[i];
+                if (stage == null || !resources.IsStageUnlocked(stage.stageID)) continue;
+
+                if (stage.stageID > bestStageId)
+                {
+                    bestStageId = stage.stageID;
+                    bestIndex = i;
+                }
+            }
+
+            return bestIndex;
         }
 
         public void SelectStage(StageDataSO stage)
@@ -266,7 +294,7 @@ namespace Necromancer.UI
             if (!isUnlocked)
             {
                 if (GameManager.Instance?.Sound != null)
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn, SfxPriority.Critical);
 #if UNITY_ANDROID || UNITY_IOS
                 Handheld.Vibrate();
 #endif
@@ -277,7 +305,7 @@ namespace Necromancer.UI
             if (!GameManager.Instance.Resources.HasEnoughStamina(ResourceManager.STAMINA_COST))
             {
                 if (GameManager.Instance?.Sound != null)
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn, SfxPriority.Critical);
 
                 GameManager.Instance?.Popup?.ShowMessagePopup("피로도가 부족합니다.\n30분마다 1씩 회복됩니다.");
                 return;

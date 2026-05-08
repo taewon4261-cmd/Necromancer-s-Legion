@@ -141,6 +141,18 @@ namespace Necromancer
             Time.timeScale = (_activePauseSources.Count > 0) ? 0f : currentGameSpeed;
             Debug.Log($"[PauseSystem] Source: {source}, isPaused: {isPaused}, ActiveCount: {_activePauseSources.Count}, timeScale: {Time.timeScale}");
         }
+
+        public bool HasPause(PauseSource source) => _activePauseSources.Contains(source);
+
+        public bool HasAnyPauseExcept(PauseSource allowedSource)
+        {
+            foreach (var source in _activePauseSources)
+            {
+                if (source != allowedSource) return true;
+            }
+
+            return false;
+        }
         // ─────────────────────────────────────────────────────────────────────
 
         // [SRP] 레벨·경험치 상태는 LevelManager가 전담합니다. 하위 호환을 위해 위임 프로퍼티를 유지합니다.
@@ -391,22 +403,31 @@ namespace Necromancer
             {
                 Resources.UnlockLevel(currentStage.stageID + 1);
             }
-            StartCoroutine(StageClearSequence());
+            StageClearSequenceAsync().Forget();
         }
 
-        private IEnumerator StageClearSequence()
+        private async UniTaskVoid StageClearSequenceAsync()
         {
             var gems = ExpGem.ActiveGems.ToList();
+            Debug.Log($"[GameManager] StageClearSequence started. Vacuum gem count: {gems.Count}");
             foreach (var gem in gems) 
             {
                 if (gem != null) gem.StartVacuum();
             }
-            yield return new WaitForSeconds(1.5f);
+
+            await UniTask.Delay(
+                TimeSpan.FromSeconds(1.5f),
+                DelayType.UnscaledDeltaTime,
+                PlayerLoopTiming.Update,
+                this.GetCancellationTokenOnDestroy());
+            Debug.Log("[GameManager] StageClearSequence after realtime wait. Invoking game over.");
+
             if (Resources != null) Resources.CommitSessionSoul();
             
             // [STABILITY] 클리어 시 즉시 저장 (데이터 유실 방지)
             if (SaveData != null) SaveData.Save();
 
+            Debug.Log("[GameManager] OnGameOver(true) invoked.");
             OnGameOver?.Invoke(true);
         }
 
@@ -414,7 +435,6 @@ namespace Necromancer
         {
             if (IsGameOver) return;
             IsGameOver = true;
-            SetPause(PauseSource.GameOver, true);
             if (Resources != null) Resources.CommitSessionSoul();
             
             // [STABILITY] 패배 시에도 즉시 저장하여 획득한 영혼/진척도 보존

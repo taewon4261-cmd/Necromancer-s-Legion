@@ -378,7 +378,7 @@ namespace Necromancer.UI
         private void PlaySelectSound()
         {
             if (GameManager.Instance?.Sound != null)
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn);
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSelectBtn, SfxPriority.Critical);
         }
 
         private void ValidateReferences()

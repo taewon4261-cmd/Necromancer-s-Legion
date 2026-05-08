@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using System.Threading;
+using Necromancer.Core;
 
 namespace Necromancer
 {
@@ -68,7 +69,7 @@ public class BoneProjectile : UnitBase
 
         if (GameManager.Instance != null && GameManager.Instance.Sound != null)
         {
-            GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxPlayerAttack);
+            GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxPlayerAttack, SfxPriority.Medium, 0.05f);
         }
     }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Necromancer.Core;
 using Necromancer.Data;
 using UnityEngine;
 
@@ -398,7 +399,7 @@ namespace Necromancer
                 GameManager.Instance.poolManager.Get(skill.effectPoolTag, position, Quaternion.identity);
 
             if (skill.soundCue != null && GameManager.Instance?.Sound != null)
-                GameManager.Instance.Sound.PlaySFX(skill.soundCue);
+                GameManager.Instance.Sound.PlaySFX(skill.soundCue, SfxPriority.High, 0.1f);
         }
     }
 }

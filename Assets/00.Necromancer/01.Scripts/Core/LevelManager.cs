@@ -27,6 +27,12 @@ namespace Necromancer
                 currentLevel++;
                 maxExp = 200f + (currentLevel * 50f);
                 var gm = GameManager.Instance;
+                if (gm != null && gm.IsGameOver)
+                {
+                    Debug.Log("[LevelManager] Level-up UI suppressed because game over is already in progress.");
+                    return;
+                }
+
                 if (gm != null && gm.skillManager != null)
                 {
                     var options = gm.skillManager.GetRandomSkillsForLevelUp(3);

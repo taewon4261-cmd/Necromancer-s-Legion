@@ -312,7 +312,7 @@ namespace Necromancer
 
                         ai.Initialize(selectedData);
 
-                        if (gm.Sound != null) gm.Sound.PlaySFX(gm.Sound.sfxCreateMinion);
+                        if (gm.Sound != null) gm.Sound.PlaySFX(gm.Sound.sfxCreateMinion, SfxPriority.Medium, 0.08f);
                         Debug.Log($"<color=green>[UnitManager]</color> Revived Minion: {(selectedData != null ? selectedData.minionName : "Basic")}");
                     }
                 }

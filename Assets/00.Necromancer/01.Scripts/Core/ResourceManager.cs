@@ -223,7 +223,7 @@ namespace Necromancer.Core {
             currentSoul += finalAmount; // [DATA-SAFETY] 이번 판 획득량을 즉시 전체 지갑에 합산
             // [SOUND] 소울 획득 효과음 재생
             if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSoulGain);
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxSoulGain, SfxPriority.Low, 0.12f);
             }
 
             // 데이터 동합성 유지 (게임 종료 전 비정상 종료 시 피해 최소화)
@@ -300,7 +300,7 @@ namespace Necromancer.Core {
 
                 // [SOUND] 업그레이드 완료(구매) 효과음 재생
                 if (GameManager.Instance != null && GameManager.Instance.Sound != null) {
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade);
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade, SfxPriority.Critical);
                 }
 
                 if (GameManager.Instance != null && GameManager.Instance.SaveData != null) {
@@ -471,7 +471,7 @@ namespace Necromancer.Core {
             GameManager.Instance.SaveData.Save();
 
             if (GameManager.Instance?.Sound != null)
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade);
+            GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade, SfxPriority.Critical);
 
             Debug.Log($"<color=gold>[ResourceManager]</color> Minion Permanently Unlocked: {minionData.minionName}");
             return true;
@@ -502,7 +502,7 @@ namespace Necromancer.Core {
             GameManager.Instance.SaveData.Save();
 
             if (GameManager.Instance?.Sound != null)
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade);
+            GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade, SfxPriority.Critical);
 
             Debug.Log($"<color=gold>[ResourceManager]</color> Minion Promoted: {minionData.minionName} -> {targetStar} Stars");
             return true;

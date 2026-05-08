@@ -221,7 +221,7 @@ namespace Necromancer.UI
             if (success)
             {
                 if (GameManager.Instance.Sound != null)
-                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade);
+                    GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxUpgrade, SfxPriority.Critical);
 
                 // [FEEDBACK] 해금 성공 펀치 스케일 (UpgradeItemUI와 동일)
                 transform.DOPunchScale(Vector3.one * 0.05f, 0.2f);
@@ -341,7 +341,7 @@ namespace Necromancer.UI
         private void PlayFailFeedback()
         {
             if (GameManager.Instance.Sound != null)
-                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn);
+                GameManager.Instance.Sound.PlaySFX(GameManager.Instance.Sound.sfxFailBtn, SfxPriority.Critical);
 
             if (shakeTween != null && shakeTween.IsActive()) shakeTween.Kill();
             transform.DOComplete();

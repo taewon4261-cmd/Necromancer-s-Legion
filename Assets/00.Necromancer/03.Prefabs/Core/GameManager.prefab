@@ -44,7 +44,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2f6bb94025b3d545baf9c1dbbe05a49, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  inGameUIPrefab: {fileID: 0}
+  inGameUIPrefab: {fileID: 2877552838606482756, guid: 2003e946e0f690945950cd78c7b154a9,
+    type: 3}
   expFillBar: {fileID: 0}
   textTimer: {fileID: 0}
   textWave: {fileID: 0}
@@ -110,7 +111,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 16, y: 118}
+  m_AnchoredPosition: {x: 16, y: 73}
   m_SizeDelta: {x: 640, y: 250}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1856955103697816995
@@ -833,7 +834,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -140}
+  m_AnchoredPosition: {x: 0, y: -233}
   m_SizeDelta: {x: 620, y: 90}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &885514507223739006
@@ -1021,6 +1022,7 @@ MonoBehaviour:
   sfxSourcePrefab: {fileID: 351301848704060971, guid: 53b1c64cd1aedc04095931e7921f0b88,
     type: 3}
   initialSfxPoolSize: 10
+  maxActiveSfx: 32
   masterVolume: 1
   bgmVolume: 0.6
   sfxVolume: 0.8
@@ -1203,7 +1205,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 700, y: 450}
+  m_SizeDelta: {x: 800, y: 750}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1648773584973854878
 CanvasRenderer:
@@ -1226,14 +1228,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 0.11764706, g: 0.11764706, b: 0.11764706, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: -682219568, guid: 3618afb80fb4c5a4f984d6286233bd3b, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
