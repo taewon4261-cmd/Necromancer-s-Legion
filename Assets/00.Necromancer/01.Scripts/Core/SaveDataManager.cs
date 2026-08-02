@@ -49,6 +49,10 @@ namespace Necromancer.Core
         public string lastLoginMethod = "None"; // [AUTH] "None", "Guest", "Google"
         public bool hasSeenTutorial = false;   // [TUTORIAL] 최초 실행 가이드 노출 여부
 
+        [Header("Profile & Ranking")]
+        public string nickname = "";
+        public long stageClearTimeTicks = 0;
+
         [Header("Stamina (피로도)")]
         public int currentStamina = 10;
         public long lastStaminaUpdateTimeTicks = 0;
@@ -237,6 +241,13 @@ namespace Necromancer.Core
         public void MigrateMinionProgress()
         {
             if (currentData == null) currentData = new GameSaveData();
+
+            // [PROFILE] 닉네임이 비어있으면 기본값 할당
+            if (string.IsNullOrEmpty(currentData.nickname))
+            {
+                currentData.nickname = "Necromancer_" + UnityEngine.Random.Range(1000, 10000).ToString();
+            }
+
             if (currentData.minionStars == null) currentData.minionStars = new Dictionary<string, int>();
 
             if (currentData.unlockedMinionIDs != null)
@@ -377,6 +388,9 @@ namespace Necromancer.Core
                 var data = new Dictionary<string, object>
                 {
                     { "gameData", encrypted },
+                    { "nickname", currentData.nickname },
+                    { "unlockedStageLevel", currentData.unlockedStageLevel },
+                    { "stageClearTime", currentData.stageClearTimeTicks },
                     { "lastUpdate", FieldValue.ServerTimestamp }
                 };
 

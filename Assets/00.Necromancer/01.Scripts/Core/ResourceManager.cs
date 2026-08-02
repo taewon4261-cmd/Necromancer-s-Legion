@@ -206,6 +206,8 @@ namespace Necromancer.Core {
                 unlockedStageLevel = id; 
                 if (GameManager.Instance != null && GameManager.Instance.SaveData != null) {
                     GameManager.Instance.SaveData.Data.unlockedStageLevel = id;
+                    // [RANKING] 스테이지 해금 최초 기록 시각 타임스탬프 기록
+                    GameManager.Instance.SaveData.Data.stageClearTimeTicks = System.DateTime.UtcNow.Ticks;
                     GameManager.Instance.SaveData.Save();
                 }
             } 

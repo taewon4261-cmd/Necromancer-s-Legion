@@ -28,6 +28,15 @@ namespace Necromancer.UI
         public GameObject upgradePanel;
         public GameObject minionStorePanel;
         public GameObject settingPanel;
+        
+        [Header("Profile & Ranking Panels")]
+        public GameObject profilePanel;
+        public GameObject rankingPanel;
+
+        [Header("Lobby Profile UI")]
+        [SerializeField] private TextMeshProUGUI tmpLobbyNickname;
+        [SerializeField] private Button btnOpenProfile;
+        [SerializeField] private Button btnOpenRanking;
 
         [Header("Tutorial")]
         public GameObject tutorialPanel;
@@ -58,12 +67,48 @@ namespace Necromancer.UI
 
         private void Awake()
         {
-            ValidateReferences();
+            // [AUTO BINDING] 패널 바인딩 누락 대비 자동 맵핑
+            if (mainButtonPanel == null) mainButtonPanel = transform.Find("Panel_MainButtons")?.gameObject;
+            if (authPanel == null) authPanel = transform.Find("Panel_Auth")?.gameObject;
+
+            var subPanels = transform.Find("Sub_Panels");
+            if (subPanels != null)
+            {
+                if (stageSelectPanel == null) stageSelectPanel = subPanels.Find("Panel_StageSelect")?.gameObject;
+                if (upgradePanel == null) upgradePanel = subPanels.Find("Panel_Upgrade")?.gameObject;
+                if (minionStorePanel == null) minionStorePanel = subPanels.Find("Panel_MinionStore")?.gameObject;
+                if (settingPanel == null) settingPanel = subPanels.Find("Panel_Setting ")?.gameObject;
+                if (profilePanel == null) profilePanel = subPanels.Find("Panel_Profile")?.gameObject;
+                if (rankingPanel == null) rankingPanel = subPanels.Find("Panel_Ranking")?.gameObject;
+            }
+
+            if (btnOpenRanking == null)
+            {
+                var mainBtnGroup = transform.Find("Panel_MainButtons/MainButtonPanel ");
+                if (mainBtnGroup != null)
+                {
+                    btnOpenRanking = mainBtnGroup.Find("Btn_Ranking")?.GetComponent<Button>();
+                }
+            }
+            if (tmpLobbyNickname == null)
+            {
+                tmpLobbyNickname = transform.Find("Profile_Bar/Lobby_Nickname")?.GetComponent<TMPro.TextMeshProUGUI>();
+            }
+            if (tmpLobbyNickname != null)
+            {
+                tmpLobbyNickname.text = "닉네임 변경";
+            }
+            if (btnOpenProfile == null)
+            {
+                btnOpenProfile = transform.Find("Profile_Bar/Btn_OpenProfile")?.GetComponent<Button>();
+            }
 
             if (stageSelectPanel != null) allSubPanels.Add(stageSelectPanel);
             if (upgradePanel != null)     allSubPanels.Add(upgradePanel);
             if (minionStorePanel != null) allSubPanels.Add(minionStorePanel);
             if (settingPanel != null)     allSubPanels.Add(settingPanel);
+            if (profilePanel != null)     allSubPanels.Add(profilePanel);
+            if (rankingPanel != null)     allSubPanels.Add(rankingPanel);
 
             // Firebase 초기화 완료(OnFirebaseReady) 전까지 버튼 비활성화
             SetButtonsInteractable(false);
@@ -95,6 +140,7 @@ namespace Necromancer.UI
 
         private void Start()
         {
+            Debug.Log("[TitleUIController] Start() Called!");
             SetupButtonEvents();
 
             if (GameManager.Instance != null && GameManager.Instance.Auth != null)
@@ -108,7 +154,13 @@ namespace Necromancer.UI
                     SetButtonsInteractable(true);
 
                 var currentState = GameManager.Instance.Auth.CurrentState;
+                Debug.Log($"[TitleUIController] Start() calling HandleAuthState with state: {currentState}");
                 HandleAuthState(currentState);
+            }
+            else
+            {
+                Debug.LogWarning("[TitleUIController] Start() - GameManager or Auth is NULL. Force enabling buttons.");
+                SetButtonsInteractable(true);
             }
         }
 
@@ -126,15 +178,20 @@ namespace Necromancer.UI
 
         private void HandleAuthState(AuthState state)
         {
+            Debug.Log($"[TitleUIController] HandleAuthState called with state: {state}, isTitleInitialized: {isTitleInitialized}");
             // [FIX] 로그인 성공(Guest/LoggedIn) 시에는 초기화 여부와 상관없이 화면을 전환하도록 보강
             if (isTitleInitialized && (state != AuthState.LoggedIn && state != AuthState.Guest))
+            {
+                Debug.Log("[TitleUIController] HandleAuthState early exit because isTitleInitialized is true and state is not LoggedIn/Guest");
                 return;
+            }
 
             switch (state)
             {
                 case AuthState.LoggedIn:
                 case AuthState.Guest:
                     isTitleInitialized = true;
+                    Debug.Log($"[TitleUIController] Login success. Setting authPanel to false (authPanel exists: {authPanel != null}) and mainButtonPanel to true (mainButtonPanel exists: {mainButtonPanel != null})");
                     if (authPanel != null) authPanel.SetActive(false);
                     if (mainButtonPanel != null) mainButtonPanel.SetActive(true);
                     Debug.Log($"<color=green>[TitleUI]</color> Login Success! UI Transition to Main Menu. (State: {state})");
@@ -143,13 +200,12 @@ namespace Necromancer.UI
                     Debug.Log("<color=cyan>[TitleUI]</color> Firebase initializing...");
                     break;
                 case AuthState.Failed:
+                    Debug.Log("[TitleUIController] Login state Failed! Reactivating authPanel.");
                     if (authPanel != null)
                     {
-                        // authPanel이 있으면 로그인 화면으로 복귀
                         authPanel.SetActive(true);
                         if (mainButtonPanel != null) mainButtonPanel.SetActive(false);
                     }
-                    // authPanel이 없으면 mainButtonPanel 유지 (빈 화면 방지)
                     SetButtonsInteractable(true);
                     Debug.LogWarning($"<color=red>[TitleUI]</color> Login Failed. Showing Auth Panel.");
                     break;
@@ -338,6 +394,56 @@ namespace Necromancer.UI
             btnUpgrade?.onClick.AddListener(() => ShowPanel(upgradePanel));
             btnMinionStore?.onClick.AddListener(() => ShowPanel(minionStorePanel));
             btnSetting?.onClick.AddListener(() => ShowPanel(settingPanel));
+
+            // [PROFILE & RANKING] 버튼 리스너 연결
+            if (btnOpenProfile != null)
+            {
+                btnOpenProfile.onClick.RemoveAllListeners();
+                btnOpenProfile.onClick.AddListener(() => ShowPanel(profilePanel));
+            }
+
+            if (btnOpenRanking != null)
+            {
+                btnOpenRanking.onClick.RemoveAllListeners();
+                btnOpenRanking.onClick.AddListener(() => ShowPanel(rankingPanel));
+            }
+
+            // 프로필/랭킹 팝업의 닫기 버튼에도 BackToMainMenu() 연결
+            if (profilePanel != null)
+            {
+                var profileClose = profilePanel.transform.Find("Btn_Close")?.GetComponent<Button>();
+                if (profileClose == null)
+                {
+                    var buttons = profilePanel.GetComponentsInChildren<Button>(true);
+                    foreach (var btn in buttons)
+                    {
+                        if (btn.name == "Btn_Close") { profileClose = btn; break; }
+                    }
+                }
+                if (profileClose != null)
+                {
+                    profileClose.onClick.RemoveAllListeners();
+                    profileClose.onClick.AddListener(BackToMainMenu);
+                }
+            }
+
+            if (rankingPanel != null)
+            {
+                var rankingClose = rankingPanel.transform.Find("Btn_Close")?.GetComponent<Button>();
+                if (rankingClose == null)
+                {
+                    var buttons = rankingPanel.GetComponentsInChildren<Button>(true);
+                    foreach (var btn in buttons)
+                    {
+                        if (btn.name == "Btn_Close") { rankingClose = btn; break; }
+                    }
+                }
+                if (rankingClose != null)
+                {
+                    rankingClose.onClick.RemoveAllListeners();
+                    rankingClose.onClick.AddListener(BackToMainMenu);
+                }
+            }
 
             btnStageSelectBack?.onClick.AddListener(BackToMainMenu);
             btnUpgradeBack?.onClick.AddListener(BackToMainMenu);
