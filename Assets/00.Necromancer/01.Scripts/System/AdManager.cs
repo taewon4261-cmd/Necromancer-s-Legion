@@ -138,9 +138,9 @@ namespace Necromancer.Systems
         private void RegisterEventHandlers(RewardedAd ad, AdUnitType type)
         {
             ad.OnAdFullScreenContentClosed += () => {
-                Debug.Log($"[AdManager] {type} ad closed.");
-                isAdShowing = false;
                 UnityMainThreadDispatcher.Enqueue(() => {
+                    Debug.Log($"[AdManager] {type} ad closed.");
+                    isAdShowing = false;
                     if (GameManager.Instance != null)
                         GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, false);
                     LoadRewardedAd(type); // 사용한 광고만 다시 로드
@@ -148,9 +148,9 @@ namespace Necromancer.Systems
             };
 
             ad.OnAdFullScreenContentFailed += (AdError error) => {
-                Debug.LogError($"[AdManager] Ad ({type}) failed to show: {error}");
-                isAdShowing = false;
                 UnityMainThreadDispatcher.Enqueue(() => {
+                    Debug.LogError($"[AdManager] Ad ({type}) failed to show: {error}");
+                    isAdShowing = false;
                     if (GameManager.Instance != null)
                         GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, false);
 
