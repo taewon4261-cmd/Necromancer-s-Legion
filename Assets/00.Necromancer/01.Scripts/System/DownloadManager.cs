@@ -47,9 +47,8 @@ namespace Necromancer.Systems
                     Addressables.Release(initHandle);
                     return false;
                 }
-                Addressables.Release(initHandle);
-
-                // [TIMING FIX] Release 직후 내부 상태가 안정화될 시간을 한 프레임 확보
+                // [GUIDELINE FIX] InitializeAsync의 반환 핸들은 전역 초기화 상태 보존을 위해 수동으로 Release하지 않고 유지해야 합니다.
+                
                 await UniTask.Yield();
 
                 var checkHandle = Addressables.CheckForCatalogUpdates(false);
