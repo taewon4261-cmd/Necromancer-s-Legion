@@ -323,8 +323,17 @@ namespace Necromancer.UI
 
                 if (snapshot.Exists)
                 {
-                    string latestVersionStr = snapshot.TryGetValue("latestVersion", out string vStr) ? vStr : Application.version;
-                    string noticeMsg = snapshot.TryGetValue("updateNotice", out string msgStr) ? msgStr : "원활한 게임 이용을 위해 최신 버전 업데이트가 필요합니다.";
+                    string latestVersionStr = Application.version;
+                    if (snapshot.TryGetValue("LatestVersion", out string vStr1) && !string.IsNullOrWhiteSpace(vStr1))
+                        latestVersionStr = vStr1;
+                    else if (snapshot.TryGetValue("latestVersion", out string vStr2) && !string.IsNullOrWhiteSpace(vStr2))
+                        latestVersionStr = vStr2;
+
+                    string noticeMsg = "원활한 게임 이용을 위해 최신 버전 업데이트가 필요합니다.";
+                    if (snapshot.TryGetValue("updateNotice", out string msgStr1) && !string.IsNullOrWhiteSpace(msgStr1))
+                        noticeMsg = msgStr1;
+                    else if (snapshot.TryGetValue("UpdateNotice", out string msgStr2) && !string.IsNullOrWhiteSpace(msgStr2))
+                        noticeMsg = msgStr2;
 
                     if (System.Version.TryParse(Application.version, out var currentVersion) &&
                         System.Version.TryParse(latestVersionStr, out var latestVersion))
