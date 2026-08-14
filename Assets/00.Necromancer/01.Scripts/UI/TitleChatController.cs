@@ -98,15 +98,24 @@ namespace Necromancer.UI
             SendMessage();
         }
 
+        private bool isFirstLoad = true;
+
         private void ToggleChat()
         {
             if (chatPanel == null)
                 return;
 
-            chatPanel.SetActive(!chatPanel.activeSelf);
+            bool willShow = !chatPanel.activeSelf;
+            chatPanel.SetActive(willShow);
 
-            if (chatPanel.activeSelf && messageInput != null)
-                messageInput.ActivateInputField();
+            if (willShow)
+            {
+                if (messageInput != null)
+                    messageInput.ActivateInputField();
+
+                // 채팅창을 열 때 항상 최신 대화(맨 아래)부터 보이도록 정렬
+                ScrollToBottom();
+            }
         }
 
         private void StartListening()
@@ -157,22 +166,36 @@ namespace Necromancer.UI
             string newText = string.Join("\n", lines);
 
             // [PERFORMANCE] 텍스트 변경이 없을 경우 UI 리빌드 및 스크롤 연산 전체 스킵
-            if (messageLogText.text == newText)
+            if (messageLogText.text == newText && !isFirstLoad)
                 return;
 
             messageLogText.text = newText;
 
-            // [SMART AUTO-SCROLL] 사용자가 이전 기록을 읽기 위해 스크롤을 올린 경우(AutoScrollThreshold 초과)
-            // 스크롤 위치를 튕기지 않고 유지하며, 최하단 부근일 때만 0f로 정렬합니다.
+            // [SMART AUTO-SCROLL] 최초 로드 시에는 무조건 최하단(최신 대화)으로 정렬하고,
+            // 이후에는 사용자가 스크롤을 올려둔 상태가 아닐 때만 최하단으로 정렬합니다.
             if (scrollRect != null)
             {
-                bool isAtBottom = scrollRect.verticalNormalizedPosition <= AutoScrollThreshold;
-                if (isAtBottom)
+                if (isFirstLoad)
                 {
-                    Canvas.ForceUpdateCanvases();
-                    scrollRect.verticalNormalizedPosition = 0f;
+                    isFirstLoad = false;
+                    ScrollToBottom();
+                }
+                else
+                {
+                    bool isAtBottom = scrollRect.verticalNormalizedPosition <= AutoScrollThreshold;
+                    if (isAtBottom)
+                    {
+                        ScrollToBottom();
+                    }
                 }
             }
+        }
+
+        private void ScrollToBottom()
+        {
+            if (scrollRect == null) return;
+            Canvas.ForceUpdateCanvases();
+            scrollRect.verticalNormalizedPosition = 0f;
         }
 
         private async void SendMessage()
