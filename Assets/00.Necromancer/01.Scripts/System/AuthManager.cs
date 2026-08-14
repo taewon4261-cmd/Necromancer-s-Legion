@@ -63,7 +63,6 @@ namespace Necromancer.Systems
             // 최신 버전 GPGS 활성화
             PlayGamesPlatform.Activate();
 #endif
-            // [AUTH] 저장된 로그인 수단을 확인하여 자동 로그인 결정 (Master's Strategy)
             string lastMethod = "None";
             if (GameManager.Instance != null && GameManager.Instance.SaveData != null && GameManager.Instance.SaveData.Data != null)
             {
@@ -72,11 +71,12 @@ namespace Necromancer.Systems
 
             Debug.Log($"<color=cyan>[AuthManager]</color> Firebase Initialized. Last Login Method: {lastMethod}");
 
-            if (lastMethod == "Google")
-            {
-                TryAutoLogin();
-            }
-            else if (lastMethod == "Guest")
+            // [AUTO-LOGIN-FIX] GPGS 무소음(Silent) 자동 로그인을 최우선 시도하여, 
+            // 과거 로그인 기록이 있거나 구글 계정이 연결되어 있다면 매번 버튼 클릭 없이 즉시 자동 접속되도록 처리
+#if GPGS
+            TryAutoLoginWithFallback(lastMethod);
+#else
+            if (lastMethod == "Guest")
             {
                 LoginAsGuest();
             }
@@ -85,28 +85,34 @@ namespace Necromancer.Systems
                 SetState(AuthState.Initializing);
                 Debug.Log("[AuthManager] No previous login record found. Waiting for user action.");
             }
-
-            // [ADDED] Firebase가 이제 정말로 준비됨을 UI에 알림
             OnFirebaseReady?.Invoke();
+#endif
         }
 
-        private void TryAutoLogin()
+        private void TryAutoLoginWithFallback(string lastMethod)
         {
 #if GPGS
-            Debug.Log("<color=cyan>[AuthManager]</color> TryAutoLogin: Attempting Silent Authenticate...");
-            // [FIX] 자동 로그인은 조용히(Authenticate) 시도하여 UX 방해 금지
+            Debug.Log("<color=cyan>[AuthManager]</color> Attempting GPGS Silent Auto Login...");
             PlayGamesPlatform.Instance.Authenticate((SignInStatus status) => {
                 if (status == SignInStatus.Success)
                 {
+                    Debug.Log("<color=green>[AuthManager]</color> GPGS Silent Auto Login Succeeded!");
                     LoginWithGoogleFirebase();
                 }
                 else
                 {
-                    Debug.LogWarning($"[AuthManager] Silent Auto Login Failed. Status: {status}");
-                    // 실패 상태를 설정하여 UI가 대기를 멈추고 로그인 버튼을 띄우게 함
-                    SetState(AuthState.Failed);
-                    OnLoginResult?.Invoke(false, null);
+                    Debug.LogWarning($"[AuthManager] GPGS Silent Auto Login Failed ({status}). Checking Fallback...");
+                    if (lastMethod == "Guest")
+                    {
+                        LoginAsGuest();
+                    }
+                    else
+                    {
+                        SetState(AuthState.Initializing);
+                        OnLoginResult?.Invoke(false, null);
+                    }
                 }
+                OnFirebaseReady?.Invoke();
             });
 #endif
         }
