@@ -11,6 +11,10 @@ namespace Necromancer.UI
 {
     public class TitleChatController : MonoBehaviour
     {
+        private const float AutoScrollThreshold = 0.05f;
+        private const string DefaultGuestName = "Guest";
+        private const string DefaultPlayerPrefix = "Player";
+
         [Header("UI")]
         [SerializeField] private GameObject chatPanel;
         [SerializeField] private Button toggleButton;
@@ -35,6 +39,25 @@ namespace Necromancer.UI
 
             if (toggleButton != null)
                 toggleButton.gameObject.SetActive(false);
+
+            // [SCROLL-BOUNCE-FIX] Text_MessageLog에 ContentSizeFitter가 없어 height가 고정되어
+            // ScrollRect가 영역 오버플로우로 판단하고 손을 놓으면 Elastic 탄성에 의해 원위치 튕김 현상이 발생하는 버그를 완벽 해결
+            if (messageLogText != null)
+            {
+                var rectTransform = messageLogText.rectTransform;
+                if (rectTransform != null)
+                {
+                    rectTransform.pivot = new Vector2(0.5f, 1f);
+                }
+
+                var fitter = messageLogText.GetComponent<ContentSizeFitter>();
+                if (fitter == null)
+                {
+                    fitter = messageLogText.gameObject.AddComponent<ContentSizeFitter>();
+                }
+                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            }
         }
 
         private void OnEnable()
@@ -121,7 +144,7 @@ namespace Necromancer.UI
             var lines = new List<string>();
             foreach (DocumentSnapshot doc in snapshot.Documents)
             {
-                string nickname = doc.TryGetValue("nickname", out string nick) ? nick : "Player";
+                string nickname = doc.TryGetValue("nickname", out string nick) ? nick : DefaultPlayerPrefix;
                 string message = doc.TryGetValue("message", out string text) ? text : "";
 
                 if (string.IsNullOrWhiteSpace(message))
@@ -131,11 +154,25 @@ namespace Necromancer.UI
             }
 
             lines.Reverse();
-            messageLogText.text = string.Join("\n", lines);
+            string newText = string.Join("\n", lines);
 
-            Canvas.ForceUpdateCanvases();
+            // [PERFORMANCE] 텍스트 변경이 없을 경우 UI 리빌드 및 스크롤 연산 전체 스킵
+            if (messageLogText.text == newText)
+                return;
+
+            messageLogText.text = newText;
+
+            // [SMART AUTO-SCROLL] 사용자가 이전 기록을 읽기 위해 스크롤을 올린 경우(AutoScrollThreshold 초과)
+            // 스크롤 위치를 튕기지 않고 유지하며, 최하단 부근일 때만 0f로 정렬합니다.
             if (scrollRect != null)
-                scrollRect.verticalNormalizedPosition = 0f;
+            {
+                bool isAtBottom = scrollRect.verticalNormalizedPosition <= AutoScrollThreshold;
+                if (isAtBottom)
+                {
+                    Canvas.ForceUpdateCanvases();
+                    scrollRect.verticalNormalizedPosition = 0f;
+                }
+            }
         }
 
         private async void SendMessage()
@@ -157,7 +194,7 @@ namespace Necromancer.UI
             var data = new Dictionary<string, object>
             {
                 { "uid", uid },
-                { "nickname", BuildNickname(uid) },
+                { "nickname", GetCurrentNickname(uid) },
                 { "message", message },
                 { "createdAt", FieldValue.ServerTimestamp }
             };
@@ -175,13 +212,20 @@ namespace Necromancer.UI
             }
         }
 
-        private static string BuildNickname(string uid)
+        private static string GetCurrentNickname(string uid)
         {
+            // 1. 유효한 유저 변경 닉네임 우선 참조
+            if (GameManager.Instance?.SaveData?.Data != null && !string.IsNullOrWhiteSpace(GameManager.Instance.SaveData.Data.nickname))
+            {
+                return GameManager.Instance.SaveData.Data.nickname;
+            }
+
+            // 2. Fallback (게스트 및 미설정 유저)
             if (string.IsNullOrEmpty(uid) || uid == "guest")
-                return "Guest";
+                return DefaultGuestName;
 
             int length = Mathf.Min(5, uid.Length);
-            return $"Player-{uid.Substring(0, length)}";
+            return $"{DefaultPlayerPrefix}-{uid.Substring(0, length)}";
         }
     }
 }

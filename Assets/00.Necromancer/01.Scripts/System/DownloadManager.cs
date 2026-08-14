@@ -34,62 +34,81 @@ namespace Necromancer.Systems
         /// </summary>
         public async UniTask<bool> UpdateCatalogsAsync()
         {
-            try
+            int maxRetries = 3;
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                // [BUILD FIX] 빌드 기기에서 암시적 초기화가 지연될 수 있으므로 명시적으로 보장
-                var initHandle = Addressables.InitializeAsync();
-                while (!initHandle.IsDone)
+                try
+                {
+                    var initHandle = Addressables.InitializeAsync();
+                    while (!initHandle.IsDone)
+                        await UniTask.Yield();
+
+                    if (initHandle.Status != AsyncOperationStatus.Succeeded)
+                    {
+                        Debug.LogWarning($"[DownloadManager] InitializeAsync failed (Attempt {attempt}/{maxRetries})");
+                        if (attempt < maxRetries)
+                        {
+                            await UniTask.Delay(500);
+                            continue;
+                        }
+                        return false;
+                    }
+
                     await UniTask.Yield();
 
-                if (initHandle.Status != AsyncOperationStatus.Succeeded)
-                {
-                    Debug.LogError("[DownloadManager] Addressables.InitializeAsync failed.");
-                    Addressables.Release(initHandle);
-                    return false;
-                }
-                // [GUIDELINE FIX] InitializeAsync의 반환 핸들은 전역 초기화 상태 보존을 위해 수동으로 Release하지 않고 유지해야 합니다.
-                
-                await UniTask.Yield();
+                    var checkHandle = Addressables.CheckForCatalogUpdates(false);
+                    while (!checkHandle.IsDone)
+                        await UniTask.Yield();
 
-                var checkHandle = Addressables.CheckForCatalogUpdates(false);
-                while (!checkHandle.IsDone)
-                    await UniTask.Yield();
+                    if (checkHandle.Status != AsyncOperationStatus.Succeeded)
+                    {
+                        Debug.LogWarning($"[DownloadManager] CheckForCatalogUpdates failed (Attempt {attempt}/{maxRetries})");
+                        Addressables.Release(checkHandle);
+                        if (attempt < maxRetries)
+                        {
+                            await UniTask.Delay(500);
+                            continue;
+                        }
+                        return false;
+                    }
 
-                if (checkHandle.Status != AsyncOperationStatus.Succeeded)
-                {
-                    Debug.LogWarning("[DownloadManager] CheckForCatalogUpdates failed. Offline mode?");
+                    List<string> toUpdate = checkHandle.Result;
                     Addressables.Release(checkHandle);
+
+                    if (toUpdate == null || toUpdate.Count == 0)
+                    {
+                        Debug.Log("[DownloadManager] No catalog updates found.");
+                        return true;
+                    }
+
+                    Debug.Log($"[DownloadManager] Updating {toUpdate.Count} catalog(s)...");
+                    var updateHandle = Addressables.UpdateCatalogs(toUpdate, false);
+                    while (!updateHandle.IsDone)
+                        await UniTask.Yield();
+
+                    bool success = updateHandle.Status == AsyncOperationStatus.Succeeded;
+                    Addressables.Release(updateHandle);
+
+                    if (!success && attempt < maxRetries)
+                    {
+                        await UniTask.Delay(500);
+                        continue;
+                    }
+
+                    return success;
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[DownloadManager] UpdateCatalogsAsync 예외 (시도 {attempt}/{maxRetries}): {ex.Message}");
+                    if (attempt < maxRetries)
+                    {
+                        await UniTask.Delay(500);
+                        continue;
+                    }
                     return false;
                 }
-
-                List<string> toUpdate = checkHandle.Result;
-                Addressables.Release(checkHandle);
-
-                if (toUpdate == null || toUpdate.Count == 0)
-                {
-                    Debug.Log("[DownloadManager] No catalog updates found.");
-                    return true;
-                }
-
-                Debug.Log($"[DownloadManager] Updating {toUpdate.Count} catalog(s)...");
-                var updateHandle = Addressables.UpdateCatalogs(toUpdate, false);
-                while (!updateHandle.IsDone)
-                    await UniTask.Yield();
-
-                bool success = updateHandle.Status == AsyncOperationStatus.Succeeded;
-                Addressables.Release(updateHandle);
-
-                if (!success)
-                    Debug.LogError("[DownloadManager] UpdateCatalogs failed.");
-
-                return success;
             }
-            catch (Exception ex)
-            {
-                // 예외를 상위로 전파하지 않고 false 반환 — RunFlow의 에러 팝업 방지
-                Debug.LogWarning($"[DownloadManager] UpdateCatalogsAsync 예외 (오프라인 처리): {ex.Message}");
-                return false;
-            }
+            return false;
         }
 
         /// <summary>
