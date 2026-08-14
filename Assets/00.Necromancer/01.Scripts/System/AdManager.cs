@@ -99,12 +99,14 @@ namespace Necromancer.Systems
             if (targetAd != null && targetAd.CanShowAd())
             {
                 isAdShowing = true;
-                if (GameManager.Instance != null)
-                    GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, true);
+                // [TIME-SCALE-FIX] Time.timeScale = 0f가 되면 광고 오버레이의 재생 타이머도 멈추어 
+                // 광고 첫 화면에서 진행되지 않고 얼어붙는 AdMob 렌더링 프리징 버그를 완전 방지
+                AudioListener.pause = true;
 
                 targetAd.Show((Reward reward) => {
                     UnityMainThreadDispatcher.Enqueue(() => {
                         Debug.Log($"<color=green>[AdManager]</color> Reward earned for {type}");
+                        AudioListener.pause = false;
                         onRewardSuccess?.Invoke();
                     });
                 });
@@ -141,8 +143,7 @@ namespace Necromancer.Systems
                 UnityMainThreadDispatcher.Enqueue(() => {
                     Debug.Log($"[AdManager] {type} ad closed.");
                     isAdShowing = false;
-                    if (GameManager.Instance != null)
-                        GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, false);
+                    AudioListener.pause = false;
                     LoadRewardedAd(type); // 사용한 광고만 다시 로드
                 });
             };
@@ -151,8 +152,7 @@ namespace Necromancer.Systems
                 UnityMainThreadDispatcher.Enqueue(() => {
                     Debug.LogError($"[AdManager] Ad ({type}) failed to show: {error}");
                     isAdShowing = false;
-                    if (GameManager.Instance != null)
-                        GameManager.Instance.SetPause(Necromancer.PauseSource.Ad, false);
+                    AudioListener.pause = false;
 
                     if (noAdMessagePrefab != null && uiCanvasParent != null)
                     {
