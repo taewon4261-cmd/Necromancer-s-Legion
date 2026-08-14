@@ -312,8 +312,58 @@ namespace Necromancer.UI
 
         // ─── 다운로드 단계 ───────────────────────────────────────────────────────
 
+        private async UniTask CheckAppVersionAsync(System.Threading.CancellationToken ct)
+        {
+            try
+            {
+                SetStatus("버전 정보 확인 중...");
+                var db = Firebase.Firestore.FirebaseFirestore.DefaultInstance;
+                var docRef = db.Collection("appConfig").Document("versionInfo");
+                var snapshot = await docRef.GetSnapshotAsync();
+
+                if (snapshot.Exists)
+                {
+                    string latestVersionStr = snapshot.TryGetValue("latestVersion", out string vStr) ? vStr : Application.version;
+                    string noticeMsg = snapshot.TryGetValue("updateNotice", out string msgStr) ? msgStr : "원활한 게임 이용을 위해 최신 버전 업데이트가 필요합니다.";
+
+                    if (System.Version.TryParse(Application.version, out var currentVersion) &&
+                        System.Version.TryParse(latestVersionStr, out var latestVersion))
+                    {
+                        if (currentVersion < latestVersion)
+                        {
+                            Debug.LogWarning($"[DownloadSceneController] Outdated App Version! Installed: {currentVersion}, Latest: {latestVersion}");
+                            bool goToMarket = await ShowError(
+                                $"{noticeMsg}\n\n[현재 버전: {currentVersion} -> 최신 버전: {latestVersion}]",
+                                ct
+                            );
+
+                            if (goToMarket)
+                            {
+                                string packageId = Application.identifier;
+                                if (string.IsNullOrEmpty(packageId)) packageId = "com.teca.necromancerlegion";
+                                Application.OpenURL($"market://details?id={packageId}");
+                            }
+
+#if UNITY_EDITOR
+                            UnityEditor.EditorApplication.isPlaying = false;
+#else
+                            Application.Quit();
+#endif
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[DownloadSceneController] App version check skipped: {ex.Message}");
+            }
+        }
+
         private async UniTask RunDownloadFlow(System.Threading.CancellationToken ct)
         {
+            // 0. 원격 파이어베이스 앱 버전 검사 (구버전 유저 플레이스토어 이동)
+            await CheckAppVersionAsync(ct);
+
             if (!TryGetDownloadManager(out var dm))
             {
                 SetStatus("리소스 서버 연결 생략.");
