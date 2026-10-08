@@ -1,0 +1,6 @@
+[TEST] Spawned Enemy
+[TEST] Died. Collider Enabled: False (Expected: False)
+[TEST] Reactivated. Collider Enabled: True (Expected: True)
+[TEST] Projectile collision check.
+[TEST] Enemy HP Before: 50, After: 0
+[TEST] SUCCESS! Enemy took damage from projectile.

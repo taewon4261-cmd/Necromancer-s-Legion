@@ -77,6 +77,8 @@ namespace Necromancer
                 unitAnimator.updateMode = AnimatorUpdateMode.Normal;
                 unitAnimator.SetBool(Necromancer.Systems.UIConstants.AnimParam_Die, false);
             }
+
+            if (unitCollider != null) unitCollider.enabled = true;
             
             // [ARCHITECT] 중앙 관리자 등록
             if (GameManager.Instance != null && GameManager.Instance.unitManager != null) 

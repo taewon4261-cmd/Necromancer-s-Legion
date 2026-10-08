@@ -186,7 +186,13 @@ namespace Necromancer.UI
             authPanel.SetActive(true);
             SetLoginButtons(true);
             SetStatus("로그인해주세요.");
-            return await WaitForLoginResultAsync(ct);
+            
+            while (true)
+            {
+                bool result = await WaitForLoginResultAsync(ct, false);
+                if (result) return true;
+                // If login fails, we loop and wait for the next button click.
+            }
         }
 
         // UniTaskCompletionSource로 OnLoginResult 이벤트를 비동기 대기
@@ -201,7 +207,7 @@ namespace Necromancer.UI
             if (auth != null)
             {
                 if (auth.CurrentState == AuthState.LoggedIn || auth.CurrentState == AuthState.Guest) return true;
-                if (auth.CurrentState == AuthState.Failed) return false;
+                if (withTimeout && auth.CurrentState == AuthState.Failed) return false;
             }
 
             _loginTcs = new UniTaskCompletionSource<bool>();
@@ -211,7 +217,7 @@ namespace Necromancer.UI
             {
                 if (auth.CurrentState == AuthState.LoggedIn || auth.CurrentState == AuthState.Guest)
                     _loginTcs.TrySetResult(true);
-                else if (auth.CurrentState == AuthState.Failed)
+                else if (withTimeout && auth.CurrentState == AuthState.Failed)
                     _loginTcs.TrySetResult(false);
             }
 
